@@ -1,5 +1,5 @@
 .deps
 *.o
 *~
-.prg
-.app
+*.prg
+*.app

@@ -7,7 +7,7 @@
 void arb_corner		( VDIRECT *corners, short type);
 void sortcpy_corners	( short *src, short *dst);
 short clipbox		( VDIRECT *corners, VDIRECT *clip);
-void rectfill		( RASTER *r, COLINF *c, VDIRECT *corners, VDIRECT *clip, PatAttr *ptrn, short interior);
+void rectfill		( RASTER *r, COLINF *c, VDIRECT *corners, VDIRECT *clip, PatAttr *ptrn);
 
 void draw_arc		( VIRTUAL *v, short xc, short yc, short xrad, short beg_ang, short end_ang, short *points, PatAttr *ptrn);
 void draw_pieslice	( VIRTUAL *v, short xc, short yc, short xrad, short beg_ang, short end_ang, short *points, PatAttr *ptrn);

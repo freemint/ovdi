@@ -12,6 +12,7 @@ void	vr_recfl	( VDIPB *pb, VIRTUAL *v );
 void	vqf_attributes	( VDIPB *pb, VIRTUAL *v );
 
 void	lvsf_color	( VIRTUAL *v, short color );
+void	lvsf_interior	( VIRTUAL *v, short interior );
 void	lvsf_bgcolor	( VIRTUAL *v, short color );
 void	lvsf_perimeter	( VIRTUAL *v, short flag );
 void	lvsprm_color	( VIRTUAL *v, short color );

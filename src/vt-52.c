@@ -1039,6 +1039,7 @@ erase_lines( CONSOLE *c, short x1, short y1, short x2, short y2)
 	cheight = f->top + f->bottom + 1;
 	lines = y2 - y1 + 1;
 	c->pattern.wrmode = MD_REPLACE - 1;
+	c->pattern.interior = FIS_SOLID;
 
 	if (lines == 1)
 	{
@@ -1046,7 +1047,7 @@ erase_lines( CONSOLE *c, short x1, short y1, short x2, short y2)
 		coords[1] = y1 * cheight;
 		coords[2] = ((x2 + 1) * cwidth) - 1;
 		coords[3] = ((y1 + 1) * cheight) - 1;
-		(*fr)(r, ci, (VDIRECT *)&coords, (VDIRECT *)&r->x1, &c->pattern, FIS_SOLID);
+		(*fr)(r, ci, (VDIRECT *)&coords, (VDIRECT *)&r->x1, &c->pattern);
 	}
 	else if (lines == 2)
 	{
@@ -1054,13 +1055,13 @@ erase_lines( CONSOLE *c, short x1, short y1, short x2, short y2)
 		coords[1] = y1 * cheight;
 		coords[2] = ((c->la->v_cel_mx + 1) * cwidth) - 1;
 		coords[3] = ((y1 + 1) * cheight) - 1;
-		(*fr)(r, ci, (VDIRECT *)&coords, (VDIRECT *)&r->x1, &c->pattern, FIS_SOLID);
+		(*fr)(r, ci, (VDIRECT *)&coords, (VDIRECT *)&r->x1, &c->pattern);
 
 		coords[0] = 0;
 		coords[1] = (y1 + 1) * cheight;
 		coords[2] = (x2 * cwidth) - 1;
 		coords[3] = ((y2 + 1) * cheight) - 1;
-		(*fr)(r, ci, (VDIRECT *)&coords, (VDIRECT *)&r->x1, &c->pattern, FIS_SOLID);
+		(*fr)(r, ci, (VDIRECT *)&coords, (VDIRECT *)&r->x1, &c->pattern);
 	}
 	else
 	{
@@ -1068,19 +1069,19 @@ erase_lines( CONSOLE *c, short x1, short y1, short x2, short y2)
 		coords[1] = y1 * cheight;
 		coords[2] = ((c->la->v_cel_mx + 1) * cwidth) - 1;
 		coords[3] = ((y1 + 1) * cheight) - 1;
-		(*fr)(r, ci, (VDIRECT *)&coords, (VDIRECT *)&r->x1, &c->pattern, FIS_SOLID);
+		(*fr)(r, ci, (VDIRECT *)&coords, (VDIRECT *)&r->x1, &c->pattern);
 
 		coords[0] = 0;
 		coords[1] = (y1 + 1) * cheight;
 		coords[2] = ((c->la->v_cel_mx + 1) * cwidth) - 1;
 		coords[3] = (y2 * cheight) - 1;
-		(*fr)(r, ci, (VDIRECT *)&coords, (VDIRECT *)&r->x1, &c->pattern, FIS_SOLID);
+		(*fr)(r, ci, (VDIRECT *)&coords, (VDIRECT *)&r->x1, &c->pattern);
 
 		coords[0] = 0;
 		coords[1] = y2 * cheight;
 		coords[2] = (x2 * cwidth) - 1;
 		coords[3] = ((y2 + 1) * cheight) - 1;
-		(*fr)(r, ci, (VDIRECT *)&coords, (VDIRECT *)&r->x1, &c->pattern, FIS_SOLID);
+		(*fr)(r, ci, (VDIRECT *)&coords, (VDIRECT *)&r->x1, &c->pattern);
 	}
 }
 
@@ -1175,7 +1176,8 @@ draw_text_cursor(CONSOLE *c)
 		}
 	}
 	c->pattern.wrmode = MD_XOR - 1;
-	DRAW_FILLEDRECT( r, c->colinf, (VDIRECT *)&coords, (VDIRECT *)&r->x1, &c->pattern, FIS_SOLID);
+	c->pattern.interior = FIS_SOLID;
+	DRAW_FILLEDRECT( r, c->colinf, (VDIRECT *)&coords, (VDIRECT *)&r->x1, &c->pattern);
 }
 
 void

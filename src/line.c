@@ -14,7 +14,7 @@ static short Planes2xinc[] =
 
 /* Written by Odd Skancke */
 void
-pline(RASTER *r, COLINF *c, short *pts, long n, VDIRECT *clip, short *points, long pointasize, LINE_ATTRIBS *latr, PatAttr *ptrn)
+pline(RASTER *r, COLINF *c, short *pts, long n, VDIRECT *clip, short *points, long pointasize, PatAttr *ptrn)
 {
 	VDIRECT line, clipped;
 	register short x, y;
@@ -40,8 +40,8 @@ pline(RASTER *r, COLINF *c, short *pts, long n, VDIRECT *clip, short *points, lo
 		if (clip_line(&clipped, clip))
 			(*dl)(r, c, &clipped, ptrn);
 
-		if ((latr->beg | latr->end) & LE_ARROW)
-			do_arrow( r, c, (short *)&line, 2, clip, points, pointasize, latr, ptrn);
+		if ((ptrn->t.l.beg | ptrn->t.l.end) & LE_ARROW)
+			do_arrow( r, c, (short *)&line, 2, clip, points, pointasize, ptrn);
 
 		n--;
 	}
@@ -749,7 +749,7 @@ perp_off(short *vx, short *vy, short *q_circle, short num_qc_lines)
 
 /* Taken from fVDI (line.c), adapted by Odd Skancke*/
 void
-arrow(RASTER *r, COLINF *c, short *xy, short inc, short numpts, VDIRECT *clip, short *points, long pointasize, LINE_ATTRIBS *latr, PatAttr *ptrn)
+arrow(RASTER *r, COLINF *c, short *xy, short inc, short numpts, VDIRECT *clip, short *points, long pointasize, PatAttr *ptrn)
 {
 	short i, arrow_len, arrow_wid, line_len;
 	short *xybeg;
@@ -764,7 +764,7 @@ arrow(RASTER *r, COLINF *c, short *xy, short inc, short numpts, VDIRECT *clip, s
 
 	/* Set up the arrow-head length and width as a function of line width. */
 
-	arrow_len = latr->width == 1 ? 8 : 3 * latr->width - 1;
+	arrow_len = ptrn->t.l.width == 1 ? 8 : 3 * ptrn->t.l.width - 1;
 
 	arrow_len2 = arrow_len * arrow_len;
 	arrow_wid = arrow_len / 2;
@@ -835,7 +835,7 @@ arrow(RASTER *r, COLINF *c, short *xy, short inc, short numpts, VDIRECT *clip, s
 
 /* Taken from fVDI (line.c), adapted by Odd Skancke*/
 void
-do_arrow(RASTER *r, COLINF *c, short *pts, short numpts, VDIRECT *clip, short *points, long pointasize, LINE_ATTRIBS *latr, PatAttr *ptrn)
+do_arrow(RASTER *r, COLINF *c, short *pts, short numpts, VDIRECT *clip, short *points, long pointasize, PatAttr *ptrn)
 {
 	short x_start, y_start, new_x_start, new_y_start;
 
@@ -846,18 +846,18 @@ do_arrow(RASTER *r, COLINF *c, short *pts, short numpts, VDIRECT *clip, short *p
 	new_x_start = x_start = pts[0];
 	new_y_start = y_start = pts[1];
 
-	if (latr->beg & LE_ARROW)
+	if (ptrn->t.l.beg & LE_ARROW)
 	{
-		arrow(r, c, &pts[0], 2, numpts, clip, points, pointasize, latr, ptrn);
+		arrow(r, c, &pts[0], 2, numpts, clip, points, pointasize, ptrn);
 		new_x_start = pts[0];
 		new_y_start = pts[1];
 	}
 
-	if (latr->end & LE_ARROW)
+	if (ptrn->t.l.end & LE_ARROW)
 	{
 		pts[0] = x_start;
 		pts[1] = y_start;
-		arrow(r, c, &pts[2 * numpts - 2], -2, numpts, clip, points, pointasize, latr, ptrn);
+		arrow(r, c, &pts[2 * numpts - 2], -2, numpts, clip, points, pointasize, ptrn);
 		pts[0] = new_x_start;
 		pts[1] = new_y_start;
 	}
@@ -865,7 +865,7 @@ do_arrow(RASTER *r, COLINF *c, short *pts, short numpts, VDIRECT *clip, short *p
 
 /* Taken from fVDI (line.c), modified by Odd Skancke*/
 void
-wide_line(RASTER *r, COLINF *c, short *pts, long numpts, VDIRECT *clip, short *points, long pointasize, LINE_ATTRIBS *latr, PatAttr *ptrn)
+wide_line(RASTER *r, COLINF *c, short *pts, long numpts, VDIRECT *clip, short *points, long pointasize, PatAttr *ptrn)
 {
 	int i, j, k;
 	short wx1, wy1, wx2, wy2, vx, vy;
@@ -881,12 +881,12 @@ wide_line(RASTER *r, COLINF *c, short *pts, long numpts, VDIRECT *clip, short *p
 
 	q_circle = (short *)&q_circleb;
 
-	num_qc_lines = wide_setup(r, latr->width, q_circle);
+	num_qc_lines = wide_setup(r, ptrn->t.l.width, q_circle);
 
 #if 1
 	/* If the ends are arrowed, output them. */
-	if ((latr->beg | latr->end) & LE_ARROW)
-		do_arrow(r, c, pts, numpts, clip, points, pointasize, latr, ptrn);
+	if ((ptrn->t.l.beg | ptrn->t.l.end) & LE_ARROW)
+		do_arrow(r, c, pts, numpts, clip, points, pointasize, ptrn);
 #endif
 
 	/* Initialize the starting point for the loop. */
@@ -984,7 +984,7 @@ pmarker( RASTER *r, COLINF *c, POINT *center, VDIRECT *clip, short type, short s
 			tmp = (short)((short)(((short)size * 30 + 11) / 22) * i * 4 + 15) / 30 + 1;
 #else
 			tmp = (short)((short)size * i * 4 + 11) / 22 + 1;
-#endif 0
+#endif
 		}
 		else
 			tmp = ((short)w_in * i + 2) / 4;

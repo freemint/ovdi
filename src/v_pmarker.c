@@ -19,23 +19,25 @@ lvsm_linetype( VIRTUAL *v, register short linetype )
 		linetype = MAX_LN_STYLE;
 
 	if (linetype == LI_USER)
-		v->pmarker.data = v->line.ud;
+		v->pmarker.data = &v->line.ud;
 	else
-		v->pmarker.data = LINE_STYLE[linetype - 1];
+		v->pmarker.data = (unsigned short *)&LINE_STYLE[linetype - 1];
 
-	v->pmrkdat.expanded = 0;
-	v->pmrkdat.width = 16;
-	v->pmrkdat.height = 1;
-	v->pmrkdat.wwidth = 1;
-	v->pmrkdat.planes = 1;
-	v->pmrkdat.data = &v->pmarker.data;
+	v->pmarker.t.p.index = linetype - 1;
+
+	v->pmarker.expanded = 0;
+	v->pmarker.width = 16;
+	v->pmarker.height = 1;
+	v->pmarker.wwidth = 1;
+	v->pmarker.planes = 1;
+	v->pmarker.data = &v->pmarker.data;
 }
 
 void
 vsm_color( VDIPB *pb, VIRTUAL *v)
 {
 	lvsm_color( v, pb->intin[0]);
-	pb->intout[0] = v->colinf->color_hw2vdi[v->pmarker.color];
+	pb->intout[0] = v->colinf->color_hw2vdi[v->pmarker.color[0]];
 
 	pb->contrl[N_INTOUT] = 1;
 }
@@ -44,8 +46,8 @@ void
 vsm_height( VDIPB *pb, VIRTUAL *v)
 {
 	lvsm_height( v, pb->ptsin[1]);
-	pb->ptsout[0] = v->pmarker.width;
-	pb->ptsout[1] = v->pmarker.height;
+	pb->ptsout[0] = v->pmarker.t.p.width;
+	pb->ptsout[1] = v->pmarker.t.p.height;
 
 	pb->contrl[N_PTSOUT] = 1;
 }
@@ -54,7 +56,7 @@ void
 vsm_type( VDIPB *pb, VIRTUAL *v)
 {
 	lvsm_type (v, pb->intin[0]);
-	pb->intout[0] = v->pmarker.type;
+	pb->intout[0] = v->pmarker.t.p.type;
 
 	pb->contrl[N_INTOUT] = 1;
 }
@@ -74,9 +76,8 @@ lvsm_color( VIRTUAL *v, short color)
 
 	color = v->colinf->color_vdi2hw[color];
 
-	v->pmrkdat.color[0] = v->pmrkdat.color[1] = color;
-	v->pmrkdat.color[2] = v->pmrkdat.color[3] = planes > 8 ? 0x0 : 0xff;
-	v->pmarker.color = color;
+	v->pmarker.color[0] = v->pmarker.color[1] = color;
+	v->pmarker.color[2] = v->pmarker.color[3] = planes > 8 ? 0x0 : 0xff;
 }
 void
 lvsm_bgcolor( VIRTUAL *v, short color)
@@ -93,17 +94,16 @@ lvsm_bgcolor( VIRTUAL *v, short color)
 
 	color = v->colinf->color_vdi2hw[color];
 
-	v->pmrkdat.bgcol[0] = v->pmrkdat.bgcol[1] = color;
-	v->pmrkdat.bgcol[2] = v->pmrkdat.bgcol[3] = planes > 8 ? 0x0 : 0xff;
-	v->pmarker.bgcol = color;
+	v->pmarker.bgcol[0] = v->pmarker.bgcol[1] = color;
+	v->pmarker.bgcol[2] = v->pmarker.bgcol[3] = planes > 8 ? 0x0 : 0xff;
 }
 
 
 void
 lvsm_height( VIRTUAL *v, short height)
 {
-	v->pmarker.height = height;
-	v->pmarker.width = height;
+	v->pmarker.t.p.height = height;
+	v->pmarker.t.p.width = height;
 }
 
 void
@@ -115,7 +115,7 @@ lvsm_type( VIRTUAL *v, short type)
 	else if (type > MAX_PMARKERTYPE)
 		type = MAX_PMARKERTYPE;
 
-	v->pmarker.type = type - 1;
+	v->pmarker.t.p.type = type - 1;
 }
 
 void
@@ -138,14 +138,14 @@ v_pmarker( VDIPB *pb, VIRTUAL *v)
 	clip	= v->clip.flag ? (VDIRECT *)&v->clip.x1 : (VDIRECT *)&r->x1;
 
 	inpts	= (POINT *)&pb->ptsin[0];
-	width	= v->pmarker.width;
-	height	= v->pmarker.height;
-	type	= v->pmarker.type;
+	width	= v->pmarker.t.p.width;
+	height	= v->pmarker.t.p.height;
+	type	= v->pmarker.t.p.type;
 
 	while (count >= 0)
 	{
 		pts = *inpts++;
-		(*f)( r, v->colinf, &pts, clip, type, 0, width, height, &v->pmrkdat);
+		(*f)( r, v->colinf, &pts, clip, type, 0, width, height, &v->pmarker);
 		count--;
 	}
 }
@@ -153,12 +153,12 @@ v_pmarker( VDIPB *pb, VIRTUAL *v)
 void
 vqm_attributes( VDIPB *pb, VIRTUAL *v)
 {
-	pb->intout[0] = v->pmarker.type + 1;
-	pb->intout[1] = v->colinf->color_hw2vdi[v->pmarker.color];
-	pb->intout[2] = v->wrmode +1;
+	pb->intout[0] = v->pmarker.t.p.type + 1;
+	pb->intout[1] = v->colinf->color_hw2vdi[v->pmarker.color[0]];
+	pb->intout[2] = v->pmarker.wrmode +1;
 
-	pb->ptsout[0] = v->pmarker.width;
-	pb->ptsout[1] = v->pmarker.height;
+	pb->ptsout[0] = v->pmarker.t.p.width;
+	pb->ptsout[1] = v->pmarker.t.p.height;
 
 	pb->contrl[N_INTOUT] = 3;
 	pb->contrl[N_PTSOUT] = 1;

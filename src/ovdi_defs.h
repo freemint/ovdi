@@ -44,25 +44,25 @@ struct raster
 	/* in by the device driver upon resolution	*/
 	/* changes, etc.				*/
 	int			(*sync)(void);		/* Hardware ready? (accelerator done, etc) */
-	unsigned char		*base;
-	unsigned long		lenght;
-	short			flags;
-	short			realflags;
-	short			format;
-	short			w, h;
-	short			x1, y1, x2, y2;
-	short			clut;
-	short			planes;
-	short			pixlen;
-	short			bypl;
-	char			*pixelformat;
+	unsigned char		*base;			/* Address of raster */
+	unsigned long		lenght;			/* Lenght of raster in bytes */
+	short			flags;			/* Flags */
+	short			realflags;		/* Real flags */
+	short			format;			/* Pixel format */
+	short			w, h;			/* width and height of raster in pixels */
+	short			x1, y1, x2, y2;		/* Bounding rectangle (usually 0,0, w-1, h-1) */
+	short			clut;			/* Color Lookup flag */
+	short			planes;			/* Number of planes */
+	short			pixlen;			/* Size of one pixel. positive number == bytes (>=8), negative number == bits (< 8) */
+	short			bypl;			/* Size of one line in bytes */
+	char			*pixelformat;		/* Address of a pixel layout description */
 
 	/* This part is filled in by the VDI.		*/
 	/* Device driver must NOT touch this area!	*/
 	short			wpixel, hpixel;
-	struct ovdi_drawers	*drawers;
-	struct ovdi_drawers	(**odrawers);
-	struct ovdi_utils	*utils;
+	struct ovdi_drawers	*drawers;		/* Drawers used with current resolution of raster */
+	struct ovdi_drawers	(**odrawers);		/* Pointer to table of different resolution drawers - used when changing raster resolution */
+	struct ovdi_utils	*utils;			/* Pointer to table of different utility functions */
 	RGB_LIST		rgb_levels;		/* Number of levels for Red, Green, Blue, Alpha and Ovl parts */
 	RGB_LIST		rgb_bits;		/* Number of bits used for Red, Green, Blue, Alpha and Ovl */
 };
@@ -73,42 +73,57 @@ struct raster
 */
 struct colinf
 {
-	short		pens;
-	short		planes;
-	short		*color_vdi2hw;
-	short		*color_hw2vdi;
-	char		*pixelformat;
+	short		pens;			/* Number of pens */
+	short		planes;			/* Planes */
+	short		*color_vdi2hw;		/* vdi to hardware colorindex conversion table */
+	short		*color_hw2vdi;		/* hardware to vdi colorindex conversion table */
+	char		*pixelformat;		/* Pointer to pixel layout description */
 	long		*pixelvalues;		/* Pixelvalues, as they're written into video-ram */
 	RGB_LIST	*request_rgb;		/* Requested, relative RGB values (0 - 1000) */
 	RGB_LIST	*actual_rgb;		/* Actual RGB values, used to construct pixelvalues */
 };
 //typedef struct colinf COLINF;
 
-#if 0
-struct drawinf
-{
-	RASTER		*r;
-	COLINF		*c;
-};
-typedef struct drawinf DRAWINF;
-#endif
-
 /*
  * All drawing primitives use this structure.
 */
 struct pattern_attribs
 {
-	short		expanded;		/* True if the pattern is expanded and valid. */
-	short		color[4];		/* wrmode is used as index into color array */
-	short		bgcol[4];		/* background color */
+	short		expanded;		/* planes in expanded data or NULL if not expanded. */
+	short		interior;		/* */
+	short		wrmode;			/* writing mode (unused as of yet) */
 	short		width;			/* Width of pattern in pixels */
 	short		height;			/* Height of pattern in pixels */
 	short		wwidth;			/* Width of fill pattern in words */
 	short		planes;			/* True if fill is multiplane */
-	short		wrmode;			/* writing mode (unused as of yet) */
-	unsigned short	*data;
-	unsigned short	*mask;
-	unsigned short	*exp_data;
+	short		color[4];		/* wrmode is used as index into color array */
+	short		bgcol[4];		/* background color */
+	short		ud;			/* User define data */
+	unsigned short	*data;			/* Original data */
+	unsigned short	*mask;			/* Mask - created when expanded */
+	unsigned short	*exp_data;		/* Expanded data - device dependant */
+	union
+	{
+		struct /* Fill */
+		{
+			short style;
+			struct pattern_attribs *perimeter; /* NULL == no perimeter, else points to pattern_attribs used to render permimeter */
+		} f;
+		struct /* Lines */
+		{
+			short index;
+			short width;
+			short beg, end;
+		} l;
+		struct /* Polymarkers */
+		{
+			short index;		/* Line index used to draw poly marker */
+			short type;		/* Polymarker type */
+			short width;
+			short height;
+			short scale;
+		} p;
+	} t;
 };
 typedef struct pattern_attribs PatAttr;
 
@@ -139,47 +154,6 @@ struct	currfont
 };
 typedef struct currfont CURRFONT;
 
-struct	fill_attribs
-{
-	PatAttr	*ptrn;
-	short	color;
-	short	bgcol;
-	short	interior;
-	short	perimeter;
-	short	style;
-};
-
-struct line_attribs
-{
-	PatAttr		*ptrn;
-	short		color;
-	short		bgcol;
-	short		wrmode;
-	short		index;
-	unsigned short	data;
-	unsigned short	ud;
-
-	short		width;
-	short		beg;
-	short		end;
-};
-typedef struct line_attribs LINE_ATTRIBS;
-
-struct pmarker_attribs
-{
-	PatAttr		*ptrn;
-	short		color;
-	short		bgcol;
-	short		wrmode;
-	short		type;
-	short		data;
-	unsigned short	ud;
-
-	short		width;
-	short		height;
-	short		scale;	/* Current scale factor for marker data */
-};
-
 /*
  * Used to hold 16x16 fill pattern expansions
 */
@@ -189,6 +163,7 @@ struct pattern_data
 	unsigned short mask[(2*16) * 16];
 	unsigned short edata[(2*16) * 16];
 };
+typedef struct pattern_data PatDat;
 
 /*
  * This is the main VIRTUAL structure.
@@ -206,22 +181,16 @@ struct virtual
 	struct xgdf_head	*fring;
 	struct currfont		font;
 
-	struct fill_attribs	fill;
-	struct pattern_attribs	pattern;
+	PatAttr			*currfill;		/* Points to either fill or udfill */
+	PatAttr			fill;
+	PatAttr			udfill;
+	PatAttr			perimeter;
+	PatAttr			line;
+	PatAttr			pmarker;
 
-	struct line_attribs	perimeter;
-	struct pattern_attribs	perimdata;
+	PatDat			filldata;
+	PatDat			udfilldata;
 
-	struct pattern_attribs	udpat;
-	struct pattern_data	patdata;
-	struct pattern_data	udpatdata;
-
-	struct line_attribs	line;
-	struct pattern_attribs	linedat;
-
-	struct pmarker_attribs	pmarker;
-	struct pattern_attribs	pmrkdat;
-	
 #define REQ_MODE	1
 
 	short			locator;
@@ -384,7 +353,7 @@ typedef pixel_blit pixel_blits[16];
   * to the current drawers structure. Drivers contain one such structure for each 
   * color-depth mode (1, 2, 4, 8, 15, 16, 24 and 32 bit color modes) respectively.
  */
-typedef	void (*Ffilled_rect)	( RASTER *r, COLINF *c, VDIRECT *corners, VDIRECT *clip, PatAttr *ptrn, short fis);
+typedef	void (*Ffilled_rect)	( RASTER *r, COLINF *c, VDIRECT *corners, VDIRECT *clip, PatAttr *ptrn);
 typedef	void (*Ffilledpoly)	( RASTER *r, COLINF *c, short *pts, short n, VDIRECT *clip, short *points, long pointasize, PatAttr *ptrn);
 
 typedef	void (*Farc)		( VIRTUAL *v, short xc, short yc, short xrad, short beg_ang, short end_ang, short *points, PatAttr *ptrn);
@@ -393,7 +362,7 @@ typedef	void (*Fellipse)	( VIRTUAL *v, short xc, short yc, short xrad, short yra
 typedef	void (*Fellarc)		( VIRTUAL *v, short xc, short yc, short xrad, short yrad, short beg_ang, short end_ang, short *points, PatAttr *ptrn);
 typedef	void (*Frbox)		( VIRTUAL *v, short gdp_code, VDIRECT *corners, PatAttr *ptrn);
 
-typedef	void (*Fpline)		( RASTER *r, COLINF *c, short *pts, long numpts, VDIRECT *clip, short *points, long pointasize, LINE_ATTRIBS *latr, PatAttr *ptrn);
+typedef	void (*Fpline)		( RASTER *r, COLINF *c, short *pts, long numpts, VDIRECT *clip, short *points, long pointasize, PatAttr *ptrn);
 typedef	void (*Fhvline)		( RASTER *r, COLINF *c, short xory1, short xory2, short xory, PatAttr *ptrn);
 typedef	void (*Fabline)		( RASTER *r, COLINF *c, struct vdirect *pnts, PatAttr *ptrn);
 
@@ -437,7 +406,7 @@ typedef	void (*Focpyfm)		( RASTER *r, MFDB *src, MFDB *dst, short *pnts, VDIRECT
 #define RT_CPYFM_PTR(a)		(a->drawers->p.rt_cpyfm)
 #define RO_CPYFM_PTR(a)		(a->drawers->p.ro_cpyfm)
 
-#define DRAW_FILLEDRECT(a,b,c,d,e,f)		({(*DRAW_FILLEDRECT_PTR(a))(a,b,c,d,e,f);})
+#define DRAW_FILLEDRECT(a,b,c,d,e)		({(*DRAW_FILLEDRECT_PTR(a))(a,b,c,d,e);})
 #define DRAW_ARC(a,b,c,d,e,f,g,h)		({(*DRAW_ARC_PTR(a))(a,b,c,d,e,f,g,h);})
 #define DRAW_PIESLICE(a,b,c,d,e,f,g,h)		({(*DRAW_PIESLICE_PTR(a))(a,b,c,d,e,f,g,h);})
 #define DRAW_CIRCLE(a,b,c,d,e,f)		({(*DRAW_CIRCLE_PTR(a))(a,b,c,d,e,f);})
@@ -449,8 +418,8 @@ typedef	void (*Focpyfm)		( RASTER *r, MFDB *src, MFDB *dst, short *pnts, VDIRECT
 #define DRAW_ABLINE(a,b,c,d)			({(*DRAW_ABLINE_PTR(a))(a,b,c,d);})
 #define DRAW_HLINE(a,b,c,d,e,f)			({(*DRAW_HLINE_PTR(a))(a,b,c,d,e,f);})
 #define DRAW_VLINE(a,b,c,d,e,f)			({(*DRAW_VLINE_PTR(a))(a,b,c,d,e,f);})
-#define DRAW_PLINE(a,b,c,d,e,f,g,h,i)		({(*DRAW_PLINE_PTR(a))(a,b,c,d,e,f,g,h,i);})
-#define DRAW_WIDELINE(a,b,c,d,e,f,g,h,i)	({(*DRAW_WIDELINE_PTR(a))(a,b,c,d,e,f,g,h,i);})
+#define DRAW_PLINE(a,b,c,d,e,f,g,h)		({(*DRAW_PLINE_PTR(a))(a,b,c,d,e,f,g,h);})
+#define DRAW_WIDELINE(a,b,c,d,e,f,g,h)		({(*DRAW_WIDELINE_PTR(a))(a,b,c,d,e,f,g,h);})
 
 #define DRAW_SPANS(a,b,c,d,e,f)			({(*DRAW_SPANS_PTR(a))(a,b,c,d,e,f);})
 #define DRAW_MSPANS(a,b,c,d,e,f,g)		({(*DRAW_MSPANS_PTR(a))(a,b,c,d,e,f,g);})
@@ -489,11 +458,11 @@ struct vdiprimitives
 };
 typedef struct vdiprimitives VDIPRIMITIVES;
 
-#define DRAW_SOLID_RECT_PTR(a)	(a->drawers->draw_solid_rect)
 #define FILL_16X_PTR(a)		(a->drawers->fill_16x)
+#define SPANS_16X_PTR(a)	(a->drawers->spans_16x)
 
-#define DRAW_SOLID_RECT(a,b,c,d,e)	({(*DRAW_SOLID_RECT_PTR(a))(a,b,c,d,e);})
-#define FILL_16X(a,b,c,d,e)		({(*FILL_16X_PTR(a))(a,b,c,d,e);})
+#define FILL_16X(a,b,c,d)		({(*FILL_16X_PTR(a))(a,b,c,d);})
+#define SPANS_16X(a,b,c,d,e)		({(*SPANS_16X_PTR(a))(a,b,c,d,e);})
 
 struct ovdi_drawers
 {
@@ -513,8 +482,8 @@ struct ovdi_drawers
 	void		(*put_pixel)		( unsigned char *base, short bypl, short x, short y, unsigned long data);
 	unsigned long	(*get_pixel)		( unsigned char *base, short bypl, short x, short y);
 
-	void		(*draw_solid_rect)	( RASTER *r, COLINF *c, short *corners, short wrmode, short color);
-	void		(*fill_16x)		( RASTER *r, COLINF *c, short *corners, short wrmode, PatAttr *ptrn);
+	void		(*fill_16x)		( RASTER *r, COLINF *c, short *corners, PatAttr *ptrn);
+	void		(*spans_16x)		( RASTER *r, COLINF *c, short *spans, int n, PatAttr *ptrn);
 
 	pixel_blits	drp;	/* Draw Raster Points */
 	pixel_blits	dlp;	/* Draw line Points */

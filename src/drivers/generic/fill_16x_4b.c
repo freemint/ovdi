@@ -8,9 +8,9 @@ static unsigned short fillbuff[4*16];
 static unsigned short maskbuff[16];
 
 void
-fill_16x_4b(RASTER *r, COLINF *c, short *corners, short interior, PatAttr *ptrn)
+fill_16x_4b(RASTER *r, COLINF *c, short *corners, PatAttr *ptrn)
 {
-	int i, words, bypl, height, y, wrmode;
+	int i, words, bypl, height, y, wrmode, interior;
 	unsigned long lp0, lp1, lsm, lem, lmask;
 	unsigned short *m;
 	unsigned long *s, *d;
@@ -19,6 +19,7 @@ fill_16x_4b(RASTER *r, COLINF *c, short *corners, short interior, PatAttr *ptrn)
 	 * check if pattern is expanded and do expand it if it isnt
 	*/
 	wrmode = ptrn->wrmode;
+	interior = ptrn->interior;
 
 	if (ptrn->expanded != 4 && interior > FIS_SOLID)
 	{

@@ -9,8 +9,9 @@ extern raster_blit rops_8b[]; //raster_op rops_8b[];
 
 unsigned long	get_pixel_8b( unsigned char *base, short bypl, short x, short y);
 void		put_pixel_8b( unsigned char *base, short bpl, short x, short y, unsigned long pixel);
-void		draw_solid_rect_8b( RASTER *r, COLINF *c, short *corners, short wrmode, short color);
-void		fill_16x_8b(RASTER *r, COLINF *c, short *corners, short interior, PatAttr *ptrn);
+void		fill_16x_8b(RASTER *r, COLINF *c, short *corners, PatAttr *ptrn);
+void		spans_16x_8b(RASTER *r, COLINF *c, short *spans, int n, PatAttr *ptrn);
+
 void	draw_mousecurs_8b(register XMFORM *mf, register short x, register short y);
 void	restore_msave_8b(XMSAVE *ms);
 

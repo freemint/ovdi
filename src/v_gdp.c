@@ -53,20 +53,16 @@ v_bar( VDIPB *pb, VIRTUAL *v)
 {
 	RASTER *r = v->raster;
 	COLINF *c = v->colinf;
+	PatAttr *ptrn = v->currfill;
 	VDIRECT *clip;
-	LINE_ATTRIBS *latr;
-	short interior;
 	short coords[10];
 
 	clip = v->clip.flag ? (VDIRECT *)&v->clip.x1 : (VDIRECT *)&r->x1;
-	interior = v->fill.interior;
-	latr = &v->line;
 
 	sortcpy_corners(&pb->ptsin[0], &coords[0]);
-	DRAW_FILLEDRECT( r, c, (VDIRECT *)&coords[0], clip,
-			interior == FIS_USER ? &v->udpat : &v->pattern, interior);
+	DRAW_FILLEDRECT( r, c, (VDIRECT *)&coords[0], clip, ptrn);
 
-	if (v->fill.perimeter)
+	if (ptrn->t.f.perimeter)
 	{
 		short ptsbuff[10*5*2];
 
@@ -75,7 +71,7 @@ v_bar( VDIPB *pb, VIRTUAL *v)
 		coords[6] = coords[8] = coords[0];
 		coords[3] = coords[9] = coords[1];
 
-		DRAW_PLINE( r, c, (short *)&coords, 5, clip, (short *)&ptsbuff, sizeof(ptsbuff), latr, &v->perimdata);
+		DRAW_PLINE( r, c, (short *)&coords, 5, clip, (short *)&ptsbuff, sizeof(ptsbuff), ptrn->t.f.perimeter);
 	}
 }
 
@@ -85,8 +81,7 @@ v_arc( VDIPB *pb, VIRTUAL *v)
 {
 	DRAW_ARC( v,  pb->ptsin[0], pb->ptsin[1], pb->ptsin[6], 
 			pb->intin[0], pb->intin[1],
-			(short *)&v->ptsbuff,
-			v->fill.interior == FIS_USER ? &v->udpat : &v->pattern);
+			(short *)&v->ptsbuff, v->currfill );
 }
 
 /* Sub opcode 3 */
@@ -95,8 +90,7 @@ v_pieslice( VDIPB *pb, VIRTUAL *v)
 {
 	DRAW_PIESLICE( v, pb->ptsin[0], pb->ptsin[1], pb->ptsin[6],
 			  pb->intin[0], pb->intin[1],
-			  (short *)&v->ptsbuff,
-			  v->fill.interior == FIS_USER ? &v->udpat : &v->pattern);
+			  (short *)&v->ptsbuff, v->currfill );
 }
 			  
 /* Sub opcode 4 */
@@ -104,8 +98,7 @@ void
 v_circle( VDIPB *pb, VIRTUAL *v)
 {
 	DRAW_CIRCLE( v, pb->ptsin[0], pb->ptsin[1], pb->ptsin[4],
-			(short *)&v->ptsbuff,
-			v->fill.interior == FIS_USER ? &v->udpat : &v->pattern);
+			(short *)&v->ptsbuff, v->currfill );
 }
 
 /* Sup opcode 5 */
@@ -113,8 +106,7 @@ void
 v_ellipse( VDIPB *pb, VIRTUAL *v)
 {
 	DRAW_ELLIPSE( v, pb->ptsin[0], pb->ptsin[1], pb->ptsin[2], pb->ptsin[3],
-			(short *)&v->ptsbuff,
-			v->fill.interior == FIS_USER ? &v->udpat : &v->pattern);
+			(short *)&v->ptsbuff, v->currfill );
 }
 
 /* Sub opcode 6 */
@@ -123,8 +115,7 @@ v_ellarc( VDIPB *pb, VIRTUAL *v)
 {
 	DRAW_ELLIPSEARC( v, pb->ptsin[0], pb->ptsin[1], pb->ptsin[2], pb->ptsin[3],
 				pb->intin[0], pb->intin[1],
-				(short *)&v->ptsbuff,
-				v->fill.interior == FIS_USER ? &v->udpat : &v->pattern);
+				(short *)&v->ptsbuff, v->currfill );
 }
 
 /* Sub opcode 7 */
@@ -133,8 +124,7 @@ v_ellpie( VDIPB *pb, VIRTUAL *v)
 {
 	DRAW_ELLIPSEPIE( v, pb->ptsin[0], pb->ptsin[1], pb->ptsin[2], pb->ptsin[3],
 				pb->intin[0], pb->intin[1],
-				(short *)&v->ptsbuff,
-				v->fill.interior == FIS_USER ? &v->udpat : &v->pattern);
+				(short *)&v->ptsbuff, v->currfill );
 }
 
 /* Sub opcode 8 */
@@ -144,8 +134,7 @@ v_rbox( VDIPB *pb, VIRTUAL *v)
 	short corners[4];
 
 	sortcpy_corners((short *)&pb->ptsin[0], (short *)&corners);
-	DRAW_RBOX( v, 8, (VDIRECT *)&corners,
-			v->fill.interior == FIS_USER ? &v->udpat : &v->pattern);
+	DRAW_RBOX( v, 8, (VDIRECT *)&corners, v->currfill );
 }
 
 /* Sub opcode 9 */
@@ -154,8 +143,7 @@ v_rfbox( VDIPB *pb, VIRTUAL *v)
 {
 	short corners[4];
 	sortcpy_corners((short *)&pb->ptsin[0], (short *)&corners);
-	DRAW_RBOX( v, 9, (VDIRECT *)&corners,
-			v->fill.interior == FIS_USER ? &v->udpat : &v->pattern);
+	DRAW_RBOX( v, 9, (VDIRECT *)&corners, v->currfill );
 }
 
 void

@@ -173,6 +173,8 @@ ovdi_init(void)
 		if (!r)
 			r = Fsfirst("*.vdi", 0);
 
+		scrnlog("Moduel path: '%s'\n", module_path);
+
 		while (!r)
 		{
 			b = load_module(ndta.dta_name, &err);

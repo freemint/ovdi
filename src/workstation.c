@@ -267,6 +267,7 @@ change_resolution(VIRTUAL *v)
 	/* WHITE rectangle */
 	ptrn = &WhiteRect;
 	ptrn->expanded = 0;
+	ptrn->interior = FIS_HOLLOW;
 	ptrn->color[0] = ptrn->color[1] = c->color_vdi2hw[0];
 	ptrn->bgcol[0] = ptrn->bgcol[1] = c->color_vdi2hw[1];
 	if (r->planes > 8)
@@ -291,6 +292,7 @@ change_resolution(VIRTUAL *v)
 	/* BLACK rectangle */
 	ptrn = &BlackRect;
 	ptrn->expanded = 0;
+	ptrn->interior = FIS_SOLID;
 	ptrn->color[0] = ptrn->color[1] = c->color_vdi2hw[1];
 	ptrn->bgcol[0] = ptrn->bgcol[1] = c->color_vdi2hw[0];
 	if (r->planes > 8)
@@ -529,6 +531,9 @@ v_clswk( VDIPB *pb, VIRTUAL *root)
 	/* remove the mousecursor rendering function from VBI */
 		(*root->vbiapi->del_func)((unsigned long)root->mouseapi->housekeep);
 
+
+	lvst_exit(root);
+
  /* ANY MEMORY ALLOCATED FOR THE PROCESS THAT OPENED THE PHYSICAL */
  /* MUST NOW BE RELEASED!!! */
 	r = root->raster;
@@ -574,6 +579,9 @@ v_clsvwk( VDIPB *pb, VIRTUAL *v)
 
 	if (handle > 1 && handle < MAX_VIRTUALS)
 	{
+
+		lvst_exit(v);
+
 		if (v->scratchp)
 			free_mem(v->scratchp);
 
@@ -806,9 +814,6 @@ prepare_extreturn( VDIPB *pb, VIRTUAL *v)
 static void
 prepare_stdreturn( VDIPB *pb, VIRTUAL *v)
 {
-	//short *src, *dst;
-	//short i;
-
 	memcpy((void *)&pb->intout[0], (void *)&DEV_TAB_rom, sizeof(DEV_TAB));
 	memcpy((void *)&pb->ptsout[0], (void *)&SIZ_TAB_rom, sizeof(SIZ_TAB));
 	pb->contrl[N_INTOUT] = 45;
@@ -828,7 +833,7 @@ lv_clrwk(VIRTUAL *virtual)
 	r = v->raster;
 
 	lvs_clip(v, 0, 0);
-	rectfill( r, v->colinf, (VDIRECT *)&r->x1, (VDIRECT *)&r->x1, &WhiteRect, FIS_SOLID);
+	rectfill( r, v->colinf, (VDIRECT *)&r->x1, (VDIRECT *)&r->x1, &WhiteRect);
 
 }
 /*
@@ -853,6 +858,7 @@ setup_virtual(VDIPB *pb, VIRTUAL *v, VIRTUAL *root)
 	lvs_clip( v, 0, 0);
 
 /* **** Line settings */ 
+	lvsl_initial( v );
 	lvsl_type( v, wkin->linetype);
 	lvsl_color( v, wkin->linecolor);
 	lvsl_bgcolor( v, 0);
@@ -866,31 +872,36 @@ setup_virtual(VDIPB *pb, VIRTUAL *v, VIRTUAL *root)
 	lvsm_color( v, wkin->markercolor);
 	lvsm_bgcolor( v, 0);
 	lvsm_height( v, 1);
-	v->pmarker.scale = 0;
+	v->pmarker.t.p.scale = 0;
 
 /* **** Fill stuff ... */
-	v->pattern.exp_data	= (unsigned short *)&v->patdata.edata;
-	v->pattern.mask		= (unsigned short *)&v->patdata.mask;
+	v->fill.exp_data	= (unsigned short *)&v->filldata.edata;
+	v->fill.mask		= (unsigned short *)&v->filldata.mask;
 
-	v->udpat.data		= (unsigned short *)&v->udpatdata.data;
-	v->udpat.mask		= (unsigned short *)&v->udpatdata.mask;
-	v->udpat.exp_data	= (unsigned short *)&v->udpatdata.edata;
+	v->udfill.data		= (unsigned short *)&v->udfilldata.data;
+	v->udfill.mask		= (unsigned short *)&v->udfilldata.mask;
+	v->udfill.exp_data	= (unsigned short *)&v->udfilldata.edata;
 
 	lvsprm_color( v, wkin->fillcolor);
 	lvsprm_bgcolor( v, 0);
-	set_fill_params( FIS_SOLID, 0, &v->perimdata, 0, 0);
+	set_fill_params( FIS_SOLID, 0, &v->perimeter, 0, 0);
 
 	lvsf_color ( v, wkin->fillcolor);
 	lvsf_bgcolor ( v, 0);
-	set_fill_params( wkin->fillinterior, wkin->fillstyle, &v->pattern, &v->fill.interior, &v->fill.style);
-	lvsf_perimeter(v, 0);
+
+	/* Potential bug - what if fillinterior is set to FIS_USER here?? */
+	/* Not a problem anylonger */
+
+	if (wkin->fillinterior == FIS_USER)
+		v->currfill = &v->udfill;
+	else
+		v->currfill = &v->fill;
+
+	set_fill_params( wkin->fillinterior, wkin->fillstyle, &v->fill, &v->fill.interior, &v->fill.t.f.style);
+	lvsf_perimeter( v, 0);
 	set_udfill( v, 0, 0, 0, 0);
 
 /* **** Text stuff */
-
-
-	//setup_virtual_fonts(v);
-
 	/* If this is the root workstation, (root pointer == NULL),
 	 * fonts were setup by load_vdi_fonts(). Else we copy initial
 	 * font config from root.

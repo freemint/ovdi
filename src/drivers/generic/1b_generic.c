@@ -848,6 +848,7 @@ ALL_BLACK(unsigned char *addr, long data)
 	return;
 }
 
+#if 0
 void
 draw_solid_rect_1b(RASTER *r, COLINF *c, short *corners, short wrmode, short color)
 {
@@ -953,7 +954,7 @@ draw_solid_rect_1b(RASTER *r, COLINF *c, short *corners, short wrmode, short col
 		}
 	}
 }
-
+#endif
 /* *************** RASTER OPERATIONS **************** */
 //static void rb_ALL_WHITE	(ROP_PB *);
 //static void rb_S_AND_D		(ROP_PB *);

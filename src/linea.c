@@ -298,6 +298,7 @@ linea_filled_rect(void)
 		color |= 8;
 
 	ptrn.expanded = 0;
+	ptrn.interior = FIS_SOLID;
 	ptrn.color[0] = v->colinf->color_hw2vdi[color];
 	ptrn.bgcol[0] = v->colinf->color_hw2vdi[0];
 	ptrn.width = 16;
@@ -308,9 +309,9 @@ linea_filled_rect(void)
 	ptrn.data = &pdata[la->patmsk];
 
 	if (la->clip)
-		rectfill(r, v->colinf, (VDIRECT *)&la->x1, (VDIRECT *)&la->xmincl, &ptrn, FIS_PATTERN);
+		rectfill(r, v->colinf, (VDIRECT *)&la->x1, (VDIRECT *)&la->xmincl, &ptrn);
 	else
-		rectfill(r, v->colinf, (VDIRECT *)&la->x1, (VDIRECT *)&r->x1, &ptrn, FIS_PATTERN);
+		rectfill(r, v->colinf, (VDIRECT *)&la->x1, (VDIRECT *)&r->x1, &ptrn);
 
 	return;
 }

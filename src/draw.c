@@ -7,9 +7,8 @@
 #include "polygon.h"
 
 void
-rectfill( RASTER *r, COLINF *c, VDIRECT *corners, VDIRECT *clip, PatAttr *ptrn, short interior )
+rectfill( RASTER *r, COLINF *c, VDIRECT *corners, VDIRECT *clip, PatAttr *ptrn)
 {
-	short wrmode, color;
 	VDIRECT clipped;
 
 	clipped = *corners;
@@ -17,9 +16,8 @@ rectfill( RASTER *r, COLINF *c, VDIRECT *corners, VDIRECT *clip, PatAttr *ptrn, 
 	if (!clipbox (&clipped, clip))
 		return;
 
-	wrmode = ptrn->wrmode;
 	if (ptrn->width == 16 && FILL_16X_PTR(r))
-		FILL_16X(r, c, (short *)&clipped, interior, ptrn);
+		FILL_16X(r, c, (short *)&clipped, ptrn);
 	else
 		DRAW_MSPANS( r, c, clipped.x1, clipped.x2, clipped.y1, clipped.y2, ptrn);
 #if 0
@@ -42,7 +40,7 @@ rectfill( RASTER *r, COLINF *c, VDIRECT *corners, VDIRECT *clip, PatAttr *ptrn, 
 	else
 slowashell:	DRAW_MSPANS( r, c, clipped.x1, clipped.x2, clipped.y1, clipped.y2, ptrn);
 #endif		
-		
+
 #if 0	
 
 	color = *ptrn->data;
@@ -288,7 +286,6 @@ clc_arc(VIRTUAL *v, short gdp_code, short xc, short yc, short xrad, short yrad, 
 	RASTER *r;
 	COLINF *c;
 	VDIRECT *clip;
-	LINE_ATTRIBS *latr;
 	short i, j, start, angle;
 	register short *pts;
 
@@ -296,7 +293,6 @@ clc_arc(VIRTUAL *v, short gdp_code, short xc, short yc, short xrad, short yrad, 
 	c = v->colinf;
 
 	clip = v->clip.flag ? (VDIRECT *)&v->clip.x1 : (VDIRECT *)&r->x1;
-	latr = &v->line;
 
 	pts = points;
 
@@ -332,13 +328,13 @@ clc_arc(VIRTUAL *v, short gdp_code, short xc, short yc, short xrad, short yrad, 
 	}
 
 	if ((gdp_code == 2) || (gdp_code == 6))	/* Open arc */
-		DRAW_PLINE( r, c, points, n_steps + 1, clip, (short *)&v->spanbuff, v->spanbuffsiz, latr, ptrn);
+		DRAW_PLINE( r, c, points, n_steps + 1, clip, (short *)&v->spanbuff, v->spanbuffsiz, ptrn);
 	else
 	{
 		DRAW_FILLEDPOLY( r, c, points, n_steps + 1, clip, (short *)&v->spanbuff, v->spanbuffsiz, ptrn);
 
-		if (v->fill.perimeter)
-			DRAW_PLINE( r, c, points, n_steps +1, clip, (short *)&v->spanbuff, v->spanbuffsiz, latr, &v->perimdata);
+		if (ptrn->t.f.perimeter)
+			DRAW_PLINE( r, c, points, n_steps +1, clip, (short *)&v->spanbuff, v->spanbuffsiz, ptrn->t.f.perimeter);
 	}
 }
 
@@ -350,7 +346,6 @@ draw_rbox(VIRTUAL *v, short gdp_code, VDIRECT *corners, PatAttr *ptrn)
 	RASTER *r;
 	COLINF *c;
 	VDIRECT *clip;
-	LINE_ATTRIBS *latr;
 	short i, j;
 	short rdeltax, rdeltay;
 	short xc, yc, xrad, yrad;
@@ -360,7 +355,6 @@ draw_rbox(VIRTUAL *v, short gdp_code, VDIRECT *corners, PatAttr *ptrn)
 	r = v->raster;
 	c = v->colinf;
 	clip = v->clip.flag ? (VDIRECT *)&v->clip.x1 : (VDIRECT *)&r->x1;
-	latr = &v->line;
 
 	rdeltax = (corners->x2 - corners->x1) / 2;
 	rdeltay = (corners->y2 - corners->y1) / 2;
@@ -429,12 +423,12 @@ draw_rbox(VIRTUAL *v, short gdp_code, VDIRECT *corners, PatAttr *ptrn)
 
 	if (gdp_code == 8)
 	{
-		DRAW_PLINE( r, c, (short *)&points, 21, clip, (short *)&v->spanbuff, v->spanbuffsiz, latr, ptrn);
+		DRAW_PLINE( r, c, (short *)&points, 21, clip, (short *)&v->spanbuff, v->spanbuffsiz, ptrn);
 	}
 	else
 	{
 		DRAW_FILLEDPOLY( r, c, (short *)&points, 21, clip, (short *)&v->spanbuff, v->spanbuffsiz, ptrn);
-		if (v->fill.perimeter)
-			DRAW_PLINE( r, c, (short *)&points, 21, clip, (short *)&v->spanbuff, v->spanbuffsiz, latr, &v->perimdata);
+		if (ptrn->t.f.perimeter)
+			DRAW_PLINE( r, c, (short *)&points, 21, clip, (short *)&v->spanbuff, v->spanbuffsiz, ptrn->t.f.perimeter);
 	}
 }

@@ -29,5 +29,6 @@ int	lvst_point	( VIRTUAL *v, short point );
 int	lvst_height	( VIRTUAL *v, short height );
 void	lvst_rotation	( VIRTUAL *v, short angle );
 void	lvst_wrmode	( VIRTUAL *v, short wrmode );
+void	lvst_exit	( VIRTUAL *v);
 
 #endif /* _V_TEXT_H */

@@ -63,8 +63,8 @@ static OVDI_DRAWERS defdrawers =
 	0,	/* read_pixel */
 	0,	/* put_pixel */
 	0,	/* get_pixel */
-	0,	/* draw_solid_rect */
 	0,	/* fill_16x */
+	0,	/* spans_16x */
 	{ 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 },	/* drp - draw raster points */
 	{ 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 },	/* dlp - draw line points */
 	{ 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 },	/* pixel_blits */
@@ -418,11 +418,6 @@ setup_drawers_jumptable(OVDI_DRAWERS *src, OVDI_DRAWERS *dst, short planes)
 			else
 				dst->get_pixel = get_pixel_1b;
 
-			if (src->draw_solid_rect)
-				dst->draw_solid_rect = src->draw_solid_rect;
-			else
-				dst->draw_solid_rect = draw_solid_rect_1b;
-
 			if (src->fill_16x)
 				dst->fill_16x = src->fill_16x;
 			else
@@ -463,13 +458,6 @@ setup_drawers_jumptable(OVDI_DRAWERS *src, OVDI_DRAWERS *dst, short planes)
 				dst->get_pixel = src->get_pixel;
 			else
 				dst->get_pixel = get_pixel_4b;
-
-#if 0
-			if (src->draw_solid_rect)
-				dst->draw_solid_rect = src->draw_solid_rect;
-			else
-				dst->draw_solid_rect = draw_solid_rect_4b;
-#endif
 
 			if (src->fill_16x)
 				dst->fill_16x = src->fill_16x;
@@ -513,18 +501,17 @@ setup_drawers_jumptable(OVDI_DRAWERS *src, OVDI_DRAWERS *dst, short planes)
 			else
 				dst->get_pixel = get_pixel_8b;
 
-#if 0
-			if (src->draw_solid_rect)
-				dst->draw_solid_rect = src->draw_solid_rect;
-			else
-				dst->draw_solid_rect = draw_solid_rect_8b;
-#endif
-
 			if (src->fill_16x)
 				dst->fill_16x = src->fill_16x;
 			else
 				dst->fill_16x = fill_16x_8b;
 
+#if 1
+			if (src->spans_16x)
+				dst->spans_16x = src->spans_16x;
+			else
+				dst->spans_16x = spans_16x_8b;
+#endif
 			break;
 		}
 		case 15:

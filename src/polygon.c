@@ -100,9 +100,13 @@ filled_poly(RASTER *r, COLINF *c, short *pts, short n, VDIRECT *clip, short *poi
 #if 1
 		if (spans > max_spans)
 		{			/* Should really check against size of points array! */
-			for (i = n; i < (n+(spans*3)); i += 3)
-				(*s)(r, c, points[i+1], points[i+2], points[i], ptrn);
-
+			if (SPANS_16X_PTR(r))
+				SPANS_16X(r, c, (short *)&points[n], spans, ptrn);
+			else
+			{
+				for (i = n; i < (n+(spans * 3)); i += 3)
+					(*s)(r, c, points[i+1], points[i+2], points[i], ptrn);
+			}
 			spans = 0;
 			coords = &points[n];
 		}
@@ -135,8 +139,13 @@ filled_poly(RASTER *r, COLINF *c, short *pts, short n, VDIRECT *clip, short *poi
 #if 1
 	if (spans)
 	{
-		for (i = n; i < (n+(spans*3)); i += 3)
-			(*s)(r, c, points[i+1], points[i+2], points[i], ptrn);
+		if (SPANS_16X_PTR(r))
+			SPANS_16X(r, c, (short *)&points[n], spans, ptrn);
+		else
+		{
+			for (i = n; i < (n+(spans*3)); i += 3)
+				(*s)(r, c, points[i+1], points[i+2], points[i], ptrn);
+		}
 	}
 #endif
 }

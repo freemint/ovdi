@@ -3,6 +3,7 @@
 
 #include "vdi_defs.h"
 #include "ovdi_defs.h"
+
 void vsl_color		( VDIPB *pb, VIRTUAL *v );
 void vsl_ends		( VDIPB *pb, VIRTUAL *v );
 void vsl_type		( VDIPB *pb, VIRTUAL *v );
@@ -13,6 +14,7 @@ void v_pline		( VDIPB *pb, VIRTUAL *v );
 
 void vql_attributes	( VDIPB *pb, VIRTUAL *v );
 
+void lvsl_initial	( VIRTUAL *v );
 void lvsl_color		( VIRTUAL *v, short color );
 void lvsl_bgcolor	( VIRTUAL *v, short color );
 void lvsl_ends		( VIRTUAL *v, short beg, short end );

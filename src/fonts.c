@@ -102,8 +102,6 @@ fixup_font( FONT_HEAD *font )
 
 	font->next = 0;
 	font->font_seg = 0;
-
-	return;
 }
 
 /* Set up the system font */
@@ -200,12 +198,12 @@ init_systemfonts(SIZ_TAB *st, DEV_TAB *dt)
 		{
 			f1 = (FONT_HEAD *)&systemfont08;
 			xf = &xsystemfont08;
-			xf->links = 1;
 			xf->font_head = f1;
 			for (i = 0; i < 256; i++)
 				xf->cache[i] = 0;
 			fixup_font(f1);
 		}
+		xf->links = 1;
 		sysfnt08p = xf;
 		f1->id = 1;
 
@@ -219,12 +217,12 @@ init_systemfonts(SIZ_TAB *st, DEV_TAB *dt)
 		{
 			f1 = (FONT_HEAD *)&systemfont09;
 			xf = &xsystemfont09;
-			xf->links = 1;
 			xf->font_head = f1;
 			for (i = 0; i < 256; i++)
 				xf->cache[i] = 0;
 			fixup_font(f1);
 		}
+		xf->links = 1;
 		sysfnt09p = xf;
 		f1->id = 1;
 		if ((add_font(sysfnt08p, xf)) == 1)
@@ -240,12 +238,12 @@ init_systemfonts(SIZ_TAB *st, DEV_TAB *dt)
 		{
 			f1 = (FONT_HEAD *)&systemfont10;
 			xf = &xsystemfont10;
-			xf->links = 1;
 			xf->font_head = f1;
 			for (i = 0; i < 256; i++)
 				xf->cache[i] = 0;
 			fixup_font(f1);
 		}
+		xf->links = 1;
 		sysfnt10p = xf;
 		f1->id = 1;
 		if ((add_font(sysfnt08p, xf)) == 1)

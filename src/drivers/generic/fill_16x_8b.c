@@ -5,38 +5,15 @@
 
 #include "8b_generic.h"
 
-extern short logit;
+extern unsigned long nib2long[];
 
 static unsigned char fillbuff[16 * 16];
 static unsigned char maskbuff[16 * 16];
-#if 0
-static unsigned long nib2long [] = 
-{
-	0x00000000,
-	0x000000ff,
-	0x0000ff00,
-	0x0000ffff,
 
-	0x00ff0000,
-	0x00ff00ff,
-	0x00ffff00,
-	0x00ffffff,
-
-	0xff000000,
-	0xff0000ff,
-	0xff00ff00,
-	0xff00ffff,
-
-	0xffff0000,
-	0xffff00ff,
-	0xffffff00,
-	0xffffffff
-};
-#endif
 void
-fill_16x_8b(RASTER *r, COLINF *c, short *corners, short interior, PatAttr *ptrn)
+fill_16x_8b(RASTER *r, COLINF *c, short *corners, PatAttr *ptrn)
 {
-	int i, words, bypl, height, y, wrmode, sm, em;
+	int i, words, bypl, height, y, wrmode, interior, sm, em;
 	unsigned long lp0, lp1, lp2, lp3;
 	unsigned long *s, *d, *m;
 	unsigned long fill[4];
@@ -46,10 +23,12 @@ fill_16x_8b(RASTER *r, COLINF *c, short *corners, short interior, PatAttr *ptrn)
 	 * check if pattern is expanded and do expand it if it isnt
 	*/
 	wrmode = ptrn->wrmode;
+	interior = ptrn->interior;
+
 	if (ptrn->expanded != 8 && interior > FIS_SOLID)
 	{
-		short col[2];
-		//unsigned short data;
+		//short col[2];
+		unsigned short data;
 		//unsigned long m0, m1, m2, m3; //p0, p1;
 
 		/*
@@ -69,66 +48,49 @@ fill_16x_8b(RASTER *r, COLINF *c, short *corners, short interior, PatAttr *ptrn)
 			ptrn->expanded = 0;
 		}
 		else
-			ptrn->expanded = r->planes;
-			
-		
+			ptrn->expanded = 8;
 #if 1
-		if (interior == FIS_HOLLOW)
-		{
-			col[1] = ptrn->bgcol[wrmode] & 0xff; //0;
-			col[0] = col[1];
-		}
-		else
-		{
-			col[1] = ptrn->color[wrmode] & 0xff;
-			col[0] = ptrn->bgcol[wrmode] & 0xff;
-		}
-		expand( ptrn->width, ptrn->height,
-			ptrn->planes, PF_ATARI, ptrn->data,
-			8, PF_PACKED, ptrn->exp_data, (short *)&col, ptrn->mask);
-#else
-
 		s = (unsigned long *)ptrn->data;
 		d = (unsigned long *)ptrn->exp_data;
 		m = (unsigned long *)ptrn->mask;
-		height = ptrn->height;
-
-		if (interior == FIS_HOLLOW)
-		{
-			col[1] = ptrn->bgcol[wrmode] & 0xff; //0;
-			col[0] = col[1];
-		}
-		else
-		{
-			col[1] = ptrn->color[wrmode] & 0xff;
-			col[0] = ptrn->bgcol[wrmode] & 0xff;
-		}
-
-		/*
-		 * do the expansion
-		*/
-		for (; height > 0; height--)
+		lp0 = (unsigned long)ptrn->color[wrmode];
+		lp0 = (lp0 << 24) | (lp0 << 16) | (lp0 << 8) | lp0;
+		lp1 = (unsigned long)ptrn->bgcol[wrmode];
+		lp1 = (lp1 << 24) | (lp1 << 16) | (lp1 << 8) | lp1;
+		
+		for (height = ptrn->height; height > 0; height--)
 		{
 			data = *(unsigned short *)((short *)s)++;
-			lp0 = lp1 = lp2 = lp3 = 0;
-			m0 = m1 = m2 = m3 = 0;
-			for (y = 0; y < 4; y++)
-			{
-				lp0 <<= 8, lp1 <<=8, lp2 <<= 8, lp3 <<= 8;
-				m0 <<= 8, m1 <<= 8, m2 <<= 8, m3 <<= 8;
-				if (data & (1<<15))	lp0 |= col[1], m0 |= 0xff;
-				else			lp0 |= col[0];
-				if (data & (1<<11))	lp1 |= col[1], m1 |= 0xff;
-				else			lp1 |= col[0];
-				if (data & (1<<7))	lp2 |= col[1], m2 |= 0xff;
-				else			lp2 |= col[0];
-				if (data & (1<<3))	lp3 |= col[1], m3 |= 0xff;
-				else			lp3 |= col[0];
-				data <<= 1;
-			}
-			*d++ = lp0, *d++ = lp1, *d++ = lp2, *d++ = lp3;
-			*m++ = m0, *m++ = m1, *m++ = m2, *m++ = m3;
+
+			lp2 = nib2long[data & 0xf];
+			d[3] = (lp0 & lp2) | (lp1 & ~lp2);
+			m[3] = lp2;
+
+			data >>= 4;
+			lp2 = nib2long[data & 0xf];
+			d[2] = (lp0 & lp2) | (lp1 & ~lp2);
+			m[2] = lp2;
+
+			data >>= 4;
+			lp2 = nib2long[data & 0xf];
+			d[1] = (lp0 & lp2) | (lp1 & ~lp2);
+			m[1] = lp2;
+
+			data >>= 4;
+			lp2 = nib2long[data & 0xf];
+			d[0] = (lp0 & lp2) | (lp1 & ~lp2);
+			m[0] = lp2;
+
+			d += 4;
+			m += 4;
 		}
+#else
+		col[1] = ptrn->color[wrmode] & 0xff;
+		col[0] = ptrn->bgcol[wrmode] & 0xff;
+
+		expand( ptrn->width, ptrn->height,
+			ptrn->planes, PF_ATARI, ptrn->data,
+			8, PF_PACKED, ptrn->exp_data, (short *)&col, ptrn->mask);
 #endif
 	}
 	bypl = r->bypl;
@@ -163,10 +125,7 @@ fill_16x_8b(RASTER *r, COLINF *c, short *corners, short interior, PatAttr *ptrn)
 		m = (unsigned long *)&mask;
 		goto singleline;
 	}
-#if 0
-	if (interior == FIS_HOLLOW)
-		wrmode = 0;
-#endif		
+
 	/* 
 	 * If pattern is a single-line...
 	*/
@@ -441,9 +400,6 @@ fill_16x_8b(RASTER *r, COLINF *c, short *corners, short interior, PatAttr *ptrn)
 	goto done;
 
 singleline:
-	//s = (unsigned long *)ptrn->exp_data;
-	//m = (unsigned long *)ptrn->mask;
-
 	SYNC_RASTER(r);
 
 	switch (wrmode)

@@ -11,11 +11,10 @@ COBJS = \
 	1b_generic.c \
 	fill_16x_1b.c \
 	4b_generic.c \
-	fill_16x1_4b.c \
 	fill_16x_4b.c \
 	8b_generic.c \
-	fill_16x1_8b.c \
 	fill_16x_8b.c \
+	spans_16x_8b.c \
 	16b_generic.c
 
 SOBJS = \

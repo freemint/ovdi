@@ -1,0 +1,48 @@
+name			opcode	subop	sys			status
+
+v_get_driver_info	  -1	  4	GEM/3			Not done.
+v_set_app_buff		  -1	  6	SpeedoGDOS/NVDI 2.10	Not done.
+v_opnwk			  1	  0	tos			Done.
+v_opnprn		  1	  0	NVDI 4.1x		Not done.
+v_clswk			  2	  0	TOS			Done.
+v_clrwk			  3	  0	TOS			Done.
+v_updwk			  4	  0	TOS			Not done.
+vq_chcells		  5	  1	TOS			Done.
+v_exit_cur		  5	  2	TOS			Done.
+v_enter_cur		  5	  3	TOS			Done.
+v_curup			  5	  4	TOS			Done.
+v_curdown		  5	  5	TOS			Done.
+v_curright		  5	  6	TOS			Done.
+v_curleft		  5	  7	TOS			Done.
+v_curhome		  5	  8	TOS			Done.
+v_eeos			  5	  9	TOS			Done.
+v_eeol			  5	 10	TOS			Done.
+vs_curaddress		  5	 11	TOS			Done.
+v_etext			  5	 11	GEM/3			Not done.
+v_curtext		  5	 12	TOS			Done.
+v_rvon			  5	 13	TOS			Done.
+v_rvoff			  5	 14	TOS			Done.
+vq_curaddress		  5	 15	TOS			Done.
+vq_tabstatus		  5	 16	TOS			Not done.
+v_hardcopy		  5	 17	TOS			Not done.
+v_dspcur		  5	 18	TOS			Done.
+v_rmcur			  5	 19	TOS			Done.
+v_form_adv		  5	 20	GDOS			Not done.
+v_output_window		  5	 21	GDOS			Not done.
+v_clear_disp_list	  5	 22	GDOS			Not done.
+v_bit_image		  5	 23	GDOS			Not done.
+vq_scan			  5	 24	GDOS			Not done.
+v_alpha_text		  5	 25	TOS			*Not done.
+
+v_orient		  5	 27	NVDI			Not done.
+v_copies		  5	 28	NVDI			Not done.
+v_trays			  5	 29	NVDI			Not done.
+
+v_ps_halftone		  5	 32	GEM/3			Not done.
+
+vs_palette		  5	 60	GEM/3			Not done.
+v_sound			  5	 61	GEM/3			Not done.
+vs_mute			  5	 62	GEM/3			Not done.
+
+vs_calibrate		  5	 76	NVDI			Not done.
+vq_calibrate		  5	 77	NVDI			Not done.

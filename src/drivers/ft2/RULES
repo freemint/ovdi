@@ -1,0 +1,11 @@
+#
+# global definitions
+#
+include $(top_srcdir)/RULES
+
+#
+# private definitions
+#
+LIBGENERICTARGET = libgeneric.a
+LIBGENERICSTMP = $(top_srcdir)/generic/libgeneric.a
+LIBGENERIC = -L$(top_srcdir)/drivers/generic -lgeneric

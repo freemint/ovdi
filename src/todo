@@ -1,0 +1,8 @@
+
+-------
+12.03.2004
+
+ Establish a 'resolution-format' list, so that v_opnbm can know what
+ resolutions/pixelformats, etc. is supported. This is needed to know
+ if we're running on, say, a Falcon (unstandard 15bpp) or a TT030
+ (unstandard 8bpp)

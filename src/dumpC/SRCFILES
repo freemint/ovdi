@@ -1,0 +1,7 @@
+HEADER =
+
+COBJS = \
+	dumpC.c
+
+
+SRCFILES = $(HEADER) $(COBJS)

@@ -1,0 +1,109 @@
+#ifndef	_CONSOLE_H
+#define _CONSOLE_H
+
+#include "linea.h"
+#include "ovdi_defs.h"
+#include "vdi_defs.h"
+
+#define BLINK_ON	1
+
+struct	console
+{
+	FONT_HEAD 		*f;
+	struct virtual		*v;
+	struct linea_vartab	*la;
+	
+	short	tc_flags;	/* text cursor flags */
+
+	short		tps;
+	short		curs_hide_ct;
+	short		blinkrate;
+	short		nxt_blink;
+	short		save_row;
+	short		*col_vdi2hw;
+	short		*col_hw2vdi;
+	PatAttr		pattern;
+	
+	/* Device API */
+	void (*enter_console)(struct console *c);
+	void (*exit_console)(struct console *c);
+	void (*draw_text_cursor)(struct console *c);
+	void (*undraw_text_cursor)(struct console *c);
+	void (*textcursor_blink)(struct console *c);
+	void (*scroll_lines)(struct console *c, short y, short nlines, short direction);
+	void (*erase_lines)(struct console *c, short x1, short y1, short x2, short y2);
+	void (*output_character)(struct console *c, short character);
+
+};
+typedef struct console CONSOLE;
+
+typedef void (*EscFunc)(CONSOLE *c);
+
+void init_console(VIRTUAL *v, LINEA_VARTAB *la);
+void install_console_handlers(CONSOLE *c);
+void enter_console(CONSOLE *c);
+void exit_console(CONSOLE *c);
+short conf_textcursor_blink(CONSOLE *c, short mode, short rate);
+void con_state_handler(CONSOLE *c, short character);
+void rawcon_output(CONSOLE *c, short chr);
+void VT52_handler(CONSOLE *c, short character);
+
+void Esc_nosys		(CONSOLE *c);
+void Esc_A		(CONSOLE *c);
+void Esc_B		(CONSOLE *c);
+void Esc_C		(CONSOLE *c);
+void Esc_D		(CONSOLE *c);
+void Esc_E		(CONSOLE *c);
+void Esc_H		(CONSOLE *c);
+void Esc_I		(CONSOLE *c);
+void Esc_J		(CONSOLE *c);
+void Esc_K		(CONSOLE *c);
+void Esc_L		(CONSOLE *c);
+void Esc_M		(CONSOLE *c);
+void Esc_Y		(CONSOLE *c);
+void Esc_Y_save_row	(CONSOLE *c, short character);
+void Esc_Y_save_column	(CONSOLE *c, short character);
+void Esc_b		(CONSOLE *c);
+void Esc_b_collect	(CONSOLE *c, short character);
+void Esc_c		(CONSOLE *c);
+void Esc_c_collect	(CONSOLE *c, short character);
+void Esc_d		(CONSOLE *c);
+void Esc_e		(CONSOLE *c);
+void Esc_f		(CONSOLE *c);
+void Esc_j		(CONSOLE *c);
+void Esc_k		(CONSOLE *c);
+void Esc_l		(CONSOLE *c);
+void Esc_o		(CONSOLE *c);
+void Esc_p		(CONSOLE *c);
+void Esc_q		(CONSOLE *c);
+void Esc_v		(CONSOLE *c);
+void Esc_w		(CONSOLE *c);
+void LineFeed		(CONSOLE *c);
+void CarrigeReturn	(CONSOLE *c);
+
+/* device driver routines */
+void console_enter	(CONSOLE *c);
+void console_exit	(CONSOLE *c);
+void reset_text_cursor	(CONSOLE *c);
+void move_text_cursor	(CONSOLE *c, short x, short y);
+void show_text_cursor	(CONSOLE *c);
+void hide_text_cursor	(CONSOLE *c);
+void draw_text_cursor	(CONSOLE *c);
+void undraw_text_cursor	(CONSOLE *c);
+void textcursor_blink	(CONSOLE *c);
+
+
+void erase_lines	(CONSOLE *c, short x1, short y1, short x2, short y2);
+void scroll_lines	(CONSOLE *c, short y, short nlines, short direction);
+void output_character	(CONSOLE *c, short character);
+
+void	do_con_state(void);
+void	do_xconout_console(void);
+void	do_xconout_raw(void);
+void	do_txtcurs_blnk(void);
+
+void	set_constate(CONSOLE *c, long routine);		/* in contermh.s */
+void	set_xconout_raw(CONSOLE *c, long routine);	/* in contermh.s */
+void	call_bellhook(void);				/* in contermh.s */
+
+#endif	/* _CONSOLE_H */

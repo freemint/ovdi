@@ -1,0 +1,117 @@
+# This file gets included by the Makefile in this directory to determine
+# the files that should go only into source distributions.
+
+HEADER = \
+	bootup.h \
+	colors.h \
+	console.h \
+	display.h \
+	draw.h \
+	file.h \
+	fonts.h \
+	funcdef.h \
+	gdf_text.h \
+	global.h \
+	icb.h \
+	kbddrv.h \
+	libkern.h \
+	linea.h \
+	math.h \
+	mouse.h \
+	mousedrv.h \
+	ovdi.h \
+	ovdi_defs.h \
+	ovdi_dev.h \
+	ovdi_types.h \
+	polygon.h \
+	rasters.h \
+	res.h \
+	styles.h \
+	tables.h \
+	time.h \
+	vbi.h \
+	vdi_defs.h \
+	vdi_globals.h \
+	v_attribs.h \
+	v_escape.h \
+	v_fill.h \
+	v_gdp.h \
+	v_input.h \
+	v_line.h \
+	v_mouse.h \
+	v_opcode_5.h \
+	v_pmarker.h \
+	v_raster.h \
+	v_text.h \
+	v_time.h \
+	workstation.h \
+	xbios.h \
+	xcb.h \
+\
+	4b_driver.h \
+\
+	8b_driver.h \
+\
+	16b_driver.h
+
+	
+COBJS = \
+	colors.c \
+	crtinit.c \
+	display.c \
+	draw.c \
+	file.c \
+	fonts.c \
+	gdf_text.c \
+	ikbd_mouse.c \
+	kbddrv.c \
+	line.c \
+	linea.c \
+	math.c \
+	mousedrv.c \
+	ovdi.c \
+	ovdi_dev.c \
+	polygon.c \
+	rasters.c \
+	sysfonts.c \
+	syspalette.c \
+	time.c \
+	vbi.c \
+	vt-52.c \
+	v_attribs.c \
+	v_escape.c \
+	v_fill.c \
+	v_gdp.c \
+	v_input.c \
+	v_line.c \
+	v_mouse.c \
+	v_opcode_5.c \
+	v_pmarker.c \
+	v_raster.c \
+	v_text.c \
+	v_time.c \
+	workstation.c \
+	xbios.c \
+\
+	4b_driver.c \
+\
+	8b_driver.c \
+\
+	16b_driver.c
+	
+SOBJS = \
+	contermh.s \
+	timeasm.s \
+	vbiasm.s \
+	handler.s \
+	ikbd_mouse_asm.s \
+	lineaasm.s \
+	mousedrv_asm.s \
+	xbiosasm.s \
+	xcb_calls.s
+
+SSOBJS = \
+	startup.S \
+	setstack.S
+
+SRCFILES = $(HEADER) $(COBJS) $(SOBJS) $(SSOBJS)

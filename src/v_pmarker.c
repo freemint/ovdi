@@ -67,13 +67,29 @@ vsm_type( VDIPB *pb, VIRTUAL *v)
 void
 lvsm_color( VIRTUAL *v, short color)
 {
-	register short maxcolor;
+	register short maxcolor, planes;
 
-	maxcolor = Planes2Pens[v->raster->planes];
+	planes = v->raster->planes;
+	maxcolor = Planes2Pens[planes];
 	color = color < maxcolor ? color : maxcolor - 1;
-	v->pmarker.color = v->color_vdi2hw[color];
-	v->pmrkdat.color[0] = v->pmrkdat.color[1] = v->pmarker.color;
-	v->pmrkdat.color[2] = v->pmrkdat.color[3] = 0xff;
+	color = v->color_vdi2hw[color];
+	v->pmrkdat.color[0] = v->pmrkdat.color[1] = color;
+	v->pmrkdat.color[2] = v->pmrkdat.color[3] = planes > 8 ? 0x0 : 0xff;
+	v->pmarker.color = color;
+	return;
+}
+void
+lvsm_bgcolor( VIRTUAL *v, short color)
+{
+	register short maxcolor, planes;
+
+	planes = v->raster->planes;
+	maxcolor = Planes2Pens[planes];
+	color = color < maxcolor ? color : maxcolor - 1;
+	color = v->color_vdi2hw[color];
+	v->pmrkdat.bgcol[0] = v->pmrkdat.bgcol[1] = color;
+	v->pmrkdat.bgcol[2] = v->pmrkdat.bgcol[3] = planes > 8 ? 0x0 : 0xff;
+	v->pmarker.bgcol = color;
 	return;
 }
 

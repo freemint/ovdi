@@ -26,32 +26,62 @@ vsf_color ( VDIPB *pb, VIRTUAL *v )
 void
 lvsf_color( VIRTUAL *v, short color )
 {
-	register short maxcolor, bgcol;
+	register short maxcolor, planes;
 
-	bgcol = v->color_vdi2hw[0];
+	planes = v->raster->planes;
 
-	maxcolor = Planes2Pens[v->raster->planes];
+	maxcolor = Planes2Pens[planes];
 	color = color < maxcolor ? color : maxcolor - 1;
 	color = v->color_vdi2hw[color];
-	v->fill.color = color;
-	v->fill.bgcol = bgcol;
 	v->pattern.color[0] = v->pattern.color[1] = v->udpat.color[0] = v->udpat.color[1] = color;
-	v->pattern.color[2] = v->pattern.color[3] = v->udpat.color[2] = v->udpat.color[3] = 0xff;	/* fixme for HC/TC!! */
-	v->pattern.bgcol = bgcol;
-	v->udpat.bgcol = bgcol;
+	v->pattern.color[2] = v->pattern.color[3] = v->udpat.color[2] = v->udpat.color[3] = planes > 8 ? 0x0 : 0xff;
+	v->fill.color = color;
 	return;
 }
 
-/* Set perimeter color */
 void
-lvsprm_color( VIRTUAL *v, short color)
+lvsf_bgcolor( VIRTUAL *v, short color )
 {
-	color = color < Planes2Pens[v->raster->planes] ? color : Planes2Pens[v->raster->planes] - 1;
-	color = v->color_vdi2hw[color];
+	register short maxcolor, planes;
 
-	v->perimdata.bgcol = v->color_vdi2hw[0];
+
+	planes = v->raster->planes;
+	maxcolor = Planes2Pens[planes];
+	color = color < maxcolor ? color : maxcolor - 1;
+	color = v->color_vdi2hw[color];
+	v->pattern.bgcol[0] = v->pattern.bgcol[1] = v->udpat.bgcol[0] = v->udpat.bgcol[1] = color;
+	v->pattern.bgcol[2] = v->pattern.bgcol[3] = v->udpat.bgcol[2] = v->udpat.bgcol[3] = planes > 8 ? 0xff : 0x0;
+	v->fill.bgcol = color;
+	return;
+}
+
+void
+lvsprm_color( VIRTUAL *v, short color )
+{
+	register short maxcolor, planes;
+
+	planes = v->raster->planes;
+
+	maxcolor = Planes2Pens[planes];
+	color = color < maxcolor ? color : maxcolor - 1;
+	color = v->color_vdi2hw[color];
 	v->perimdata.color[0] = v->perimdata.color[1] = color;
-	v->perimdata.color[2] = v->perimdata.color[3] = 0xff;
+	v->perimdata.color[2] = v->perimdata.color[3] = planes > 8 ? 0x0 : 0xff;
+	return;
+}
+
+void
+lvsprm_bgcolor( VIRTUAL *v, short color )
+{
+	register short maxcolor, planes;
+
+	planes = v->raster->planes;
+
+	maxcolor = Planes2Pens[planes];
+	color = color < maxcolor ? color : maxcolor - 1;
+	color = v->color_vdi2hw[color];
+	v->perimdata.bgcol[0] = v->perimdata.bgcol[1] = color;
+	v->perimdata.bgcol[2] = v->perimdata.bgcol[3] = planes > 8 ? 0xff : 0x0;
 	return;
 }
 

@@ -18,20 +18,31 @@ vsl_color(VDIPB *pb, VIRTUAL *v)
 void
 lvsl_color( VIRTUAL *v, short color)
 {
-	register short maxcolor;
+	register short maxcolor, planes;
 
-	maxcolor = Planes2Pens[v->raster->planes];
-
+	planes = v->raster->planes;
+	maxcolor = Planes2Pens[planes];
 	color = color < maxcolor ? color : maxcolor - 1;
 	color = v->color_vdi2hw[color];
+	v->linedat.color[0] = v->linedat.color[1] = color;
+	v->linedat.color[2] = v->linedat.color[3] = planes > 8 ? 0x0 : 0xff;
 	v->line.color = color;
-	v->line.bgcol = color;
-	v->linedat.color[0] = v->linedat.color[1] = color; //v->linedat.color[2] = v->linedat.color[3] = color;
-	v->linedat.color[2] = v->linedat.color[3] = 0xff;
-	v->linedat.bgcol = color;
 	return;
 }
+void
+lvsl_bgcolor( VIRTUAL *v, short color)
+{
+	register short maxcolor, planes;
 
+	planes = v->raster->planes;
+	maxcolor = Planes2Pens[planes];
+	color = color < maxcolor ? color : maxcolor - 1;
+	color = v->color_vdi2hw[color];
+	v->linedat.bgcol[0] = v->linedat.bgcol[1] = color;
+	v->linedat.bgcol[2] = v->linedat.bgcol[3] = planes > 8 ? 0xff : 0x0;
+	v->line.bgcol = color;
+	return;
+}
 void
 lvsl_wrmode( VIRTUAL *v, short wrmode)
 {
@@ -73,9 +84,14 @@ lvsl_type( VIRTUAL *v, short index)
 		index = 1;
 
 	if (index == LI_USER)
-		v->line.data = v->line.ud;
+	{
+		v->linedat.data = &v->line.ud;
+	}
 	else
+	{
 		v->line.data = LINE_STYLE[index - 1];
+		v->linedat.data = &v->line.data;
+	}
 
 	v->line.index = index - 1;
 	v->linedat.expanded = 0;
@@ -83,7 +99,6 @@ lvsl_type( VIRTUAL *v, short index)
 	v->linedat.height = 1;
 	v->linedat.wwidth = 1;
 	v->linedat.planes = 1;
-	v->linedat.data = &v->line.data; //&LINE_STYLE[ind]; //&v->line.data;
 
 	return;
 }

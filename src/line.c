@@ -8,6 +8,8 @@
 #include "vdi_defs.h"
 #include "vdi_globals.h"
 
+extern short logit;
+
 static short Planes2xinc[] = 
 { 1, 0, 0, 0, 0, 0, 0, 2, 2, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 4 };
 
@@ -137,15 +139,15 @@ abline (VIRTUAL *v, struct vdirect *pnts, PatAttr *ptrn)
 	short planes, fgcol, bgcol;
 	unsigned short msk;
 	unsigned short linemask;	/* linestyle bits */
-	register draw_pixel dlp_fg;
-	register draw_pixel dlp_bg;
+	register pixel_blit dlp_fg;
+	register pixel_blit dlp_bg;
 	short	eps, e1, e2, loopcnt;
 	unsigned short bit;
 	RASTER *r;
 
 
 	/* Make x axis always goind up */
-	if (pnts->x2 < pnts->x1)
+	if (pnts->x1 > pnts->x2)
 	{
 		/* if delta x < 0 then draw from point 2 to 1 */
 		x1 = pnts->x2;
@@ -168,9 +170,13 @@ abline (VIRTUAL *v, struct vdirect *pnts, PatAttr *ptrn)
 		return;
 	}
 
-	r = v->raster;
+	if (!(dx = x2 - x1))
+	{
+		vabline(v, y1, y2, x1, ptrn);
+		return;
+	}
 
-	dx = x2 - x1;
+	r = v->raster;
 
 	/* calculate increase values for x and y to add to actual address */
 	if (dy < 0)
@@ -183,14 +189,19 @@ abline (VIRTUAL *v, struct vdirect *pnts, PatAttr *ptrn)
 		yinc = (long) r->bypl;		/* add one line of bytes */
 	}
 
+	
 	linemask = x1 & 0xf ? (*ptrn->data << ((x1 & 0xf))) | ( *ptrn->data >> (16-(x1 & 0xf)) ) : *ptrn->data;
 
 	planes = ptrn->wrmode;
+
+	if (planes == MD_ERASE)
+		linemask = ~linemask;
+
 	fgcol = ptrn->color[planes];
-	bgcol = ptrn->bgcol;
+	bgcol = ptrn->bgcol[planes];
 	planes <<= 1;
-	dlp_fg = v->driver->f.pixelfuncts[planes];
-	dlp_bg = v->driver->f.pixelfuncts[planes + 1];
+	dlp_fg = v->drawers->dlp[planes];
+	dlp_bg = v->drawers->dlp[planes + 1];
 	planes = r->planes;
 
 	if (planes < 8)
@@ -342,15 +353,16 @@ abline (VIRTUAL *v, struct vdirect *pnts, PatAttr *ptrn)
 void
 habline (VIRTUAL *v, short x1, short x2, short y, PatAttr *ptrn)
 {
-	short x, dx, xinc;
+	short x, dx, xinc, bit;
 	short planes, bypl;
 	short bgcol, fgcol;
-	unsigned short linemask, bit;
+	unsigned short linemask;
 	unsigned char *addr;
 	int i;
-	register draw_pixel dpf_fg;
-	register draw_pixel dpf_bg;
+	register pixel_blit dpf_fg;
+	register pixel_blit dpf_bg;
 	RASTER *r;
+
 
 	if (x2 > x1)
 	{
@@ -364,16 +376,24 @@ habline (VIRTUAL *v, short x1, short x2, short y, PatAttr *ptrn)
 	}
 
 
-	r = v->raster;
+	linemask = (unsigned short)*ptrn->data;
+	bit = x & 0xf;
+	if (bit)
+		linemask = (linemask << bit) | (linemask >> (16 - bit));
+
 	planes	= ptrn->wrmode;
-	bgcol	= ptrn->bgcol;
+
+	if (planes == MD_ERASE)
+		linemask = ~linemask;
+
+	r = v->raster;
+	bgcol	= ptrn->bgcol[planes];
 	fgcol	= ptrn->color[planes];
 	planes <<= 1;
-	dpf_fg	= v->driver->f.pixelfuncts[planes];
-	dpf_bg	= v->driver->f.pixelfuncts[planes + 1];
+	dpf_fg	= v->drawers->dlp[planes];
+	dpf_bg	= v->drawers->dlp[planes + 1];
 	planes	= r->planes;
 	bypl	= r->bypl;
-	linemask = x1 & 0xf ? (*ptrn->data << ((x1 & 0xf))) | ( *ptrn->data >> (16-(x1 & 0xf)) ) : *ptrn->data;
 
 	if (planes < 8)
 	{
@@ -385,8 +405,7 @@ habline (VIRTUAL *v, short x1, short x2, short y, PatAttr *ptrn)
 
 		for (i = 0; i < dx; i++)
 		{
-			linemask = linemask << 1 | linemask >> 15;
-			if (linemask & 1)
+			if (linemask & 0x8000)
 			{
 				if (dpf_fg)
 					(*dpf_fg)(addr, (long)fgcol);
@@ -398,9 +417,9 @@ habline (VIRTUAL *v, short x1, short x2, short y, PatAttr *ptrn)
 
 			if (bit & 0x8000)
 				addr += xinc;
-		}
-			
 
+			linemask = linemask >> 15 | linemask << 1;
+		}
 	}
 	else /* (planes >= 8) */
 	{
@@ -420,12 +439,9 @@ habline (VIRTUAL *v, short x1, short x2, short y, PatAttr *ptrn)
 		xinc = Planes2xinc[planes - 8];
 
 		addr = (unsigned char *)r->base + ((long)x * xinc) + ((long)y * r->bypl);
-
 		for (i = 0; i < dx; i++)
 		{
-			linemask = linemask << 1 | linemask >> 15;
-
-			if (linemask & 1)
+			if (linemask & 0x8000)
 			{
 				if (dpf_fg)
 					(*dpf_fg)(addr, fcol);
@@ -434,6 +450,110 @@ habline (VIRTUAL *v, short x1, short x2, short y, PatAttr *ptrn)
 				(*dpf_bg)(addr, bcol);
 
 			addr += xinc;
+			linemask = linemask >> 15 | linemask << 1;
+		}
+
+	}
+}
+/*
+ * habline - draw a horizontal line
+ * Written by Odd Skancke
+ */
+void
+vabline (VIRTUAL *v, short y1, short y2, short x, PatAttr *ptrn)
+{
+	short i, y, dy, bit;
+	short planes, bypl, xinc;
+	short bgcol, fgcol;
+	unsigned short linemask;
+	unsigned char *addr;
+	register pixel_blit dpf_fg;
+	register pixel_blit dpf_bg;
+	RASTER *r;
+
+	if (y2 > y1)
+	{
+		dy = y2 - y1 + 1;
+		y  = y1;
+	}
+	else
+	{
+		dy = y1 - y2 + 1;
+		y  = y2;
+	}
+
+
+	linemask = (unsigned short)*ptrn->data;
+	bit = y & 0xf;
+	if (bit)
+		linemask = (linemask << bit) | (linemask >> (16 - bit));
+
+	planes	= ptrn->wrmode;
+
+	if (planes == MD_ERASE)
+		linemask = ~linemask;
+
+	r = v->raster;
+	bgcol	= ptrn->bgcol[planes];
+	fgcol	= ptrn->color[planes];
+	planes <<= 1;
+	dpf_fg	= v->drawers->dlp[planes];
+	dpf_bg	= v->drawers->dlp[planes + 1];
+	planes	= r->planes;
+	bypl	= r->bypl;
+
+	if (planes < 8)
+	{
+
+		addr = (unsigned char *)r->base + (((long)x >> 4) * Planes2xinc[planes]) + ((long)y * r->bypl);
+
+		for (i = 0; i < dy; i++)
+		{
+			linemask = linemask << 1 | linemask >> 15;
+			if (linemask & 1)
+			{
+				if (dpf_fg)
+					(*dpf_fg)(addr, (long)fgcol);
+			}
+			else if (dpf_bg)
+				(*dpf_bg)(addr, (long)bgcol);
+
+			addr += bypl;
+		}
+			
+
+	}
+	else /* (planes >= 8) */
+	{
+		register long fcol, bcol;
+
+		xinc = Planes2xinc[planes - 8];
+
+		if (r->clut)
+		{
+			fcol = (long)fgcol;
+			bcol = (long)bgcol;
+		}
+		else
+		{
+			fcol = r->pixelvalues[fgcol];
+			bcol = r->pixelvalues[bgcol];
+		}
+
+		addr = (unsigned char *)r->base + ((long)x * xinc) + ((long)y * r->bypl);
+
+		for (i = 0; i < dy; i++)
+		{
+			if (linemask & 0x8000)
+			{
+				if (dpf_fg)
+					(*dpf_fg)(addr, fcol);
+			}
+			else if (dpf_bg)
+				(*dpf_bg)(addr, bcol);
+
+			addr += bypl;
+			linemask = linemask >> 15 | linemask << 1;
 		}
 
 	}
@@ -1055,8 +1175,8 @@ draw_spans(VIRTUAL *v, short x1, short x2, short y, PatAttr *ptrn)
 	unsigned short pattern, bit;
 	unsigned char *addr;
 	int i, j;
-	register draw_pixel dpf_fg;
-	register draw_pixel dpf_bg;
+	register pixel_blit dpf_fg;
+	register pixel_blit dpf_bg;
 	RASTER *r;
 
 	if (x1 > x2)
@@ -1073,11 +1193,11 @@ draw_spans(VIRTUAL *v, short x1, short x2, short y, PatAttr *ptrn)
 
 	wrmode = ptrn->wrmode;
 	fgcol = ptrn->color[wrmode];
-	bgcol	= ptrn->bgcol;
+	bgcol	= ptrn->bgcol[wrmode];
 
 	wrmode <<= 1;
-	dpf_fg	= v->driver->f.pixelfuncts[wrmode];
-	dpf_bg	= v->driver->f.pixelfuncts[wrmode + 1];
+	dpf_fg	= v->drawers->dlp[wrmode];
+	dpf_bg	= v->drawers->dlp[wrmode + 1];
 	planes	= r->planes;
 	bypl	= r->bypl;
 

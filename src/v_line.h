@@ -14,6 +14,7 @@ void v_pline		( VDIPB *pb, VIRTUAL *v );
 void vql_attributes	( VDIPB *pb, VIRTUAL *v );
 
 void lvsl_color		( VIRTUAL *v, short color );
+void lvsl_bgcolor	( VIRTUAL *v, short color );
 void lvsl_ends		( VIRTUAL *v, short beg, short end );
 void lvsl_type		( VIRTUAL *v, short index );
 void lvsl_udsty		( VIRTUAL *v, short pattern );

@@ -5,10 +5,12 @@
 #include "libkern.h"
 #include "ovdi_defs.h"
 #include "ovdi_dev.h"
+#include "patch_gem.h"
 #include "rasters.h"
 #include "vdi_defs.h"
 #include "vdi_globals.h"
 
+extern short logit;
 
 unsigned long clc_plen(MFDB *r);
 unsigned long clc_rlen(MFDB *r);
@@ -500,7 +502,7 @@ rt_cpyfm(VIRTUAL *v, MFDB *src, MFDB *dst, short *pnts, short fgcol, short bgcol
 	unsigned short data;
 	short *pts;
 	RASTER *r;
-	draw_pixel dpf_fg, dpf_bg;
+	pixel_blit dpf_fg, dpf_bg;
 	VDIRECT clip;
 	short points[8];
 
@@ -513,8 +515,8 @@ rt_cpyfm(VIRTUAL *v, MFDB *src, MFDB *dst, short *pnts, short fgcol, short bgcol
 	if (	 dst->fd_addr == 0)
 	{	/* destination screen! */
 
-		dpf_fg		= v->driver->f.pixelfuncts[wrmode];
-		dpf_bg		= v->driver->f.pixelfuncts[wrmode + 1];
+		dpf_fg		= v->drawers->drp[wrmode];
+		dpf_bg		= v->drawers->drp[wrmode + 1];
 
 		planes		= r->planes;
 		bypl		= r->bypl;
@@ -529,14 +531,11 @@ rt_cpyfm(VIRTUAL *v, MFDB *src, MFDB *dst, short *pnts, short fgcol, short bgcol
 	{
 		//log("da %lx sa %lx, fdw %d, fdh %d, fdnp %d\n", dst->fd_addr, src->fd_addr, dst->fd_w, dst->fd_h, dst->fd_nplanes);
 
-		dpf_fg		= v->driver->f.pixelfuncts[wrmode];
-		dpf_bg		= v->driver->f.pixelfuncts[wrmode + 1];
+		dpf_fg		= v->drawers->drp[wrmode];
+		dpf_bg		= v->drawers->drp[wrmode + 1];
 		planes		= dst->fd_nplanes;
 
-		if (planes < 8)
-			return;
-		else
-			bypl = (dst->fd_wdwidth << 1) * planes;
+		bypl = (dst->fd_wdwidth << 1) * planes;
 
 		addr		= dst->fd_addr;
 		dst_w		= dst->fd_w;
@@ -588,12 +587,12 @@ rt_cpyfm(VIRTUAL *v, MFDB *src, MFDB *dst, short *pnts, short fgcol, short bgcol
 		}
 		else
 		{
-			fcol = v->pixelvalues[fgcol];
-			bcol = v->pixelvalues[bgcol];
+			fcol = r->pixelvalues[fgcol];
+			bcol = r->pixelvalues[bgcol];
 		}
+			
 
 		xinc = Planes2xinc[planes - 8];
-//		addr = addr + (long)(((long)dst_y1 * bypl) + ((long)dst_x1 * xinc));
 		addr += (long)dst_x1 * xinc;
 		addr += (long)dst_y1 * bypl;
 		sourceptr = (unsigned short *)src->fd_addr;
@@ -701,7 +700,7 @@ ro_cpyfm(VIRTUAL *v, MFDB *src, MFDB *dst, short *pts, short wrmode)
 	short sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2;
 	short *p;
 	unsigned char *dstptr, *srcptr;
-	raster_op rop;
+	raster_blit rop;
 	RASTER *r;
 	VDIRECT clip;
 	short points[8];
@@ -806,7 +805,8 @@ ro_cpyfm(VIRTUAL *v, MFDB *src, MFDB *dst, short *pts, short wrmode)
 	sx1 = *p++, sy1 = *p++, sx2 = *p++, sy2 = *p++;
 	dx1 = *p++, dy1 = *p++, dx2 = *p++, dy2 = *p;
 
-	rop = v->driver->f.raster_operations[wrmode];
+	rop = v->drawers->raster_blits[wrmode];
+
 	if (!rop)
 		return;
 
@@ -976,6 +976,9 @@ trnfm(VIRTUAL *v, MFDB *src, MFDB *dst)
 	unsigned long rlen, plen;
 
 
+	if (!MiNT)
+		patch_gem(v->raster->planes, v->raster->w - 1);
+
 	if (src->fd_nplanes < 8)
 	{
 		if (src->fd_nplanes == 1)
@@ -1017,7 +1020,7 @@ trnfm(VIRTUAL *v, MFDB *src, MFDB *dst)
 					dest = dst->fd_addr;
 
 				x.exp_to = exp_to[v->driver->r.planes];
-				x.pixelvals = v->pixelvalues;
+				x.pixelvals = v->raster->pixelvalues;
 				x.dplanes = v->driver->r.planes;
 				x.splanes = src->fd_nplanes;
 				x.width = src->fd_w;

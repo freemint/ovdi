@@ -120,8 +120,10 @@ init_console(VIRTUAL *v, LINEA_VARTAB *la)
 
 	c->pattern.expanded = 0;
 	c->pattern.color[0] = c->pattern.color[1] = c->col_vdi2hw[0];
-	c->pattern.color[2] = c->pattern.color[3] = 0xff;
-	c->pattern.bgcol = c->col_vdi2hw[1];
+	c->pattern.color[2] = c->pattern.color[3] = v->raster->planes > 8 ? 0 : 0xff;
+	c->pattern.bgcol[0] = c->pattern.bgcol[1] = c->col_vdi2hw[1];
+	c->pattern.bgcol[2] = c->pattern.bgcol[3] = v->raster->planes > 8 ? 0xff : 0x0;
+
 	c->pattern.width = 16;
 	c->pattern.height = 1;
 	c->pattern.wwidth = 1;
@@ -131,7 +133,7 @@ init_console(VIRTUAL *v, LINEA_VARTAB *la)
 	c->pattern.data = &consfill;
 
 	c->curs_hide_ct = 1;
-	c->tps = (*v->driver->f.get_vbitics)();
+	c->tps = (*v->driver->get_vbitics)();
 
 	/* console driver */
 	c->enter_console = &console_enter;

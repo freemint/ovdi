@@ -4,6 +4,6 @@
 #include "ovdi_defs.h"
 #include "ovdi_dev.h"
 
-extern draw_pixel dpf_4b[];
+extern pixel_blit dpf_4b[];
 
 #endif	/* _STDDRV_4B_H */

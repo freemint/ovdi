@@ -158,7 +158,7 @@ linea_plot_pixel(void)
 	VIRTUAL *v = la->cur_work;
 
 
-	(*v->driver->f.put_pixel)(v->raster->base, v->raster->bypl,
+	(*v->drawers->put_pixel)(v->raster->base, v->raster->bypl,
 				  la->ptsin[0], la->ptsin[1], (unsigned long)la->intin[0]);
 	return;
 }
@@ -171,7 +171,7 @@ linea_get_pixel(void)
 	unsigned long pixel;
 	short planes = v->raster->planes;
 
-	pixel = (v->driver->f.get_pixel)(v->raster->base, v->raster->bypl,
+	pixel = (v->drawers->get_pixel)(v->raster->base, v->raster->bypl,
 					 la->ptsin[0], la->ptsin[1]);
 
 	if (planes > 8)
@@ -213,7 +213,7 @@ linea_arb_line(void)
 
 	ptrn.expanded = 0;
 	ptrn.color[0] = v->color_hw2vdi[color];
-	ptrn.bgcol = v->color_hw2vdi[0];
+	ptrn.bgcol[0] = v->color_hw2vdi[0];
 	ptrn.width = 16;
 	ptrn.height = 1;
 	ptrn.planes = 1;
@@ -245,7 +245,7 @@ linea_hor_line(void)
 
 	ptrn.expanded = 0;
 	ptrn.color[0] = v->color_hw2vdi[color];
-	ptrn.bgcol = v->color_hw2vdi[0];
+	ptrn.bgcol[0] = v->color_hw2vdi[0];
 	ptrn.width = 16;
 	ptrn.height = 1;
 	ptrn.planes = 1;
@@ -279,7 +279,7 @@ linea_filled_rect(void)
 
 	ptrn.expanded = 0;
 	ptrn.color[0] = v->color_hw2vdi[color];
-	ptrn.bgcol = v->color_hw2vdi[0];
+	ptrn.bgcol[0] = v->color_hw2vdi[0];
 	ptrn.width = 16;
 	ptrn.height = 1;
 	ptrn.planes = 1;
@@ -324,7 +324,7 @@ linea_filled_poly(void)
 
 	ptrn.expanded = 0;
 	ptrn.color[0] = v->color_hw2vdi[color];
-	ptrn.bgcol = v->color_hw2vdi[0];
+	ptrn.bgcol[0] = v->color_hw2vdi[0];
 	ptrn.width = 16;
 	ptrn.height = 1;
 	ptrn.planes = 1;

@@ -253,8 +253,8 @@ set_xmf_res(VIRTUAL *v)
 	xmf->bypl	= d->r.bypl;
 	xmf->scr_base	= d->r.base;
 
-	m->draw_mcurs	= d->f.draw_mc;
-	m->undraw_mcurs	= d->f.undraw_mc;
+	m->draw_mcurs	= v->drawers->draw_mcurs;
+	m->undraw_mcurs	= v->drawers->undraw_mcurs;
 	m->vreschk	= d->dev->vreschk;
 
 	return;
@@ -549,7 +549,7 @@ show_mouse_curs(short reset)
 	register MOUSEDRV *m = &md;
 
 	m->interrupt++;
-	if (m->flags & MC_ENABLED)
+	if ((m->flags & MC_ENABLED) && m->hide_ct)
 	{
 
 		if (reset)

@@ -8,17 +8,26 @@
 #include "xcb.h"
 #include "std_driver.h"
 
-int	Load_Resolution(short index, RESOLUTION *res);
-short	boot_drive;
+static OVDI_DRIVER *	ovdidev_open		(OVDI_DEVICE *dev, short dev_id);
+
+static long		ovdidev_close		(OVDI_DRIVER *drv);
+static unsigned char *	ovdidev_setpscreen	(OVDI_DRIVER *drv, unsigned char *scrnadr);
+static unsigned char *	ovdidev_setlscreen	(OVDI_DRIVER *drv, unsigned char *scrnadr);
+static void		ovdidev_setcolor	(OVDI_DRIVER *drv, short pen, RGB_LIST *colors);
+static void		ovdidev_vsync		(OVDI_DRIVER *drv);
+static void		ovdidev_vreschk		(short x, short y);
+
+static short	Load_Resolution(short index, RESOLUTION *res);
+static short	boot_drive;
 int get_cookie(long tag, long *ret);
 
-OVDI_LIB	*lib;
+static OVDI_LIB	*lib;
 
-XCB	*xcb;
+static XCB	*xcb;
 
-char ovdidev_name[20] = {"oVDI Device Driver"};
+static char ovdidev_name[20] = {"oVDI Device Driver"};
 
-OVDI_DEVICE ovdidev =
+static OVDI_DEVICE ovdidev =
 {
 	(long)"0.01",
 	ovdidev_name,
@@ -31,12 +40,21 @@ OVDI_DEVICE ovdidev =
 	ovdidev_vreschk,
 };
 
-OVDI_DRIVER driver;
+static OVDI_DRIVER driver;
+
+static OVDI_DRAWERS drw_1b;
+static OVDI_DRAWERS drw_2b;
+static OVDI_DRAWERS drw_4b;
+static OVDI_DRAWERS drw_8b;
+static OVDI_DRAWERS drw_15b;
+static OVDI_DRAWERS drw_16b;
+static OVDI_DRAWERS drw_24b;
+static OVDI_DRAWERS drw_32b;
 
 /* pf_xxx tables are used by vq_extend() to describe different pixel formats */
 
 /* ST palette register layout */
-char pf_st[] =
+static char pf_st[] =
 {
 	/* red bits */
 	  3,   8,  1,
@@ -64,7 +82,7 @@ char pf_st[] =
 };
 
 /* STe palette register layout */
-char pf_ste[] =
+static char pf_ste[] =
 {
 	/* red bits */
 	  1,  11,  1,
@@ -93,7 +111,7 @@ char pf_ste[] =
 };
 
 /* TT palette register layout */
-char pf_tt[] =
+static char pf_tt[] =
 {
 	/* red bits */
 	  4,   8,  1,
@@ -118,7 +136,7 @@ char pf_tt[] =
 };
 
 /* Falcon palette register layout */
-char pf_falcon[] =
+static char pf_falcon[] =
 {
 	/* red bits */
 	  6,  26,  1,
@@ -147,7 +165,7 @@ char pf_falcon[] =
 };
 
 
-char pf_et6k[] =
+static char pf_et6k[] =
 {
 	  6,  12,   1,
 	 10, 255,   0,
@@ -169,7 +187,7 @@ char pf_et6k[] =
 	  0
 };
 
-char pf_nova[] =
+static char pf_nova[] =
 {
 	  8,  16,   1,
 	  8, 255,   0,
@@ -192,7 +210,7 @@ char pf_nova[] =
 };
 
 /* Falcon's 15-bit pixelformat bit layout */
-char pf_15b_falc[] =
+static char pf_15b_falc[] =
 {
 	  5,  11,   1,		/*  5 red bits start at bit 11. Add one to get to next red bit */
 	 11, 255,   0,		/* 11 unused red bits followin the above red bits */
@@ -219,7 +237,7 @@ char pf_15b_falc[] =
 };
 
 /* 15-bit Intel pixelformat layout */
-char pf_15bI[] =
+static char pf_15bI[] =
 {
 	/* red bits */
 	  5,   2,  1,
@@ -248,7 +266,7 @@ char pf_15bI[] =
 };
 
 /* 16-bit Intel pixelformat layout */
-char pf_16bI[] =
+static char pf_16bI[] =
 {
 	/* red bits */
 	  5,   3,  1,
@@ -271,7 +289,7 @@ char pf_16bI[] =
 
 	  0
 };
-char pf_16b_et6k[] =
+static char pf_16b_et6k[] =
 {
 	  5,  11,  1,
 	 11, 255,  0,
@@ -292,7 +310,7 @@ char pf_16b_et6k[] =
 };
 
 /* 24-bit Intel pixelformat layout */
-char pf_24bI[] =
+static char pf_24bI[] =
 {
 	/* red bits */
 	  8,   0,  1,
@@ -311,7 +329,7 @@ char pf_24bI[] =
 	  0	  
 };
 /* 24-bit Motorola pixelformat layout */
-char pf_24bM[] =
+static char pf_24bM[] =
 {
 	/* red bits */
 	  8,  16,  1,
@@ -334,7 +352,7 @@ char pf_24bM[] =
 };
 
 /* 32-bit Intel pixelformat layout */
-char pf_32bI[] = 
+static char pf_32bI[] = 
 {
 	/* red bits */
 	  8,  24,  1,
@@ -357,7 +375,7 @@ char pf_32bI[] =
 };
 
 /* 32-bit Motorola pixelformat layout */
-char pf_32bM[] = 
+static char pf_32bM[] = 
 {
 	/* red bits */
 	  8,  16,  1,
@@ -380,7 +398,7 @@ char pf_32bM[] =
 };
 
 /* 32-bit byteswapped Intel pixelformat layout */
-char pf_32bIbs[] =
+static char pf_32bIbs[] =
 {
 	/* red bits */
 	  8,   0, 1,
@@ -402,7 +420,7 @@ char pf_32bIbs[] =
 	  0
 };
 
-int
+static short
 Load_Resolution(short res_index, RESOLUTION *res )
 {
 	
@@ -416,9 +434,14 @@ Load_Resolution(short res_index, RESOLUTION *res )
 		return 0;
 
 	if ((Fseek((sizeof(RESOLUTION) * res_index), fd, 0)) < 0)
+	{
+		Fclose(fd);
 		return 0;
+	}
 
 	r = Fread( fd, sizeof(RESOLUTION), res);
+
+	Fclose(fd);
 
 	if (r == sizeof(RESOLUTION))
 		return 1;
@@ -429,6 +452,7 @@ Load_Resolution(short res_index, RESOLUTION *res )
 OVDI_DEVICE *
 device_init(OVDI_LIB *l)
 {
+	OVDI_DRIVER *drv = &driver;
 
 	if (!(*l->getcookie)((long)0x4e4f5641 /*"NOVA"*/, (long *)&xcb))
 	{
@@ -440,14 +464,40 @@ device_init(OVDI_LIB *l)
 
 	lib	= l;
 
+/* Since things not implemented or provided are NULL, we clear all our structures */
+	bzero(&driver, sizeof(OVDI_DRIVER));
+
+	bzero(&drw_1b, sizeof(OVDI_DRAWERS));
+	drv->drawers_1b = &drw_1b;
+
+	bzero(&drw_2b, sizeof(OVDI_DRAWERS));
+	drv->drawers_2b = &drw_2b;
+
+	bzero(&drw_4b, sizeof(OVDI_DRAWERS));
+	drv->drawers_4b = &drw_4b;
+
+	bzero(&drw_8b, sizeof(OVDI_DRAWERS));
+	drv->drawers_8b = &drw_8b;
+
+	bzero(&drw_15b, sizeof(OVDI_DRAWERS));
+	drv->drawers_15b = &drw_15b;
+
+	bzero(&drw_16b, sizeof(OVDI_DRAWERS));
+	drv->drawers_16b = &drw_16b;
+
+	bzero(&drw_24b, sizeof(OVDI_DRAWERS));
+	drv->drawers_24b = &drw_24b;
+
+	bzero(&drw_32b, sizeof(OVDI_DRAWERS));
+	drv->drawers_32b = &drw_32b;
+
 	return &ovdidev;
 };
 
-OVDI_DRIVER *
+static OVDI_DRIVER *
 ovdidev_open(OVDI_DEVICE *dev, short dev_id)
 {
 	XCB *x = xcb;
-	OVDIDRV_FUNCTAB *f;
 	OVDI_DRIVER *drv = &driver;
 	RESOLUTION res;
 	long tmp;
@@ -466,7 +516,6 @@ ovdidev_open(OVDI_DEVICE *dev, short dev_id)
 
 	do_p_chres((long)x->p_chres, &res, tmp);
 
-
 	drv->r.planes		= x->planes;
 	drv->r.bypl		= x->bypl;
 	drv->palette		= x->colors;
@@ -483,63 +532,33 @@ ovdidev_open(OVDI_DEVICE *dev, short dev_id)
 	drv->dev		= dev;
 	drv->r.flags		= R_IS_SCREEN | R_IN_VRAM;
 
-	bzero(&drv->f, sizeof(OVDIDRV_FUNCTAB));
-
-	f = (OVDIDRV_FUNCTAB *)&drv->f;
-
 	if (drv->r.planes == 1)
 	{
 		drv->r.format		= PF_ATARI;
 		drv->r.clut		= 1;
-
-		f->pixelfuncts		= 0;
-
-	//	*f = *(OVDIDRV_FUNCTAB *)&functions_mono;
 	}
 	else if (drv->r.planes == 4)
 	{
 		drv->r.format		= PF_ATARI;
 		drv->r.clut		= 1;
-
-		f->pixelfuncts		= (draw_pixel *)&dpf_4b;
-
 	}
 	else if (drv->r.planes == 8)
 	{
 		drv->r.format		= PF_PACKED;
-
 		drv->r.pixelformat	= pf_nova;
-
 		drv->r.clut		= 1;
-
-		f->pixelfuncts		= (draw_pixel *)&dpf_8b;
-		f->rt_functs		= (draw_pixel *)&rt_ops_8b;
-
-	//	*f = *(OVDIDRV_FUNCTAB *)&functions_8b;
 	}
 	else if (drv->r.planes == 15)
 	{
 		drv->r.format		= PF_PACKED;
-
 		drv->r.pixelformat	= pf_15bI;
-
 		drv->r.clut		= 0;
-
-		f->pixelfuncts		= (draw_pixel *)&dpf_16b;
-
-	//	*f = *(OVDIDRV_FUNCTAB *)&functions_15bI;
 	}
 	else if (drv->r.planes == 16)
 	{
 		drv->r.format		= PF_PACKED;
-
 		drv->r.pixelformat	= pf_16bI;
-
 		drv->r.clut		= 0;
-
-		f->pixelfuncts		= (draw_pixel *)&dpf_16b;
-
-	//	*f = *(OVDIDRV_FUNCTAB *)&functions_16bI;
 	}
 	else if (drv->r.planes == 24)
 	{
@@ -549,19 +568,11 @@ ovdidev_open(OVDI_DEVICE *dev, short dev_id)
 		{
 			drv->r.format		= PF_PACKED | PF_BE;
 			drv->r.pixelformat	= pf_24bM;
-
-			f->pixelfuncts		= 0;
-
-		//	*f = *(OVDIDRV_FUNCTAB *)&functions_24bM;
 		}
 		else
 		{
 			drv->r.format		= PF_PACKED;
 			drv->r.pixelformat	= pf_24bI;
-
-			f->pixelfuncts		= 0;
-
-		//	*f = *(OVDIDRV_FUNCTAB *)&functions_24bI;
 		}
 	}
 	else if (drv->r.planes == 32)
@@ -574,28 +585,16 @@ ovdidev_open(OVDI_DEVICE *dev, short dev_id)
 		{
 			drv->r.format		= PF_PACKED;
 			drv->r.pixelformat	= pf_32bI;
-
-			f->pixelfuncts		= 0;
-
-		//	*f = *(OVDIDRV_FUNCTAB *)&functions_32bI;
 		}
 		else if (fmt == 1)
 		{
 			drv->r.format		= PF_PACKED | PF_BE;
 			drv->r.pixelformat	= pf_32bM;
-
-			f->pixelfuncts		= 0;
-
-		//	*f = *(OVDIDRV_FUNCTAB *)&functions_32bM;
 		}
 		else
 		{
 			drv->r.format		= PF_PACKED | PF_BS;
 			drv->r.pixelformat	= pf_32bIbs;
-
-			f->pixelfuncts		= 0;
-
-		//	*f = *(OVDIDRV_FUNCTAB *)&functions_32bIbs;
 		}
 	}
 	else
@@ -607,13 +606,13 @@ ovdidev_open(OVDI_DEVICE *dev, short dev_id)
 	return drv;
 }
 
-long
-ovdidev_close(OVDI_DEVICE *drv)
+static long
+ovdidev_close(OVDI_DRIVER *drv)
 {
 	return 0;
 }
 
-unsigned char *
+static unsigned char *
 ovdidev_setpscreen(OVDI_DRIVER *drv, unsigned char *scradr)
 {
 	if (scradr < (unsigned char *)drv->vram_start)
@@ -625,14 +624,14 @@ ovdidev_setpscreen(OVDI_DRIVER *drv, unsigned char *scradr)
 	return	xcb->scr_base;
 }
 
-unsigned char *
+static unsigned char *
 ovdidev_setlscreen(OVDI_DRIVER *drv, unsigned char *logscr)
 {
 	*(long *)v_bas_ad = (long)logscr;
 	return logscr;
 }
 
-void
+static void
 ovdidev_setcolor(OVDI_DRIVER *drv, short pen, RGB_LIST *colors)
 {
 	unsigned char bcols[4];
@@ -649,7 +648,7 @@ ovdidev_setcolor(OVDI_DRIVER *drv, short pen, RGB_LIST *colors)
 	return;
 }
 
-void
+static void
 ovdidev_vsync(OVDI_DRIVER *drv)
 {
 	do_p_vsync((long)xcb->p_vsync);
@@ -659,7 +658,7 @@ ovdidev_vsync(OVDI_DRIVER *drv)
 /* This will be called by the mouse-drivers (layer 1) mouse-interrupt whenever
 * the mouse moves.
 */
-void
+static void
 ovdidev_vreschk(short x, short y)
 {
 	do_p_chng_vrt((long)xcb->p_chng_vrt, x, y);

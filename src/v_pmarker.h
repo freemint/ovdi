@@ -10,6 +10,7 @@ void	vqm_attributes	( VDIPB *pb, VIRTUAL *v );
 void	lvsm_linetype	( VIRTUAL *v, register short linetype );
 
 void	lvsm_color	( VIRTUAL *v, register short color );
+void	lvsm_bgcolor	( VIRTUAL *v, register short color );
 void	lvsm_height	( VIRTUAL *v, register short height );
 void	lvsm_type	( VIRTUAL *v, register short type );
 

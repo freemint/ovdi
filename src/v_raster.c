@@ -22,14 +22,16 @@ void
 vrt_cpyfm( VDIPB *pb, VIRTUAL *v)
 {
 	MFDB *s, *d;
-	short fgc, bgc;
+	short fgc, bgc, wrmode;
+
+	wrmode = pb->intin[0] - 1;
 
 	fgc = v->color_vdi2hw[pb->intin[1]];
 	bgc = v->color_vdi2hw[pb->intin[2]];
 
 	s = (MFDB *)((((unsigned long)pb->contrl[7]) << 16) | (unsigned short)pb->contrl[8]);
 	d = (MFDB *)((((unsigned long)pb->contrl[9]) << 16) | (unsigned short)pb->contrl[10]);
-	rt_cpyfm( v, s, d, (short *)&pb->ptsin[0], fgc, bgc, pb->intin[0] - 1);
+	rt_cpyfm( v, s, d, (short *)&pb->ptsin[0], fgc, bgc, wrmode);
 	return;
 }
 
@@ -51,7 +53,7 @@ v_get_pixel( VDIPB *pb, VIRTUAL *v)
 	RASTER *r = v->raster;
 	unsigned long pixel;
 
-	pixel = (*v->driver->f.get_pixel)(r->base, r->bypl, pb->ptsin[0], pb->ptsin[1]);
+	pixel = (*v->drawers->get_pixel)(r->base, r->bypl, pb->ptsin[0], pb->ptsin[1]);
 
 	if (planes > 8)
 	{

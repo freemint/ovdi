@@ -29,6 +29,8 @@ LINEA_VARTAB	la_vt;
 VIRTUAL		wks1;
 VIRTUAL		la_wks;
 RASTER		root_raster;
+OVDI_DRAWERS	root_drawers;
+OVDI_UTILS	root_utils;
 RGB_LIST	rgb_levels;
 RGB_LIST	rgb_bits;
 long		realpixels[256];

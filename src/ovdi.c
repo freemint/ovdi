@@ -46,68 +46,6 @@ OVDI_DEVICE *device;
 //char fontdata[1024 * 10];
 extern BASEPAGE *_base;
 
-OVDI_DRAWERS drawers = 
-{
-	rectfill,
-	draw_arc,
-	draw_pieslice,
-	draw_circle,
-	draw_ellipse,
-	draw_ellipsearc,
-	draw_ellipsepie,
-	draw_rbox,
-	abline,
-	habline,
-	wide_line,
-	draw_spans,
-	filled_poly,
-	rt_cpyfm,
-	ro_cpyfm,
-
-	0,	/* draw_pixel */
-	0,	/* read_pixel */
-	0,	/* put_pixel */
-	0,	/* get_pixel */
-
-	0,	/* Raster op */
-
-	0,	/* draw_mcurs */
-	0,	/* undraw_mcurs */
-
-};
-
-OVDI_UTILS utils =
-{
-	clc_nsteps,
-	clc_arc,
-	clipbox,
-	sortcpy_corners,
-	code,
-	clip_line,
-	fix_raster_coords,
-	trnfm,
-
-	conv_vdi2dev_1b,
-	conv_vdi2dev_2b,
-	conv_vdi2dev_4b,
-	conv_vdi2dev_8b,
-	conv_vdi2dev_16b,
-	conv_vdi2dev_16b,
-	conv_vdi2dev_24b,
-	conv_vdi2dev_32b,
-	{0,0,0,0},
-
-	conv_dev2vdi_1b,
-	conv_dev2vdi_2b,
-	conv_dev2vdi_4b,
-	conv_dev2vdi_8b,
-	conv_dev2vdi_16b,
-	conv_dev2vdi_16b,
-	conv_dev2vdi_24b,
-	conv_dev2vdi_32b,
-	{0,0,0,0}
-};
-
 void
 ovdi_init(void)
 {
@@ -202,14 +140,14 @@ oVDI( VDIPB *pb )
 
 	v->func = func;
 
-#if 0
+#if 1
 //	if ( !(strcmp("PROFILE2", v->procname)) )
 	if ( (Kbshift(-1) & 0x1) )
 		logit = 1;
 	else
 		logit = 0;
 
-	if (logit)
+	if (logit && func == 0)
 	{
 
 		//log("%s, func %d..", func);
@@ -234,7 +172,7 @@ oVDI( VDIPB *pb )
 
 	(*f)(pb, v);
 
-	if (logit)
+	if (logit && func == 0)
 	{
 		log(" out %d, %d, %d, %d, %d, %d, %d, %d - %d, %d, %d, %d, %d, %d, %d, %d\n",
 			pb->intin[0], pb->intin[1], pb->intin[2], pb->intin[3],

@@ -11,22 +11,22 @@
 /* ******************************************************** */
 /* *************** DIFFERENT WRMODES **************** */
 /* ******************************************************** */
-void ALL_WHITE_8b	(unsigned char *addr, long data);
-void S_AND_D_8b		(unsigned char *addr, long data);
-void S_AND_NOTD_8b	(unsigned char *addr, long data);
-void S_ONLY_8b		(unsigned char *addr, long data);
-void NOTS_AND_D_8b	(unsigned char *addr, long data);
-void D_ONLY_8b		(unsigned char *addr, long data);
-void S_XOR_D_8b		(unsigned char *addr, long data);
-void S_OR_D_8b		(unsigned char *addr, long data);
-void NOT_SORD_8b	(unsigned char *addr, long data);
-void NOT_SXORD_8b	(unsigned char *addr, long data);
-void NOT_D_8b		(unsigned char *addr, long data);
-void S_OR_NOTD_8b	(unsigned char *addr, long data);
-void NOT_S_8b		(unsigned char *addr, long data);
-void NOTS_OR_D_8b	(unsigned char *addr, long data);
-void NOT_SANDD_8b	(unsigned char *addr, long data);
-void ALL_BLACK_8b	(unsigned char *addr, long data);
+static void ALL_WHITE	(unsigned char *addr, long data);
+static void S_AND_D	(unsigned char *addr, long data);
+static void S_AND_NOTD	(unsigned char *addr, long data);
+static void S_ONLY	(unsigned char *addr, long data);
+static void NOTS_AND_D	(unsigned char *addr, long data);
+static void D_ONLY	(unsigned char *addr, long data);
+static void S_XOR_D	(unsigned char *addr, long data);
+static void S_OR_D	(unsigned char *addr, long data);
+static void NOT_SORD	(unsigned char *addr, long data);
+static void NOT_SXORD	(unsigned char *addr, long data);
+static void NOT_D	(unsigned char *addr, long data);
+static void S_OR_NOTD	(unsigned char *addr, long data);
+static void NOT_S	(unsigned char *addr, long data);
+static void NOTS_OR_D	(unsigned char *addr, long data);
+static void NOT_SANDD	(unsigned char *addr, long data);
+static void ALL_BLACK	(unsigned char *addr, long data);
 
 unsigned long
 get_pixel_8b(unsigned char *sb, short bpl, short x, short y)
@@ -41,141 +41,135 @@ put_pixel_8b(unsigned char *sb, short bpl, short x, short y, unsigned long pixel
 	return;
 }
 
-#if 0
-void dlp_REP_fg_8b(unsigned char *addr, long data);
-void dlp_REP_bg_8b(unsigned char *addr, long data);
-void dlp_TRANS_fg_8b(unsigned char *addr, long data);
-void dlp_XOR_fg_8b(unsigned char *addr, long data);
-void dlp_XOR_bg_8b(unsigned char *addr, long data);
-void dlp_ERAS_bg_8b(unsigned char *addr, long data);
-#endif 
-
-draw_pixel dpf_8b[] =
+pixel_blit dpf_8b[] = 
 {
-	S_ONLY_8b,	/*dlp_REP_fg_8b,*/
-	S_ONLY_8b,	/*dlp_REP_bg_8b,*/
+	S_ONLY,
+	S_ONLY,
 
-	S_ONLY_8b,	/* dlp_TRANS_fg_8b,*/
+	S_ONLY,
 	0,
 
-	S_XOR_D_8b,	/*dlp_XOR_fg_8b,*/
-	S_XOR_D_8b,    /* dlp_XOR_bg_8b, */
+	S_XOR_D,
+	S_XOR_D,
 
 	0,
-	S_XOR_D_8b	/* dlp_ERAS_bg_8b*/
+	S_XOR_D,
+
+	0,0,0,0,	/* reserved */
+	0,0,0,0		/* reserved */
 };
 
-draw_pixel rt_ops_8b[] = 
+pixel_blit rt_ops_8b[] = 
 {
-	ALL_WHITE_8b,
-	S_AND_D_8b,
-	S_AND_NOTD_8b,
-	S_ONLY_8b,
-	NOTS_AND_D_8b,
-	D_ONLY_8b,
-	S_XOR_D_8b,
-	S_OR_D_8b,
-	NOT_SORD_8b,
-	NOT_SXORD_8b,
-	NOT_D_8b,
-	S_OR_NOTD_8b,
-	NOT_S_8b,
-	NOTS_OR_D_8b,
-	NOT_SANDD_8b,
-	ALL_BLACK_8b
+	ALL_WHITE,
+	S_AND_D,
+	S_AND_NOTD,
+	S_ONLY,
+	NOTS_AND_D,
+	D_ONLY,
+	S_XOR_D,
+	S_OR_D,
+	NOT_SORD,
+	NOT_SXORD,
+	NOT_D,
+	S_OR_NOTD,
+	NOT_S,
+	NOTS_OR_D,
+	NOT_SANDD,
+	ALL_BLACK
 };
 
-void
-ALL_WHITE_8b(unsigned char *addr, long data)
+static void
+ALL_WHITE(unsigned char *addr, long data)
 {
 	*addr = 0;
 	return;
 }
-void
-S_AND_D_8b(unsigned char *addr, long data)
+static void
+S_AND_D(unsigned char *addr, long data)
 {
 	*addr = (unsigned char)data & *addr;
 	return;
 }
-void
-S_AND_NOTD_8b(unsigned char *addr, long data)
+static void
+S_AND_NOTD(unsigned char *addr, long data)
 {
 	*addr = (unsigned char)data & ~(*addr);
 	return;
 }
-void
-S_ONLY_8b(unsigned char *addr, long data)
+static void
+S_ONLY(unsigned char *addr, long data)
 {
 	*addr = (unsigned char)data;
 	return;
 }
-void
-NOTS_AND_D_8b(unsigned char *addr, long data)
+static void
+NOTS_AND_D(unsigned char *addr, long data)
 {
 	*addr &= (unsigned char)~data;
 	return;
 }
-void
-D_ONLY_8b(unsigned char *addr, long data)
+static void
+D_ONLY(unsigned char *addr, long data)
 {
 	return;
 }
-void
-S_XOR_D_8b(unsigned char *addr, long data)
+static void
+S_XOR_D(unsigned char *addr, long data)
 {
 	*addr ^= (unsigned char)data;
 	return;
 }
-void
-S_OR_D_8b(unsigned char *addr, long data)
+static void
+S_OR_D(unsigned char *addr, long data)
 {
 	*addr |= (unsigned char)data;
 	return;
 }
-void
-NOT_SORD_8b(unsigned char *addr, long data)
+static void
+NOT_SORD(unsigned char *addr, long data)
 {
 	*addr = ~((unsigned char)data | *addr);
 	return;
 }
-void
-NOT_SXORD_8b(unsigned char *addr, long data)
+static void
+NOT_SXORD(unsigned char *addr, long data)
 {
 	*addr = ~((unsigned char)data ^ *addr);
 	return;
 }
-void
-NOT_D_8b(unsigned char *addr, long data)
+static void
+NOT_D(unsigned char *addr, long data)
 {
 	*addr = ~*addr;
 	return;
 }
-void
-S_OR_NOTD_8b(unsigned char *addr, long data)
+static void
+S_OR_NOTD(unsigned char *addr, long data)
 {
 	*addr = (unsigned char)data | ~*addr;
 	return;
 }
-void
-NOT_S_8b(unsigned char *addr, long data)
+static void
+NOT_S(unsigned char *addr, long data)
 {
 	*addr = (unsigned char)~data;
 	return;
 }
-void
-NOTS_OR_D_8b(unsigned char *addr, long data)
+static void
+NOTS_OR_D(unsigned char *addr, long data)
 {
 	*addr = (unsigned char)~data | *addr;
 	return;
 }
-void
-NOT_SANDD_8b(unsigned char *addr, long data)
+static void
+NOT_SANDD(unsigned char *addr, long data)
 {
 	*addr = ~((unsigned char)data & *addr);
 	return;
 }
-void
-ALL_BLACK_8b(unsigned char *addr, long data)
+static void
+ALL_BLACK(unsigned char *addr, long data)
 {
 	*addr = 0xff;
 	return;
@@ -183,47 +177,47 @@ ALL_BLACK_8b(unsigned char *addr, long data)
 
 
 /* *************** RASTER OPERATIONS **************** */
-void ro_8b_ALL_WHITE	(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
-void ro_8b_S_AND_D	(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
-void ro_8b_S_AND_NOTD	(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
-void ro_8b_S_ONLY	(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
-void ro_8b_NOTS_AND_D	(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
-void ro_8b_D_ONLY	(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
-void ro_8b_S_XOR_D	(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
-void ro_8b_S_OR_D	(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
-void ro_8b_NOT_SORD	(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
-void ro_8b_NOT_SXORD	(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
-void ro_8b_NOT_D	(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
-void ro_8b_S_OR_NOTD	(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
-void ro_8b_NOT_S	(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
-void ro_8b_NOTS_OR_D	(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
-void ro_8b_NOT_SANDD	(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
-void ro_8b_ALL_BLACK	(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
+static void rb_ALL_WHITE	(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
+static void rb_S_AND_D		(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
+static void rb_S_AND_NOTD	(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
+static void rb_S_ONLY		(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
+static void rb_NOTS_AND_D	(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
+static void rb_D_ONLY		(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
+static void rb_S_XOR_D		(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
+static void rb_S_OR_D		(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
+static void rb_NOT_SORD		(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
+static void rb_NOT_SXORD	(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
+static void rb_NOT_D		(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
+static void rb_S_OR_NOTD	(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
+static void rb_NOT_S		(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
+static void rb_NOTS_OR_D	(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
+static void rb_NOT_SANDD	(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
+static void rb_ALL_BLACK	(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
 
-raster_op rops_8b[] =
+raster_blit rops_8b[] =
 {
-	ro_8b_ALL_WHITE,
-	ro_8b_S_AND_D,
-	ro_8b_S_AND_NOTD,
-	ro_8b_S_ONLY,
-	ro_8b_NOTS_AND_D,
-	ro_8b_D_ONLY,
-	ro_8b_S_XOR_D,
-	ro_8b_S_OR_D,
-	ro_8b_NOT_SORD,
-	ro_8b_NOT_SXORD,
-	ro_8b_NOT_D,
-	ro_8b_S_OR_NOTD,
-	ro_8b_NOT_S,
-	ro_8b_NOTS_OR_D,
-	ro_8b_NOT_SANDD,
-	ro_8b_ALL_BLACK
+	rb_ALL_WHITE,
+	rb_S_AND_D,
+	rb_S_AND_NOTD,
+	rb_S_ONLY,
+	rb_NOTS_AND_D,
+	rb_D_ONLY,
+	rb_S_XOR_D,
+	rb_S_OR_D,
+	rb_NOT_SORD,
+	rb_NOT_SXORD,
+	rb_NOT_D,
+	rb_S_OR_NOTD,
+	rb_NOT_S,
+	rb_NOTS_OR_D,
+	rb_NOT_SANDD,
+	rb_ALL_BLACK
 };
 
 
 
-void
-ro_8b_ALL_WHITE(unsigned char *srcptr, register short srcbypl,
+static void
+rb_ALL_WHITE(unsigned char *srcptr, register short srcbypl,
 		unsigned char *dstptr, register short dstbypl,
 		short width, short height, short dir)
 {
@@ -262,8 +256,8 @@ ro_8b_ALL_WHITE(unsigned char *srcptr, register short srcbypl,
 	}
 }
 
-void
-ro_8b_S_AND_D(	unsigned char *srcptr, register short srcbypl,
+static void
+rb_S_AND_D(	unsigned char *srcptr, register short srcbypl,
 		unsigned char *dstptr, register short dstbypl,
 		short width, short height, short dir)
 {
@@ -301,8 +295,8 @@ ro_8b_S_AND_D(	unsigned char *srcptr, register short srcbypl,
 		}
 	}
 }
-void
-ro_8b_S_AND_NOTD(unsigned char *srcptr, register short srcbypl,
+static void
+rb_S_AND_NOTD(unsigned char *srcptr, register short srcbypl,
 		unsigned char *dstptr, register short dstbypl,
 		short width, short height, short dir)
 {
@@ -340,8 +334,8 @@ ro_8b_S_AND_NOTD(unsigned char *srcptr, register short srcbypl,
 		}
 	}
 }
-void
-ro_8b_S_ONLY(	unsigned char *srcptr, register short srcbypl,
+static void
+rb_S_ONLY(	unsigned char *srcptr, register short srcbypl,
 		unsigned char *dstptr, register short dstbypl,
 		short width, short height, short dir)
 {
@@ -379,8 +373,8 @@ ro_8b_S_ONLY(	unsigned char *srcptr, register short srcbypl,
 		}
 	}
 }
-void
-ro_8b_NOTS_AND_D(unsigned char *srcptr, register short srcbypl,
+static void
+rb_NOTS_AND_D(unsigned char *srcptr, register short srcbypl,
 		unsigned char *dstptr, register short dstbypl,
 		short width, short height, short dir)
 {
@@ -418,15 +412,15 @@ ro_8b_NOTS_AND_D(unsigned char *srcptr, register short srcbypl,
 		}
 	}
 }
-void
-ro_8b_D_ONLY(	unsigned char *srcptr, register short srcbypl,
+static void
+rb_D_ONLY(	unsigned char *srcptr, register short srcbypl,
 		unsigned char *dstptr, register short dstbypl,
 		short width, short height, short dir)
 {
 	return;
 }
-void
-ro_8b_S_XOR_D(	unsigned char *srcptr, register short srcbypl,
+static void
+rb_S_XOR_D(	unsigned char *srcptr, register short srcbypl,
 		unsigned char *dstptr, register short dstbypl,
 		short width, short height, short dir)
 {
@@ -464,8 +458,8 @@ ro_8b_S_XOR_D(	unsigned char *srcptr, register short srcbypl,
 		}
 	}
 }
-void
-ro_8b_S_OR_D(	unsigned char *srcptr, register short srcbypl,
+static void
+rb_S_OR_D(	unsigned char *srcptr, register short srcbypl,
 		unsigned char *dstptr, register short dstbypl,
 		short width, short height, short dir)
 {
@@ -503,8 +497,8 @@ ro_8b_S_OR_D(	unsigned char *srcptr, register short srcbypl,
 		}
 	}
 }
-void
-ro_8b_NOT_SORD(	unsigned char *srcptr, register short srcbypl,
+static void
+rb_NOT_SORD(	unsigned char *srcptr, register short srcbypl,
 		unsigned char *dstptr, register short dstbypl,
 		short width, short height, short dir)
 {
@@ -542,8 +536,8 @@ ro_8b_NOT_SORD(	unsigned char *srcptr, register short srcbypl,
 		}
 	}
 }
-void
-ro_8b_NOT_SXORD(unsigned char *srcptr, register short srcbypl,
+static void
+rb_NOT_SXORD(unsigned char *srcptr, register short srcbypl,
 		unsigned char *dstptr, register short dstbypl,
 		short width, short height, short dir)
 {
@@ -581,8 +575,8 @@ ro_8b_NOT_SXORD(unsigned char *srcptr, register short srcbypl,
 		}
 	}
 }
-void
-ro_8b_NOT_D(	unsigned char *srcptr, register short srcbypl,
+static void
+rb_NOT_D(	unsigned char *srcptr, register short srcbypl,
 		unsigned char *dstptr, register short dstbypl,
 		short width, short height, short dir)
 {
@@ -620,8 +614,8 @@ ro_8b_NOT_D(	unsigned char *srcptr, register short srcbypl,
 		}
 	}
 }
-void
-ro_8b_S_OR_NOTD(unsigned char *srcptr, register short srcbypl,
+static void
+rb_S_OR_NOTD(unsigned char *srcptr, register short srcbypl,
 		unsigned char *dstptr, register short dstbypl,
 		short width, short height, short dir)
 {
@@ -659,8 +653,8 @@ ro_8b_S_OR_NOTD(unsigned char *srcptr, register short srcbypl,
 		}
 	}
 }
-void
-ro_8b_NOT_S(	unsigned char *srcptr, register short srcbypl,
+static void
+rb_NOT_S(	unsigned char *srcptr, register short srcbypl,
 		unsigned char *dstptr, register short dstbypl,
 		short width, short height, short dir)
 {
@@ -698,8 +692,8 @@ ro_8b_NOT_S(	unsigned char *srcptr, register short srcbypl,
 		}
 	}
 }
-void
-ro_8b_NOTS_OR_D(unsigned char *srcptr, register short srcbypl,
+static void
+rb_NOTS_OR_D(unsigned char *srcptr, register short srcbypl,
 		unsigned char *dstptr, register short dstbypl,
 		short width, short height, short dir)
 {
@@ -737,8 +731,8 @@ ro_8b_NOTS_OR_D(unsigned char *srcptr, register short srcbypl,
 		}
 	}
 }
-void
-ro_8b_NOT_SANDD(unsigned char *srcptr, register short srcbypl,
+static void
+rb_NOT_SANDD(unsigned char *srcptr, register short srcbypl,
 		unsigned char *dstptr, register short dstbypl,
 		short width, short height, short dir)
 {
@@ -776,8 +770,8 @@ ro_8b_NOT_SANDD(unsigned char *srcptr, register short srcbypl,
 		}
 	}
 }
-void
-ro_8b_ALL_BLACK(unsigned char *srcptr, register short srcbypl,
+static void
+rb_ALL_BLACK(unsigned char *srcptr, register short srcbypl,
 		unsigned char *dstptr, register short dstbypl,
 		short width, short height, short dir)
 {

@@ -35,6 +35,9 @@ extern	OVDI_VTAB v_vtab[];
 extern	VIRTUAL wks1;
 extern	VIRTUAL	la_wks;
 
+extern	OVDI_DRAWERS root_drawers;
+extern	OVDI_UTILS root_utils;
+
 extern	RGB_LIST rgb_levels;
 extern	RGB_LIST rgb_bits;
 extern	long realpixels[];

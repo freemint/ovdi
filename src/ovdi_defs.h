@@ -66,11 +66,12 @@ struct line_attribs
 struct pmarker_attribs
 {
 	short	color;
+	short	bgcol;
+	short	wrmode;
 	short	type;
 	short	height;
 	short	width;
 	short	scale;	/* Current scale factor for marker data */
-	short	wrmode;
 	short	data;
 };
 
@@ -78,7 +79,7 @@ struct pattern_attribs
 {
 	short		expanded;		/* True if the pattern is expanded and valid. */
 	short		color[4];		/* wrmode is used as index into color array */
-	short		bgcol;			/* background color */
+	short		bgcol[4];		/* background color */
 	short		width;			/* Width of pattern in pixels */
 	short		height;			/* Height of pattern in pixels */
 	short		wwidth;			/* Width of fill pattern in words */
@@ -108,6 +109,9 @@ struct virtual
 
 	struct font_head	*fring;
 	struct currfont		font;
+
+	struct ovdi_drawers	*drawers;
+	struct ovdi_utils	*utils;
 
 	struct fill_attribs	fill;
 	struct pattern_attribs	pattern;
@@ -184,38 +188,123 @@ struct ovdi_lib
 {
 	int	(*getcookie)(long tag, long *ret);
 };
+/* *************************************************************************** */
+/* *************************************************************************** */
+/* *************************************************************************** */
 
-#if 1
+typedef void (*draw_mc)			(register XMFORM *xmf, register short x, register short y);
+typedef void (*undraw_mc)		(register XMSAVE *xms);
+
+#if 0
+struct pixel_blits
+{
+	void (*all_white)	(unsigned char *addr, long data);
+	void (*s_and_d)		(unsigned char *addr, long data);
+	void (*s_and_notd)	(unsigned char *addr, long data);
+	void (*s_only)		(unsigned char *addr, long data);
+	void (*nots_and_d)	(unsigned char *addr, long data);
+	void (*d_only)		(unsigned char *addr, long data);
+	void (*s_xor_d)		(unsigned char *addr, long data);
+	void (*s_or_d)		(unsigned char *addr, long data);
+	void (*not_sord)	(unsigned char *addr, long data);
+	void (*not_sxord)	(unsigned char *addr, long data);
+	void (*not_d)		(unsigned char *addr, long data);
+	void (*s_or_notd)	(unsigned char *addr, long data);
+	void (*not_s)		(unsigned char *addr, long data);
+	void (*nots_or_d)	(unsigned char *addr, long data);
+	void (*not_sandd)	(unsigned char *addr, long data);
+	void (*all_black)	(unsigned char *addr, long data);
+};
+
+struct raster_blits
+{
+	void (*all_white)	(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
+	void (*s_and_d)		(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
+	void (*s_and_notd)	(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
+	void (*s_only)		(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
+	void (*nots_and_d)	(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
+	void (*d_only)		(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
+	void (*s_xor_d)		(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
+	void (*s_or_d)		(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
+	void (*not_sord)	(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
+	void (*not_sxord)	(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
+	void (*not_d)		(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
+	void (*s_or_notd)	(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
+	void (*not_s)		(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
+	void (*nots_or_d)	(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
+	void (*not_sandd)	(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
+	void (*all_black)	(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
+};
+
+struct wr_modes
+{
+	void (*rep_fb)(unsigned char *addr, long data);
+	void (*rep_bg)(unsigned char *addr, long data);
+	
+	void (*trns_fg)(unsigned char *addr, long data);
+	void (*trns_bg)(unsigned char *addr, long data);
+
+	void (*xor_fg)(unsigned char *addr, long data);
+	void (*xor_bg)(unsigned char *addr, long data);
+
+	void (*erase_fg)(unsigned char *addr, long data);
+	void (*erase_bg)(unsigned char *addr, long data);
+};
+#endif
+
+typedef void	(*pixel_blit)(unsigned char *addr, long data);
+typedef void	(*raster_blit)(unsigned char *srcbase, short srcbypl, unsigned char *dstbase, short dstbypl, short width, short height, short dir);
+
+//typedef void		(*draw_pixel)(unsigned char *adr, long data);
+//typedef long		(*read_pixel)(unsigned char *adr);
+//typedef void		(*put_pixel)(short x, short y, long data);
+//typedef unsigned long	(*get_pixel)(unsigned char *scrbase, short bypl, short x, short y);
+//typedef void		(*raster_op)(unsigned char *srcbase, short srcbypl, unsigned char *dstbase, short dstbypl, short width, short height, short dir);
+
+typedef raster_blit raster_blits[16];
+typedef pixel_blit pixel_blits[16];
+
+
+ /* The default functions here work with all color depths, and is copied
+  * to the current drawers structure. Drivers contain one such structure for each 
+  * color-depth mode (1, 2, 4, 8, 15, 16, 24 and 32 bit color modes) respectively.
+ */
 struct ovdi_drawers
 {
- /* color/hardware dependant functions.*/
-	void	(*draw_filledrect)	( VIRTUAL *v, VDIRECT *corners, PatAttr *ptrn);
-	void	(*draw_arc)		( VIRTUAL *v, short xc, short yc, short xrad, short beg_ang, short end_ang, short *points, PatAttr *ptrn);
-	void	(*draw_pieslice)	( VIRTUAL *v, short xc, short yc, short xrad, short beg_ang, short end_ang, short *points, PatAttr *ptrn);
-	void	(*draw_circle)		( VIRTUAL *v, short xc, short yc, short xrad, short *points, PatAttr *ptrn);
-	void	(*draw_ellipse)		( VIRTUAL *v, short xc, short yc, short xrad, short yrad, short *points, PatAttr *ptrn);
-	void	(*draw_ellipsearc)	( VIRTUAL *v, short xc, short yc, short xrad, short yrad, short beg_ang, short end_ang, short *points, PatAttr *ptrn);
-	void	(*draw_ellipsepie)	( VIRTUAL *v, short xc, short yc, short xrad, short yrad, short beg_ang, short end_ang, short *points, PatAttr *ptrn);
-	void	(*draw_rbox)		( VIRTUAL *v, short gdp_code, VDIRECT *corners, PatAttr *ptrn);
-	void	(*draw_abline)		( VIRTUAL *v, struct vdirect *pnts, PatAttr *ptrn);
-	void	(*draw_habline)		( VIRTUAL *v, short x1, short x2, short y, PatAttr *ptrn);
-	void	(*draw_wideline)	( VIRTUAL *v, short *pts, long numpts, short *points, long pointasize, PatAttr *ptrn);
-	void	(*draw_spans)		( VIRTUAL *v, short x1, short x2, short y, PatAttr *ptrn);
-	void	(*draw_filledpoly)	( VIRTUAL *v, short *pts, short n, short *points, long pointasize, PatAttr *ptrn);
+ 
+	void		(*draw_filledrect)	( VIRTUAL *v, VDIRECT *corners, PatAttr *ptrn);
+	void		(*draw_arc)		( VIRTUAL *v, short xc, short yc, short xrad, short beg_ang, short end_ang, short *points, PatAttr *ptrn);
+	void		(*draw_pieslice)	( VIRTUAL *v, short xc, short yc, short xrad, short beg_ang, short end_ang, short *points, PatAttr *ptrn);
+	void		(*draw_circle)		( VIRTUAL *v, short xc, short yc, short xrad, short *points, PatAttr *ptrn);
+	void		(*draw_ellipse)		( VIRTUAL *v, short xc, short yc, short xrad, short yrad, short *points, PatAttr *ptrn);
+	void		(*draw_ellipsearc)	( VIRTUAL *v, short xc, short yc, short xrad, short yrad, short beg_ang, short end_ang, short *points, PatAttr *ptrn);
+	void		(*draw_ellipsepie)	( VIRTUAL *v, short xc, short yc, short xrad, short yrad, short beg_ang, short end_ang, short *points, PatAttr *ptrn);
+	void		(*draw_rbox)		( VIRTUAL *v, short gdp_code, VDIRECT *corners, PatAttr *ptrn);
+	void		(*draw_abline)		( VIRTUAL *v, struct vdirect *pnts, PatAttr *ptrn);
+	void		(*draw_habline)		( VIRTUAL *v, short x1, short x2, short y, PatAttr *ptrn);
+	void		(*draw_wideline)	( VIRTUAL *v, short *pts, long numpts, short *points, long pointasize, PatAttr *ptrn);
+	void		(*draw_spans)		( VIRTUAL *v, short x1, short x2, short y, PatAttr *ptrn);
+	void		(*draw_filledpoly)	( VIRTUAL *v, short *pts, short n, short *points, long pointasize, PatAttr *ptrn);
 
-	void	(*rt_cpyfm)		( VIRTUAL *v, MFDB *src, MFDB *dst, short *pnts, short fgcol, short bgcol, short wrmode);
-	void	(*ro_cpyfm)		( VIRTUAL *v, MFDB *src, MFDB *dst, short *pts, short wrmode);
+	void		(*rt_cpyfm)		( VIRTUAL *v, MFDB *src, MFDB *dst, short *pnts, short fgcol, short bgcol, short wrmode);
+	void		(*ro_cpyfm)		( VIRTUAL *v, MFDB *src, MFDB *dst, short *pts, short wrmode);
 
- /**/
-	void	(*draw_pixel)		( unsigned char *adr, long data);
-	void	(*read_pixel)		( unsigned char *adr, long data);
-	void	(*put_pixel)		( unsigned char *base, short bypl, short x, short y, long data);
-	void	(*get_pixel)		( unsigned char *base, short bypl, short x, short y);
+ /* Functions below here is always color-depth dependant. If driver dont provide
+  * these, standard and VERY, VERY slow ones are used. */
+	void		(*draw_pixel)		( unsigned char *adr, long data);
+	void		(*read_pixel)		( unsigned char *adr, long data);
+	void		(*put_pixel)		( unsigned char *base, short bypl, short x, short y, unsigned long data);
+	unsigned long	(*get_pixel)		( unsigned char *base, short bypl, short x, short y);
 
-	void	(*raster_op)		(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
+	/*pixel_blits	vdi_pixels;*/
+	pixel_blits	drp;
+	pixel_blits	dlp;
+	pixel_blits	pixel_blits;
+	raster_blits	raster_blits;
 
-	void	(*draw_mcurs)		(XMFORM *mf, short x, short y);
-	void	(*undraw_mcurs)		(XMSAVE *ms);
+	draw_mc		draw_mcurs;
+	undraw_mc	undraw_mcurs;
+
 };
 typedef struct ovdi_drawers OVDI_DRAWERS;
 
@@ -256,6 +345,5 @@ struct ovdi_utils
 	long	cnv_d2v_rsv[4];
 };
 typedef struct ovdi_utils OVDI_UTILS;
-#endif
 
 #endif	/* _OVDI_DEFS_H */

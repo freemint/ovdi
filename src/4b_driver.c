@@ -45,7 +45,7 @@ void dp_REPLACE_4b	(unsigned char *addr, long data);
 
 /* typedef void (*dlp_draw)(unsigned char *addr, short bit); */
 
-draw_pixel dlp_4b_TRANS_func[] =
+pixel_blit dlp_4b_TRANS_func[] =
 {
 	dlp_TRNS_c00_4b,
 	dlp_TRNS_c01_4b,
@@ -65,7 +65,7 @@ draw_pixel dlp_4b_TRANS_func[] =
 	dlp_TRNS_c15_4b
 };
 
-draw_pixel dlp_4b_OR_func[] =
+pixel_blit dlp_4b_OR_func[] =
 {
 	dlp_TRNS_c15_4b,
 	dlp_TRNS_c14_4b,
@@ -85,7 +85,7 @@ draw_pixel dlp_4b_OR_func[] =
 	dlp_TRNS_c00_4b
 };
 
-draw_pixel dlp_4b_XOR_func[] =
+pixel_blit dlp_4b_XOR_func[] =
 {
 	dlp_XOR_c00_4b,
 	dlp_XOR_c00_4b,
@@ -104,7 +104,7 @@ draw_pixel dlp_4b_XOR_func[] =
 	dlp_XOR_c00_4b
 };
 
-draw_pixel dlp_4b_REP_func[] =
+pixel_blit dlp_4b_REP_func[] =
 {
 	dlp_REP_c00_4b,
 	dlp_REP_c01_4b,
@@ -124,7 +124,7 @@ draw_pixel dlp_4b_REP_func[] =
 	dlp_REP_c15_4b
 };
 
-draw_pixel dpf_4b[] =
+pixel_blit dpf_4b[] =
 {
 	dp_REPLACE_4b,
 	0,
@@ -133,7 +133,10 @@ draw_pixel dpf_4b[] =
 	dp_XOR_4b,
 	0,
 	dp_TRANSPARENT_4b,
-	0
+	0,
+
+	0,0,0,0,
+	0,0,0,0
 };
 
 void

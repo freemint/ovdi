@@ -14,12 +14,14 @@
 void
 vswr_mode( VDIPB *pb, VIRTUAL *v)
 {
-	lvswr_mode( v, pb->intin[0]);
-	lvsf_wrmode( v, pb->intin[0]);		/* Fill writing mode */
-	lvsudf_wrmode( v, pb->intin[0]);	/* User defined fill writing mode */
-	lvsl_wrmode( v, pb->intin[0]);		/* line writing mode */
-	lvsprm_wrmode( v, pb->intin[0]);	/* perimeter writing mode */
-	lvst_wrmode( v, pb->intin[0]);		/* Text writing mode */
+	short wrmode;
+	wrmode = pb->intin[0];
+	lvswr_mode( v, wrmode);
+	lvsf_wrmode( v, wrmode);		/* Fill writing mode */
+	lvsudf_wrmode( v, wrmode);	/* User defined fill writing mode */
+	lvsl_wrmode( v, wrmode);		/* line writing mode */
+	lvsprm_wrmode( v, wrmode);	/* perimeter writing mode */
+	lvst_wrmode( v, wrmode);		/* Text writing mode */
 	pb->intout[0] = v->wrmode + 1;
 	return;
 }

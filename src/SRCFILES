@@ -23,6 +23,7 @@ HEADER = \
 	ovdi_defs.h \
 	ovdi_dev.h \
 	ovdi_types.h \
+	patch_gem.h \
 	polygon.h \
 	rasters.h \
 	res.h \
@@ -71,6 +72,7 @@ COBJS = \
 	mousedrv.c \
 	ovdi.c \
 	ovdi_dev.c \
+	patch_gem.c \
 	polygon.c \
 	rasters.c \
 	sysfonts.c \

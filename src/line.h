@@ -9,6 +9,7 @@ short clip_line (VDIRECT *input, VDIRECT *clip);
 
 void abline (VIRTUAL *v, VDIRECT *pnts, PatAttr *ptrn);
 void habline (VIRTUAL *v, short x1, short x2, short y, PatAttr *ptrn);
+void vabline (VIRTUAL *v, short y1, short y2, short x, PatAttr *ptrn);
 void wide_line (VIRTUAL *v, short *pts, long n, short *points, long pointasize, PatAttr *ptrn);
 void pline (VIRTUAL *v, short *pts, long n, short *points, long pointasize, PatAttr *ptrn);
 void pmarker (VIRTUAL *v, POINT *origin, short type, short size, short w_in, short h_in, PatAttr *ptrn);

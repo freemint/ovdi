@@ -64,6 +64,7 @@ struct spd_trnfmd
 };
 typedef struct spd_trnfmd SPD_TRNFMD;
 
+struct	vf_bitmap_size;
 struct	vf_bitmap_size
 {
 	short	height;
@@ -130,7 +131,17 @@ struct vf_size_metrics
 
 };
 typedef struct vf_size_metrics VF_SIZE_METRICS;
-		
+
+struct vf_face;
+struct vf_sizerec
+{
+	struct vf_face		*parent;
+	struct vf_size_metrics	metrics;
+	struct vf_generic	generic;
+	void			*internal;
+};
+typedef struct vf_sizerec VF_SIZEREC;
+	
 struct vf_face
 {
 	long		lib_handle;
@@ -150,7 +161,7 @@ struct vf_face
 	long		num_fixed_sizes;
 	long		num_charmaps;
 
-	VF_SIZE_METRICS	size;
+	VF_SIZEREC	size;
 	/*
 	 * Only used with bitmap fonts
 	*/
@@ -170,6 +181,8 @@ struct vf_face
 	short		underline_thickness;
 
 	struct vf_charmaprec	charmap;
+
+	void		*internal;
 };
 typedef struct vf_face VF_FACE;
 

@@ -68,6 +68,9 @@ static OVDI_LIB ovdilib =
 	memset,
 	bcopy,
 	bzero,
+	
+	strlen,
+	strcpy,
 
 	omalloc,
 	free_mem,
@@ -132,7 +135,7 @@ char sysf08_name[16]	= { "\0" };
 char sysf09_name[16]	= { "\0" };
 char sysf10_name[16]	= { "\0" };
 
-
+#if 0
 long
 getstack(void)
 {
@@ -145,6 +148,7 @@ getstack(void)
 	);
 	return ret;
 }
+#endif
 
 long
 ovdi_init(void)
@@ -168,20 +172,31 @@ ovdi_init(void)
 	//ovdi_cnf_file[0] = bootdev;
 	module_path[0] = bootdev;
 	gdf_path[0] = bootdev;
-	tmp_file[0] = bootdev;
+	//tmp_file[0] = bootdev;
 
 	/*
 	 * Load and parse ovdi.cnf
 	*/
 	loadparse_ovdi_cnf();
 
-#if 0
-	init_gdfdrv(&ovdilib, &md, "built in", "built in");
-	hw->font = md.fnt;
+#if 1
+	{
+		long fh;
+		VF_FACE *vff;
+		
+		init_gdfdrv(&ovdilib, &md, "built in", "built in");
+		hw->font = md.fnt;
+	
+		fh = (*hw->font->open)();
 
-	(void)(*hw->font->load_fonts)(gdf_path, vdi_fontlist);
-
-	return -1;
+		(void)(*hw->font->load_fonts)(fh, gdf_path, vdi_fontlist);
+		(*hw->font->open_face_by_index)(fh, 1, &vff);
+		(*hw->font->open_face_by_index)(fh, 2, &vff);
+		(*hw->font->open_face_by_index)(fh, 3, &vff);
+		(*hw->font->open_face_by_index)(fh, 4, &vff);
+		(*hw->font->unload_fonts)(fh);
+		return -1;
+	}
 #endif
 
 	install_eddi();
@@ -578,12 +593,18 @@ cnf_vdifonts(int num, char *path)
 	 * and we need to create the temp file
 	*/
 	if (num == 0)
+	{
 		fh = Fcreate( (char *) &tmp_file, O_RDWR);
+		//scrnlog("created temp file %s\n", tmp_file);
+	}
 	/*
 	 * Subsequent fonts, just open temp file ..
 	*/
 	else if (num > 0)
+	{
 		fh = Fopen( (char *) &tmp_file, O_RDWR);
+		//scrnlog("Opened temp file %s\n", tmp_file);
+	}
 	/*
 	 * if num == 1, there are no more arguments coming,
 	 * and we allocate ram for the list, load file into that ram,
@@ -615,6 +636,7 @@ cnf_vdifonts(int num, char *path)
 				scrnlog("no memory??\n");
 		}
 		Fdelete( (char *)&tmp_file );
+		//scrnlog("deleting temp file %s\n", tmp_file);
 		if (mem)
 			mem[fs] = mem[fs + 1] = 0;
 
@@ -632,9 +654,14 @@ cnf_vdifonts(int num, char *path)
 	if (fh > 0)
 	{
 		Fseek ( 0L, fh, SEEK_END );
+		//scrnlog("writing %s to temp file %s\n", path, tmp_file);
 		Fwrite ( fh, (long)strlen(path) + 1, path);
 		Fclose (fh);
 	}
+#if 0
+	else
+		scrnlog("tempfile handle %lx\n", fh);
+#endif
 }
 /*
  * Set the font-cache size

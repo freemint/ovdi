@@ -3,6 +3,8 @@
 
 #include "vdi_font.h"
 
+#define FONTTYPE_GEMDOS	1
+
 struct fontapi
 {
 	struct fontapi	*nxtapi;
@@ -12,13 +14,16 @@ struct fontapi
 	char		*filename;
 	char		*pathname;
 
-	long		(*load_fonts)		(char *path, char *names);
-	void		(*unload_fonts)		(void);
-	
+	long		fonttype;
+
 	long		(*open)			(void);
-	long		(*open_face)		(long handle, char *filename, long ind, VF_FACE *vff);
-	long		(*open_face_by_index)	(long handle, long index, VF_FACE *vff);
-	long		(*open_face_by_id)	(long handle, long id, VF_FACE *vff);
+
+	long		(*load_fonts)		(long handle, char *path, char *names);
+	void		(*unload_fonts)		(long handle);
+	
+	long		(*open_face)		(long handle, char *filename, long ind, VF_FACE **vff);
+	long		(*open_face_by_index)	(long handle, long index, VF_FACE **vff);
+	long		(*open_face_by_id)	(long handle, long id, VF_FACE **vff);
 
 	void		(*set_char_pointsize)	(VF_FACE *, long point);
 	void		(*set_char_size)	(VF_FACE *, long width, long height);

@@ -318,7 +318,6 @@ dev_get_res_info(OVDI_DRIVER *drv)
 	{
 		case VMODE_LOW:		/* 320x200 4bpp */
 		{
-			//drv->r.planes	= 4;
 			drv->r.bypl	= (320 >> 4) << 3;
 			drv->palette	= 4096;
 			drv->r.w	= 320;
@@ -334,15 +333,10 @@ dev_get_res_info(OVDI_DRIVER *drv)
 			drv->scr_size	= drv->vram_size;
 
 			drv->r.res	= *drv->drawers_1b->res;
-			//drv->r.format		= PF_ATARI;
-			//drv->r.pixelformat	= pf_tt;
-			//drv->r.clut		= 1;
-			//drv->r.pixlen		= -4;
 			break;
 		}
 		case VMODE_MED:		/* 640x200 2bpp */
 		{
-			//drv->r.planes	= 2;
 			drv->r.bypl	= 80;
 			drv->palette	= 4096;
 			drv->r.w	= 640;
@@ -358,10 +352,6 @@ dev_get_res_info(OVDI_DRIVER *drv)
 			drv->scr_size	= drv->vram_size;
 
 			drv->r.res	= *drv->drawers_2b->res;
-			//drv->r.format		= PF_ATARI;
-			//drv->r.pixelformat	= pf_tt;
-			//drv->r.clut		= 1;
-			//drv->r.pixlen		= -2;
 			break;
 		}
 		case VMODE_HI: 		/* 640x400 mono */
@@ -449,109 +439,6 @@ dev_get_res_info(OVDI_DRIVER *drv)
 
 	//(*l->scrnlog)("got scrnadr %lx, r.len %ld, planes %d\n", drv->vram_start, drv->r.lenght, drv->r.planes);
 
-#if 0
-	drv->r.sync		= 0; 	/* sync */
-	drv->r.planes		= x->planes;
-	drv->r.bypl		= x->bypl;
-	drv->palette		= x->colors;
-	drv->r.x1 = drv->r.y1	= 0;
-	drv->r.x2		= x->max_x;
-	drv->r.y2		= x->max_y;
-	drv->r.w		= x->max_x + 1;
-	drv->r.h		= x->max_y + 1;
-	drv->v_top		= x->v_top;
-	drv->v_bottom		= x->v_bottom;
-	drv->v_left		= x->v_left;
-	drv->v_right		= x->v_right;
-	drv->vram_start		= x->base;
-	drv->vram_size		= x->mem_size;
-	drv->scr_size		= x->scrn_siz;
-	drv->r.lenght		= x->scrn_siz;
-	drv->r.base		= x->scr_base;
-	drv->r.flags = drv->r.realflags = R_IS_SCREEN | R_IN_VRAM;
-
-	fmt = *(short *)x->hw_flags;
-
-	if (drv->r.planes == 1)
-	{
-		drv->r.format		= PF_ATARI;
-		drv->r.pixelformat	= pf_tt;
-		drv->r.clut		= 1;
-		drv->r.pixlen		= -1;
-	}
-	else if (drv->r.planes == 4)
-	{
-		drv->r.format		= PF_ATARI;
-		drv->r.pixelformat	= pf_nova;
-		drv->r.clut		= 1;
-		drv->r.pixlen		= -4;
-	}
-	else if (drv->r.planes == 8)
-	{
-		drv->r.format		= PF_PACKED;
-		drv->r.pixelformat	= pf_nova;
-		drv->r.clut		= 1;
-		drv->r.pixlen		= 1;
-	}
-	else if (drv->r.planes == 15)
-	{
-		drv->r.format		= PF_PACKED;
-		drv->r.pixelformat	= pf_15bI;
-		drv->r.clut		= 0;
-		drv->r.pixlen		= 2;
-	}
-	else if (drv->r.planes == 16)
-	{
-		drv->r.format		= PF_PACKED;
-		drv->r.pixelformat	= pf_16bI;
-		drv->r.clut		= 0;
-		drv->r.pixlen		= 2;
-	}
-	else if (drv->r.planes == 24)
-	{
-		drv->r.clut	= 0;
-
-		if (!fmt & 1)
-		{
-			drv->r.format		= PF_PACKED | PF_BE;
-			drv->r.pixelformat	= pf_24bM;
-		}
-		else
-		{
-			drv->r.format		= PF_PACKED;
-			drv->r.pixelformat	= pf_24bI;
-		}
-		drv->r.pixlen	= 3;
-	}
-	else if (drv->r.planes == 32)
-	{
-		short format = ((fmt >> 1) & 3);
-
-		drv->r.clut		= 0;
-
-		if (!format)
-		{
-			drv->r.format		= PF_PACKED;
-			drv->r.pixelformat	= pf_32bI;
-		}
-		else if (fmt == 1)
-		{
-			drv->r.format		= PF_PACKED | PF_BE;
-			drv->r.pixelformat	= pf_32bM;
-		}
-		else
-		{
-			drv->r.format		= PF_PACKED | PF_BS;
-			drv->r.pixelformat	= pf_32bIbs;
-		}
-		drv->r.pixlen	= 4;
-	}
-	else
-	{
-		return -1;
-	}
-#endif
-	//(void)Cnecin();
 	return 0;
 }
 

@@ -13,3 +13,10 @@ include $(top_srcdir)/../../DEPENDENCIES
 $(LIBKERNTARGET) $(LIBKERNSTMP):
 	cd $(top_srcdir)/../../sys/libkern; \
 		$(MAKE) CPU="$(CPU)" libkern$(CPU).a
+
+#
+# libgeneric target
+#
+$(LIBGENERICTARGET) $(LIBGENERICSTMP):
+	cd $(top_srcdir)/drivers/generic; \
+		$(MAKE) libgeneric.a

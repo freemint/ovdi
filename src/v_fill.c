@@ -180,7 +180,7 @@ v_fillarea( VDIPB *pb, VIRTUAL *v)
 		return;
 
 	clip = v->clip.flag ? (VDIRECT *)&v->clip.x1 : (VDIRECT *)&r->x1;
-	filled_poly(    r, v->colinf, &pb->ptsin[0], pb->contrl[N_PTSIN], clip, (short *)&v->spanbuff, v->spanbuffsiz,
+	DRAW_FILLEDPOLY(r, v->colinf, &pb->ptsin[0], pb->contrl[N_PTSIN], clip, (short *)&v->spanbuff, v->spanbuffsiz,
 			v->fill.interior == FIS_USER ? &v->udpat : &v->pattern);
 
 	return;
@@ -193,7 +193,7 @@ vr_recfl( VDIPB *pb, VIRTUAL *v)
 	short coords[4];
 
 	sortcpy_corners(&pb->ptsin[0], &coords[0]);
-	rectfill( r, v->colinf, (VDIRECT *)&coords[0], v->clip.flag ? (VDIRECT *)&v->clip.x1 : (VDIRECT *)&r->x1,
+	DRAW_FILLEDRECT( r, v->colinf, (VDIRECT *)&coords[0], v->clip.flag ? (VDIRECT *)&v->clip.x1 : (VDIRECT *)&r->x1,
 			v->fill.interior == FIS_USER ? &v->udpat : &v->pattern, v->fill.interior);
 	return;
 }

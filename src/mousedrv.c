@@ -19,13 +19,18 @@ used to render the mouse cursor/graphics onscreen.
 
 */
 
-#include "display.h"
-#include "linea.h"
-#include "mouse.h"
 #include "mousedrv.h"
+
+#include "display.h"
+#include "linea_vars.h"
+#include "mouse.h"
+#include "ovdi_mouse.h"
+#include "mouseapi.h"
+#include "pdvapi.h"
 #include "ovdi_defs.h"
 #include "ovdi_types.h"
 #include "../../sys/mint/arch/asm_spl.h"
+
 
 static void set_xmf_res(RASTER *r, COLINF *c);
 static void set_new_mform(MFORM *mf);
@@ -119,7 +124,7 @@ static short arrow_cdb[] =
 *  own things.
 */
 MOUSEAPI *
-init_mouse(OVDI_DRIVER *drv, LINEA_VARTAB *la)
+init_mouse(OVDI_HWAPI *hw, LINEA_VARTAB *la)
 {
 	XMFORM *xmf;
 	XMSAVE *xms;
@@ -168,11 +173,23 @@ init_mouse(OVDI_DRIVER *drv, LINEA_VARTAB *la)
 	m->interrupt	= 1;
 	m->current_xmf	= xmf;
 	m->current_xms	= xms;
+
+ /* Set up things related to the pointing device driver */
+	m->pdapi	= hw->pointdev;
+	m->cb.relcmove	= m_rel_move;
+	m->cb.abscmove	= m_abs_move;
+	m->cb.buttchng	= m_but_chg;
+	(long)m->cb.relwheel	= (long)&mdonothing;
+	(long)m->cb.abswheel	= (long)&mdonothing;
+
+#if 0
 	m->relmovmcurs	= m_rel_move;		//mouse_relative_move;
 	m->absmovmcurs	= m_abs_move;		//mouse_absolute_move;
 	m->butchg	= m_but_chg;			//mouse_buttons_change;
+#endif
 
-	m->vreschk	= drv->dev->vreschk;
+	m->vreschk	= hw->device->vreschk;
+	m->msema	= hw->device->msema;
 
 /* Gather necessary info about the graphics, and install the 'mouse rendering' (layer 3)
  * part of the threesome.
@@ -198,10 +215,12 @@ init_mouse(OVDI_DRIVER *drv, LINEA_VARTAB *la)
  * uses the 'relmovmcurs', 'absmovmcurs' and 'butchg' functions to report
  * to layer 1 any movements/button changes
 */
-	init_mouse_device(m);	/* Let the pointing device driver (layer 2) initialize */
+	(*m->pdapi->install)(&m->cb, &m->pdi);
 
-	ma->buttons	= m->buttons;
-	ma->wheels	= m->wheels;
+	ma->buttons	= m->pdi.buttons;
+	ma->wheels	= m->pdi.wheels;
+	ma->type	= m->pdi.type;
+
 	m->bs_mask	= ~(0xffff << ma->buttons);
 
 /* Now the mouse driver is ready for action. The VDI now have to intall the mouse
@@ -217,7 +236,7 @@ enable_mouse(void)
 {
 	MOUSEDRV *m = &md;
 
-	(*m->start)();			/* start the mouse device driver */
+	(*m->pdapi->start)();			/* start the mouse device driver */
 	m->flags |= MDRV_ENABLED;	/* Indicate mouse is enabled */
 	return;
 }
@@ -229,7 +248,7 @@ disable_mouse(void)
 	if (m->flags & MDRV_ENABLED)
 	{
 		disable_mouse_curs();
-		(*m->stop)();			/* stop the mouse device driver */
+		(*m->pdapi->stop)();			/* stop the mouse device driver */
 		m->flags &= ~MDRV_ENABLED;	/* Indicate mouse is disabled */
 	}
 	return;
@@ -540,14 +559,16 @@ mouse_interrupt()
 {
 	register MOUSEDRV *m = &md;
 
-	if (!(m->flags & MDRV_ENABLED) || m->interrupt)
+	if ( !(m->flags & MDRV_ENABLED) || m->interrupt)
 		return;
+
+	m->interrupt++;
 
 	if (m->flags & MC_ENABLED)
 	{
-
 		if (m->flags & MC_MOVED)
 		{
+			MOUSE_SEMA(m);
 			if (!m->hide_ct)
 			{
 				(*m->undraw_mcurs)(m->current_xms);
@@ -560,7 +581,7 @@ mouse_interrupt()
 			m->flags &= ~MC_MOVED;
 		}
 	}
-	return;
+	m->interrupt--;
 }
 
 static void
@@ -600,9 +621,10 @@ show_mouse_curs(short reset)
 	register MOUSEDRV *m = &md;
 
 	m->interrupt++;
+
 	if ((m->flags & MC_ENABLED) && m->hide_ct)
 	{
-
+		MOUSE_SEMA(m);
 		if (reset)
 		{
 			/* If a reset, check if cursor was shown and undraw if it was.
@@ -610,6 +632,7 @@ show_mouse_curs(short reset)
 			*/
 			if (!m->hide_ct)
 				(*m->undraw_mcurs)(m->current_xms);
+
 			m->hide_ct = 1;
 		}
 
@@ -622,7 +645,6 @@ show_mouse_curs(short reset)
 		}
 	}
 	m->interrupt--;
-	return;
 }
 
 static void
@@ -633,6 +655,7 @@ hide_mouse_curs(void)
 	m->interrupt++;
 	if (m->flags & MC_ENABLED)
 	{
+		MOUSE_SEMA(m);
 		if (!m->hide_ct)
 			(*m->undraw_mcurs)(m->current_xms);
 

@@ -21,19 +21,16 @@ rectfill( RASTER *r, COLINF *c, VDIRECT *corners, VDIRECT *clip, PatAttr *ptrn, 
 
 	if (	(interior == FIS_SOLID || interior == FIS_HOLLOW
 		|| (ptrn->height == 1 && ptrn->width == 16 && (color == 0xffff || color == 0)) )
-		&&  r->drawers->draw_solid_rect
+		&&  DRAW_SOLID_RECT_PTR(r)
 	   )
 	{
 		wrmode	= ptrn->wrmode;
 		color	= interior == FIS_SOLID ? ptrn->color[wrmode] : ptrn->bgcol[wrmode];
 
-		(*r->drawers->draw_solid_rect)(r, c, (short *)&clipped, wrmode, color);
+		DRAW_SOLID_RECT(r, c, (short *)&clipped, wrmode, color);
 	}
 	else
-	{
-		draw_mspans( r, c, clipped.x1, clipped.x2, clipped.y1, clipped.y2, ptrn);
-	}
-	return;
+		DRAW_MSPANS( r, c, clipped.x1, clipped.x2, clipped.y1, clipped.y2, ptrn);
 }
 
 void
@@ -304,15 +301,14 @@ clc_arc(VIRTUAL *v, short gdp_code, short xc, short yc, short xrad, short yrad, 
 	}
 
 	if ((gdp_code == 2) || (gdp_code == 6))	/* Open arc */
-		pline( r, c, points, n_steps + 1, clip, (short *)&v->spanbuff, v->spanbuffsiz, latr, ptrn);
+		DRAW_PLINE( r, c, points, n_steps + 1, clip, (short *)&v->spanbuff, v->spanbuffsiz, latr, ptrn);
 	else
 	{
-		filled_poly( r, c, points, n_steps + 1, clip, (short *)&v->spanbuff, v->spanbuffsiz, ptrn);
+		DRAW_FILLEDPOLY( r, c, points, n_steps + 1, clip, (short *)&v->spanbuff, v->spanbuffsiz, ptrn);
 
 		if (v->fill.perimeter)
-			pline( r, c, points, n_steps +1, clip, (short *)&v->spanbuff, v->spanbuffsiz, latr, &v->perimdata);
+			DRAW_PLINE( r, c, points, n_steps +1, clip, (short *)&v->spanbuff, v->spanbuffsiz, latr, &v->perimdata);
 	}
-	return;
 }
 
 
@@ -402,12 +398,12 @@ draw_rbox(VIRTUAL *v, short gdp_code, VDIRECT *corners, PatAttr *ptrn)
 
 	if (gdp_code == 8)
 	{
-		pline( r, c, (short *)&points, 21, clip, (short *)&v->spanbuff, v->spanbuffsiz, latr, ptrn);
+		DRAW_PLINE( r, c, (short *)&points, 21, clip, (short *)&v->spanbuff, v->spanbuffsiz, latr, ptrn);
 	}
 	else
 	{
-		filled_poly( r, c, (short *)&points, 21, clip, (short *)&v->spanbuff, v->spanbuffsiz, ptrn);
+		DRAW_FILLEDPOLY( r, c, (short *)&points, 21, clip, (short *)&v->spanbuff, v->spanbuffsiz, ptrn);
 		if (v->fill.perimeter)
-			pline( r, c, (short *)&points, 21, clip, (short *)&v->spanbuff, v->spanbuffsiz, latr, &v->perimdata);
+			DRAW_PLINE( r, c, (short *)&points, 21, clip, (short *)&v->spanbuff, v->spanbuffsiz, latr, &v->perimdata);
 	}
 }

@@ -29,8 +29,6 @@ lvsm_linetype( VIRTUAL *v, register short linetype )
 	v->pmrkdat.wwidth = 1;
 	v->pmrkdat.planes = 1;
 	v->pmrkdat.data = &v->pmarker.data;
-
-	return;
 }
 
 void
@@ -40,7 +38,6 @@ vsm_color( VDIPB *pb, VIRTUAL *v)
 	pb->intout[0] = v->colinf->color_hw2vdi[v->pmarker.color];
 
 	pb->contrl[N_INTOUT] = 1;
-	return;
 }
 
 void
@@ -51,7 +48,6 @@ vsm_height( VDIPB *pb, VIRTUAL *v)
 	pb->ptsout[1] = v->pmarker.height;
 
 	pb->contrl[N_PTSOUT] = 1;
-	return;
 }
 
 void
@@ -61,7 +57,6 @@ vsm_type( VDIPB *pb, VIRTUAL *v)
 	pb->intout[0] = v->pmarker.type;
 
 	pb->contrl[N_INTOUT] = 1;
-	return;
 }
 
 void
@@ -82,7 +77,6 @@ lvsm_color( VIRTUAL *v, short color)
 	v->pmrkdat.color[0] = v->pmrkdat.color[1] = color;
 	v->pmrkdat.color[2] = v->pmrkdat.color[3] = planes > 8 ? 0x0 : 0xff;
 	v->pmarker.color = color;
-	return;
 }
 void
 lvsm_bgcolor( VIRTUAL *v, short color)
@@ -102,7 +96,6 @@ lvsm_bgcolor( VIRTUAL *v, short color)
 	v->pmrkdat.bgcol[0] = v->pmrkdat.bgcol[1] = color;
 	v->pmrkdat.bgcol[2] = v->pmrkdat.bgcol[3] = planes > 8 ? 0x0 : 0xff;
 	v->pmarker.bgcol = color;
-	return;
 }
 
 
@@ -111,7 +104,6 @@ lvsm_height( VIRTUAL *v, short height)
 {
 	v->pmarker.height = height;
 	v->pmarker.width = height;
-	return;
 }
 
 void
@@ -124,7 +116,6 @@ lvsm_type( VIRTUAL *v, short type)
 		type = MAX_PMARKERTYPE;
 
 	v->pmarker.type = type - 1;
-	return;
 }
 
 void
@@ -135,27 +126,28 @@ v_pmarker( VDIPB *pb, VIRTUAL *v)
 	register short count, type, height, width;
 	POINT *inpts;
 	POINT pts;
+	Fpmarker f;
 
 	count = pb->contrl[N_PTSIN] - 1;
 
 	if (count < 0)
 		return;
 	
-	r = v->raster;
-	clip = v->clip.flag ? (VDIRECT *)&v->clip.x1 : (VDIRECT *)&r->x1;
+	r	= v->raster;
+	f	= DRAW_PMARKER_PTR(r);
+	clip	= v->clip.flag ? (VDIRECT *)&v->clip.x1 : (VDIRECT *)&r->x1;
 
-	inpts = (POINT *)&pb->ptsin[0];
-	width = v->pmarker.width;
-	height = v->pmarker.height;
-	type = v->pmarker.type;
+	inpts	= (POINT *)&pb->ptsin[0];
+	width	= v->pmarker.width;
+	height	= v->pmarker.height;
+	type	= v->pmarker.type;
 
 	while (count >= 0)
 	{
 		pts = *inpts++;
-		pmarker( r, v->colinf, &pts, clip, type, 0, width, height, &v->pmrkdat);
+		(*f)( r, v->colinf, &pts, clip, type, 0, width, height, &v->pmrkdat);
 		count--;
 	}
-	return;
 }
 
 void
@@ -170,5 +162,4 @@ vqm_attributes( VDIPB *pb, VIRTUAL *v)
 
 	pb->contrl[N_INTOUT] = 3;
 	pb->contrl[N_PTSOUT] = 1;
-	return;
 }

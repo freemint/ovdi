@@ -2,6 +2,7 @@
 #define _TABLES_H
 
 #include "gdf_defs.h"
+#include "libkern.h"
 #include "ovdi.h"
 #include "ovdi_defs.h"
 #include "vdi_defs.h"
@@ -17,40 +18,6 @@
 #include "v_text.h"
 #include "v_time.h"
 #include "workstation.h"
-
-short	scrsizmm_x;
-short	scrsizmm_y;
-
-short	sysfnt_minwchar;
-short	sysfnt_maxwchar;
-short	sysfnt_minhchar;
-short	sysfnt_maxhchar;
-short	sysfnt_faces;
-
-struct	xgdf_head *sysfnt08p = 0;
-struct	xgdf_head *sysfnt09p = 0;
-struct	xgdf_head *sysfnt10p = 0;
-
-struct	xgdf_head xsystemfont08;
-struct	xgdf_head xsystemfont09;
-struct	xgdf_head xsystemfont10;
-
-LINEA_VARTAB	*linea_vars;
-LINEA_VARTAB	la_vt;
-VIRTUAL		wks1;
-VIRTUAL		la_wks;
-RASTER		root_raster;
-RGB_LIST	rgb_levels;
-RGB_LIST	rgb_bits;
-long		realpixels[256];
-RGB_LIST	req_pens[256];
-RGB_LIST	act_pens[256];
-
-
-OVDI_LIB	ovdilib =
-{
-	get_cookie
-};
 
 OVDI_VTAB v_vtab[MAX_VIRTUALS];
 void (*v_jmptab[])() = {
@@ -418,6 +385,7 @@ short HW2VDI_colorindex[256] =
 	0xF8, 0xF9, 0xFA, 0xFB, 0xFC, 0xFD, 0xFE, 0x01
 };
 
+#if 0
 char ICB_MouseAccTab[12] =
  { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 255 };
 
@@ -431,10 +399,7 @@ short CalibColTab[18] =
 	0,   255,   0,
 	0,     0, 255
 };
-
-PatAttr WhiteRect;
-PatAttr BlackRect;
-
+#endif
 
 /* pmaker definitions taken from fVDI (line.c) */
 /* m_dot, m_plus, m_star, m_square, m_cross, m_dmnd */

@@ -18,12 +18,14 @@ pline(RASTER *r, COLINF *c, short *pts, long n, VDIRECT *clip, short *points, lo
 {
 	VDIRECT line, clipped;
 	register short x, y;
+	Fabline dl;
 
 	if ((n -= 2) < 0)
 		return;
-	
 	x = *pts++;
 	y = *pts++;
+
+	dl = DRAW_ABLINE_PTR(r);
 
 	while (n >= 0)
 	{
@@ -36,15 +38,13 @@ pline(RASTER *r, COLINF *c, short *pts, long n, VDIRECT *clip, short *points, lo
 		clipped = line;
 
 		if (clip_line(&clipped, clip))
-			abline( r, c, &clipped, ptrn);
+			(*dl)(r, c, &clipped, ptrn);
 
 		if ((latr->beg | latr->end) & LE_ARROW)
 			do_arrow( r, c, (short *)&line, 2, clip, points, pointasize, latr, ptrn);
 
 		n--;
 	}
-
-	return;
 }
 
 /* Taken from fVDI (line.c), modified by Odd Skancke */
@@ -125,7 +125,6 @@ clip_line(VDIRECT *input, VDIRECT *clip)
  *
  * Taken from EmuTOS (monout.c), almost totally rewritten by Odd Skancke
 */
-
 void
 abline (RASTER *r, COLINF *c, struct vdirect *pnts, PatAttr *ptrn)
 {
@@ -163,13 +162,13 @@ abline (RASTER *r, COLINF *c, struct vdirect *pnts, PatAttr *ptrn)
 
 	if (!(dy = y2 - y1))
 	{
-		habline(r, c, x1, x2, y1, ptrn);
+		DRAW_HLINE(r, c, x1, x2, y1, ptrn);
 		return;
 	}
 
 	if (!(dx = x2 - x1))
 	{
-		vabline(r, c, y1, y2, x1, ptrn);
+		DRAW_VLINE(r, c, y1, y2, x1, ptrn);
 		return;
 	}
 
@@ -198,6 +197,8 @@ abline (RASTER *r, COLINF *c, struct vdirect *pnts, PatAttr *ptrn)
 	dlp_fg = r->drawers->dlp[planes];
 	dlp_bg = r->drawers->dlp[planes + 1];
 	planes = r->planes;
+
+	SYNC_RASTER(r);
 
 	if (planes < 8)
 	{
@@ -403,6 +404,8 @@ habline (RASTER *r, COLINF *c, short x1, short x2, short y, PatAttr *ptrn)
 	planes	= r->planes;
 	bypl	= r->bypl;
 
+	SYNC_RASTER(r);
+
 	if (planes < 8)
 	{
 		short bitcount, shift;
@@ -471,7 +474,7 @@ habline (RASTER *r, COLINF *c, short x1, short x2, short y, PatAttr *ptrn)
 	}
 }
 /*
- * habline - draw a horizontal line
+ * vabline - draw a vertical line
  * Written by Odd Skancke
  */
 void
@@ -514,6 +517,8 @@ vabline (RASTER *r, COLINF *c, short y1, short y2, short x, PatAttr *ptrn)
 	dpf_bg	= r->drawers->dlp[planes + 1];
 	planes	= r->planes;
 	bypl	= r->bypl;
+
+	SYNC_RASTER(r);
 
 	if (planes < 8)
 	{
@@ -816,7 +821,7 @@ arrow(RASTER *r, COLINF *c, short *xy, short inc, short numpts, VDIRECT *clip, s
 	polygon[3] = *(xy + 1) - base_y - ht_y;
 	polygon[4] = *xy;
 	polygon[5] = *(xy + 1);
-	filled_poly(r, c, (short *)&polygon, 3, clip, points, pointasize, ptrn);
+	DRAW_FILLEDPOLY(r, c, (short *)&polygon, 3, clip, points, pointasize, ptrn);
 
 	/* Adjust the end point and all points skipped. */
 	*xy -= ht_x;
@@ -945,7 +950,7 @@ wide_line(RASTER *r, COLINF *c, short *pts, long numpts, VDIRECT *clip, short *p
 		*misc++ = wx2 + vx;
 		*misc   = wy2 + vy;
 
-		filled_poly(r, c, (short *)&polygon, 4, clip, points, pointasize, ptrn);
+		DRAW_FILLEDPOLY(r, c, (short *)&polygon, 4, clip, points, pointasize, ptrn);
 
 		/* The line segment end point becomes the starting point for the next
 		 * line segment.
@@ -959,6 +964,7 @@ wide_line(RASTER *r, COLINF *c, short *pts, long numpts, VDIRECT *clip, short *p
 void
 pmarker( RASTER *r, COLINF *c, POINT *center, VDIRECT *clip, short type, short size, short w_in, short h_in, PatAttr *ptrn)
 {
+	Fabline dl;
 	short i, j, num_lines;
 	short x_center, y_center;
 	short num_points;
@@ -967,6 +973,8 @@ pmarker( RASTER *r, COLINF *c, POINT *center, VDIRECT *clip, short type, short s
 	signed char nwidth[5], width[5], nheight[5], height[5];
 	short tmp;
 	short x1, y1, x2, y2;
+
+	dl = DRAW_ABLINE_PTR(r); //r->drawers->draw_abline;
 
 	for(i = 0; i <= 4; i++)
 	{
@@ -1025,9 +1033,8 @@ pmarker( RASTER *r, COLINF *c, POINT *center, VDIRECT *clip, short type, short s
 				*line++ = x2 + center->x, *line   = y2 + center->y;
 
 				if (clip_line((VDIRECT *)&coords, clip))
-					abline( r, c, (VDIRECT *)&coords, ptrn);
+					(*dl)( r, c, (VDIRECT *)&coords, ptrn);
 			}
-
 			x1 = x2;
 			y1 = y2;
 		}
@@ -1066,6 +1073,8 @@ draw_spans(RASTER *r, COLINF *c, short x1, short x2, short y, PatAttr *ptrn)
 	dpf_bg	= r->drawers->dlp[wrmode + 1];
 	planes	= r->planes;
 	bypl	= r->bypl;
+
+	SYNC_RASTER(r);
 
 	if (planes < 8)
 	{
@@ -1360,6 +1369,8 @@ draw_mspans(RASTER *r, COLINF *c, short x1, short x2, short y1, short y2, PatAtt
 	dpf_bg	= r->drawers->dlp[wrmode + 1];
 	planes	= r->planes;
 	bypl	= r->bypl;
+
+	SYNC_RASTER(r);
 
 	if (planes < 8)
 	{

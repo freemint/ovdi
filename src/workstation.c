@@ -8,30 +8,29 @@
 #include "display.h"
 #include "draw.h"
 #include "fonts.h"
+#include "file.h"
 #include "gdf_defs.h"
-#include "kbddrv.h"
 #include "libkern.h"
 #include "line.h"
 #include "linea.h"
 #include "memory.h"
-#include "mousedrv.h"
 #include "ovdi_defs.h"
 #include "ovdi_rasters.h"
-#include "polygon.h"
-#include "rasters.h"
-#include "std_driver.h"
-#include "vbi.h"
 #include "vdi_defs.h"
 #include "vdi_globals.h"
+#include "workstation.h"
+#include "xbios.h"
+
 #include "v_attribs.h"
 #include "v_fill.h"
 #include "v_input.h"
 #include "v_line.h"
 #include "v_pmarker.h"
 #include "v_text.h"
-#include "workstation.h"
-#include "xbios.h"
 
+#include "vbiapi.h"
+#include "mouseapi.h"
+#include "timerapi.h"
 
 static void change_resolution(VIRTUAL *v);
 static void update_devtab(DEV_TAB *, VIRTUAL *);
@@ -42,30 +41,25 @@ static void prepare_extreturn( VDIPB *, VIRTUAL *);
 static void prepare_scrninfreturn( VDIPB *, VIRTUAL *);
 static void get_MiNT_info(VIRTUAL *);
 static void setup_virtual(VDIPB *, VIRTUAL *, VIRTUAL *);
-static void setup_fonts(VIRTUAL *, SIZ_TAB *, DEV_TAB *);
-
-#if 0
-/* Keep a 'root' color info structure */
-static COLINF colinf;
-static short vdi2hw[256];
-static short hw2vdi[256];
-static RGB_LIST request_rgb[256];
-static RGB_LIST actual_rgb[256];
-static unsigned long pixelvalues[256];
-#endif
+static void load_vdi_fonts(VIRTUAL *, SIZ_TAB *, DEV_TAB *);
+static void unload_vdi_fonts(VIRTUAL *v);
 
 void
 v_opnwk(VDIPB *pb, VIRTUAL *wk, VIRTUAL *lawk, OVDI_HWAPI *hwapi) //struct ovdi_device *dev)
 {
 	short i, vdidev_id;
 	OVDI_DRIVER *drv;
+	OVDI_DEVICE *dev;
+	RASTER *r;
 	register struct opnwk_input *wkin;
 
 	wkin = (struct opnwk_input *)&pb->intin[0];
 
 	vdidev_id = wkin->id;
 
-	/* Cannot open anything but screen for now */
+	/*
+	 * Cannot open anything but screen for now
+	*/
 	if (vdidev_id < 1 || vdidev_id > 10)
 	{
 		//log("Only support for screen drivers!\n");
@@ -76,6 +70,10 @@ v_opnwk(VDIPB *pb, VIRTUAL *wk, VIRTUAL *lawk, OVDI_HWAPI *hwapi) //struct ovdi_
 
 	MiNT = get_cookie((long)0x4d694e54/*"MiNT"*/, 0);
 
+	/*
+	 * Hmm.. how to react when an v_opnwk() call happens on an already opened
+	 * physical workstation? 
+	*/
 	if (v_vtab[1].v)
 	{
 		scrnlog("This should absolutely NOT happen, I think\n");
@@ -84,33 +82,62 @@ v_opnwk(VDIPB *pb, VIRTUAL *wk, VIRTUAL *lawk, OVDI_HWAPI *hwapi) //struct ovdi_
 		goto error;
 	}
 
-	exit_console(hwapi->console);
-
 	drv	= hwapi->driver;
 
-	if (drv)
+	/*
+	 * If this device is not already opened, the console uses another
+	 * device. If already opened, it was opened during startup, and is
+	 * already in use by the console driver.
+	*/
+	if (!drv)
 	{
-		OVDI_DEVICE *dev;
+		/*
+		 * Graphics hardware driver not opened, do it now, then.
+		 *
+		*/
+		dev = hwapi->device;
+		drv = (*dev->open)(dev);
+		if (!drv)
+		{
+			scrnlog("v_openwk: Could not open graphics hardware device!");
+			goto error;
+		}
+
+		hwapi->driver = drv;
+		r = &drv->r;
+		init_raster(drv, r);
+	}
+	else
+	{
+		/*
+		 * Exit console while we change raster physics
+		*/
+		exit_console(hwapi->console);
+	}
+	{
 		short vdipen;
-		RASTER *r;
 		COLINF *c;
 
 		dev = drv->dev;		
 
+		/*
+		 * Ask driver to change to the specified video-mode.
+		*/
 		(void)(*dev->set_vdires)(drv, vdidev_id);
 
-		r = (RASTER *)&drv->r;
+		r = &drv->r;
 		wk->driver = drv;
 		wk->physical = drv;
 		wk->raster = r;
-
-		init_raster(drv, r);
 
 		c = hwapi->colinf;
 
 		wk->raster = r;
 		wk->colinf = c;
 
+		/*
+		 * Change variables, etc. regarding resolution....
+		*/
 		raster_reschange(r, c);
 		reschange_devtab(&DEV_TAB_rom, r);
 		reschange_inqtab(&INQ_TAB_rom, r);
@@ -118,8 +145,16 @@ v_opnwk(VDIPB *pb, VIRTUAL *wk, VIRTUAL *lawk, OVDI_HWAPI *hwapi) //struct ovdi_
 
 		change_resolution(wk);
 
-		change_console_resolution(hwapi->console, r);
+		/*
+		 * If console is on another hardware driver (may be same device),
+		 * we dont touch it here!
+		*/
+		if (hwapi->console->drv == drv)
+			change_console_resolution(hwapi->console, r);
 
+		/*
+		 * Set initial hardware palette registers, if we're in clut mode.
+		*/
 		if (r->clut)
 		{
 			for (i = 0; i <= c->pens; i++)
@@ -129,38 +164,63 @@ v_opnwk(VDIPB *pb, VIRTUAL *wk, VIRTUAL *lawk, OVDI_HWAPI *hwapi) //struct ovdi_
 			}
 		}
 
-	/* Set physical/logical screen addresses */
+		/*
+		 * Set physical/logical screen addresses.
+		*/
 		r->base = (*dev->setpscr)(drv, r->base);
 		drv->log_base = (*dev->setlscr)(drv, r->base);
 		*(long *)v_bas_ad = (long)r->base;
 
+		/*
+		 * Keep a private table of the hardware API's this physical (and later,
+		 * virtual) workstation uses.
+		*/
 		wk->mouseapi	= hwapi->mouse;
 		wk->kbdapi	= hwapi->keyboard;
 		wk->timeapi	= hwapi->time;
 		wk->vbiapi	= hwapi->vbi;
 		wk->con		= hwapi->console;
 
-		if (!wk->handle)
-			setup_fonts(wk, &SIZ_TAB_rom, &DEV_TAB_rom);
+		/*
+		 * Load the VDI fonts. This will load fonts specified with the
+		 * 'vdi_fonts' configuration variable in ovdi.cnf
+		*/
+		load_vdi_fonts(wk, &SIZ_TAB_rom, &DEV_TAB_rom);
 
+		/*
+		 * Update some common tables to reflect new stuff. We have most information
+		 * needed by now, like the number of buttons on mice, etc.
+		*/
 		update_devtab(&DEV_TAB_rom, wk);
 		update_inqtab(&INQ_TAB_rom, wk);
 		update_siztab(&SIZ_TAB_rom, wk);
 
-	/* Setup the rest of the virtual structure */
+		/*
+		 * Setup the rest of the virtual structure
+		*/
 		setup_virtual(pb, wk, 0);
 
+		/*
+		 * Hmm.... do we need xbios compatibility before a physical workstation is
+		 * opened (before AES starts) ? 
+		*/
 		if (!wk->handle)
 		{
-			enable_xbios(wk);
+			enable_xbios(hwapi);
 		}
 
-	/* Let mousedriver know about resolution */
+		/*
+		 * Let mousedriver know about resolution
+		*/
 		(*wk->mouseapi->setxmfres)(wk->raster, wk->colinf);
-	/* Add the mousecursor rendering function to VBI */
+		/*
+		 * Add the mousecursor rendering function to VBI
+		*/
 		(*wk->vbiapi->add_func)((unsigned long)wk->mouseapi->housekeep, 0);
 
-	/* Enable things ... */
+		/*
+		 * Enable things ...
+		*/
 		(*wk->timeapi->enable)();
 		(*wk->vbiapi->enable)();
 		(*wk->mouseapi->enable)();
@@ -172,19 +232,24 @@ v_opnwk(VDIPB *pb, VIRTUAL *wk, VIRTUAL *lawk, OVDI_HWAPI *hwapi) //struct ovdi_
 		v_vtab[1].v = wk;
 		pb->contrl[HANDLE] = 1;
 
-	/* Clear the screen */
 		lv_clrwk(wk);
-	/* Prepare return information */
+
+		/*
+		 * Prepare return information
+		*/
 		prepare_stdreturn(pb, wk);
 
+		/*
+		 * And lets turn on mousecursor...
+		*/
 		(*wk->mouseapi->enablemcurs)();
-
 	}
-	else
+
+	return;
+
 error:	{
 		pb->contrl[HANDLE] = 0;
 	}
-
 	return;
 }
 
@@ -265,6 +330,10 @@ update_inqtab(INQ_TAB *it, VIRTUAL *v)
 	return;
 }
 
+/*
+ * Get name and pid of the process opening the workstation.
+ * This only works with MiNT 1.16 and above, I think.
+*/
 static void
 get_MiNT_info(VIRTUAL *v)
 {
@@ -298,8 +367,7 @@ get_MiNT_info(VIRTUAL *v)
 					end = p;
 				*end = 0;
 				p = (char *)&v->procname[0];
-				while (*strt)
-					*p++ = *strt++;				
+				while (*strt) *p++ = *strt++;				
 			}
 		}
 		else
@@ -349,6 +417,9 @@ v_opnvwk(VDIPB *pb, VIRTUAL *v)
 
 			new->handle = handle;
 
+			/*
+			 * Things the virtual inherit from the root raster (the physical device)...
+			*/
 			new->root	= root;
 			new->lawk	= root->lawk;
 			new->con	= root->con;
@@ -356,6 +427,20 @@ v_opnvwk(VDIPB *pb, VIRTUAL *v)
 			new->physical	= root->physical;
 			new->raster	= root->raster;
 
+			/*
+			 * Hardware driver API's ...
+			*/
+			new->kbdapi	= root->kbdapi;
+			new->mouseapi	= root->mouseapi;
+			new->timeapi	= root->timeapi;
+			new->vbiapi	= root->vbiapi;
+
+			/*
+			 * If we are using TC/HC, (or a non-clut mode) we let every virtual
+			 * workstation get its own colinf structure, making color related
+			 * things work indipendantly. I dont know how other VDI's do this,
+			 * but I WANT it to stay this way :)
+			*/
 			if (root->raster->clut)
 				new->colinf	= root->colinf;
 			else
@@ -367,30 +452,22 @@ v_opnvwk(VDIPB *pb, VIRTUAL *v)
 					new->colinf = root->colinf;
 			}
 
-			new->kbdapi	= root->kbdapi;
-			new->mouseapi	= root->mouseapi;
-			new->timeapi	= root->timeapi;
-			new->vbiapi	= root->vbiapi;
-
 			setup_virtual(pb, new, root);
 			lvst_load_fonts(new);
 			prepare_stdreturn(pb, new);
-
-			//log("vwk: pid %d, name '%s'\n", new->pid, (char *)&new->procname);
 		}
 		else
 		{
 			free_mem(new);
 		}
 	}
-
 	pb->contrl[HANDLE] = handle;
-
-	return;
 }
 
 
-
+/*
+ * Close a virtual workstation.
+*/
 void
 v_clswk( VDIPB *pb, VIRTUAL *root)
 {
@@ -398,7 +475,16 @@ v_clswk( VDIPB *pb, VIRTUAL *root)
 	RASTER *r;
 	COLINF *c;
 
-/* DO NOT CLEAR 'handle' !! It indicates to the v_opnwk() that basic things are already initialized */
+	/*
+	 * DO NOT CLEAR 'handle' !! It indicates to the v_opnwk()
+	 * that basic things are already initialized
+	*/
+
+	/*
+	 * for attempts to close physical using wrong handle. If this
+	 * worstation structure has a link to a root workstation, it is not
+	 * root (physical) itself...
+	*/
 	if (root->root)
 	{
 		scrnlog("Cannot close physical with virtual handle!!!!\n");
@@ -408,7 +494,10 @@ v_clswk( VDIPB *pb, VIRTUAL *root)
 
 	lvs_clip(root, 0, 0);
 
-	/* Make sure that all virtual workstations are closed */
+	/*
+	 * Make sure that all virtual workstations spawned from this physical
+	 * are closed.
+	*/
 	for (i = 2; i < MAX_VIRTUALS; i++)
 	{
 		if (v_vtab[i].v)
@@ -457,6 +546,9 @@ v_clswk( VDIPB *pb, VIRTUAL *root)
 
 	if (root->scratchp)
 		free_mem(root->scratchp);
+
+	unload_vdi_fonts(root);
+	gdf_free_cache();
 
 	v_vtab[1].v = 0;
 	v_vtab[1].pid = -1;
@@ -724,7 +816,7 @@ prepare_stdreturn( VDIPB *pb, VIRTUAL *v)
 	return;
 }
 	
-
+/* Just clear the raster */
 void
 lv_clrwk(VIRTUAL *virtual)
 {
@@ -738,7 +830,6 @@ lv_clrwk(VIRTUAL *virtual)
 	lvs_clip(v, 0, 0);
 	rectfill( r, v->colinf, (VDIRECT *)&r->x1, (VDIRECT *)&r->x1, &WhiteRect, FIS_SOLID);
 
-	return;
 }
 
 char fontdir[] = { "c:\\gemsys\\\0" };
@@ -854,7 +945,8 @@ setup_virtual(VDIPB *pb, VIRTUAL *v, VIRTUAL *root)
 	//setup_virtual_fonts(v);
 
 	/* If this is the root workstation, (root pointer == NULL),
-	 * fonts were setup by setup_fonts().
+	 * fonts were setup by load_vdi_fonts(). Else we copy initial
+	 * font config from root.
 	*/
 	if (root)
 	{
@@ -884,28 +976,22 @@ setup_virtual(VDIPB *pb, VIRTUAL *v, VIRTUAL *root)
 	(void)lvsin_mode( v, 2, 1);
 	(void)lvsin_mode( v, 3, 1);
 	(void)lvsin_mode( v, 4, 1);
-
-	return;
-
 }
 
 /* Only to be executed for the physical workstation. Also updates the
  * INQ tab associated with that physical workstation.
 */
-static short fonts_is_loaded = 0;
+static short fonts_are_loaded = 0;
 
 static void
-setup_fonts(VIRTUAL *v, SIZ_TAB *st, DEV_TAB *dt)
+load_vdi_fonts(VIRTUAL *v, SIZ_TAB *st, DEV_TAB *dt)
 {
-	if (!fonts_is_loaded)
+	if (!fonts_are_loaded)
 	{
-		short i;
-		long size;
 		char *fnptrs, *fnptrd, *fdnptr;
 		char fname[40];
 		XGDF_HEAD *xf;
-
-		fonts_is_loaded = 1;
+		struct gdf_membuff *m = &loaded_vdi_gdfs;
 
 	/* I know this is not needed here right now .. but later? */
 		st->minwchar = sysfnt_minwchar;
@@ -927,29 +1013,66 @@ setup_fonts(VIRTUAL *v, SIZ_TAB *st, DEV_TAB *dt)
 		v->font.lcount = 0;
 		v->font.loaded = 0;
 
-		if (sysfnames[0])
-		{
+#if 0
+		if (vdi_fontlist)
+			fnptrs = vdi_fontlist;
+		else if (sysfnames[0])
 			fnptrs = (char *)&sysfnames[0];
+		else
+			fnptrs = 0;
+#endif
+		if (fnptrs = vdi_fontlist)
+		{
+			long fs, size;
+			char *tmp;
 
-			for (;;)
+			bzero(m, sizeof(struct gdf_membuff));
+			size = 0;
+
+			/* First, figure out how large a buffer we need to load all fonts */
+			tmp = fnptrs;
+			while (*tmp)
 			{
-				fdnptr = &fontdir[0];
+				fdnptr = gdf_path;
 				fnptrd = (char *)&fname[0];
 
-				while (*fdnptr)
-					*fnptrd++ = *fdnptr++;
+				while (*fdnptr) *fnptrd++ = *fdnptr++;
+				while (*tmp) *fnptrd++ = *tmp++;
 
-				while (*fnptrs)
-					*fnptrd++ = *fnptrs++;
+				*fnptrd++ = *tmp++;
+
+				fs = get_file_size ( &fname[0] );
+				if (fs > 0)
+				{
+					size += (fs + sizeof(XGDF_HEAD ) + 3) & ~3;
+				}
+			}
+			/* .. then we attempt to allocate ram for this buffer .. */
+			if (size)
+			{
+				long mem;
+
+				mem = (long)omalloc(size, MX_PREFTTRAM | MX_READABLE);
+				if (!mem)
+					return;
+				m->base	= (char *)mem;
+				m->free	= (char *)mem;
+				m->size	= size;
+			}
+			/* Then we start loading the fonts off the disk .... */
+			for (;;)
+			{
+				fdnptr = gdf_path;
+				fnptrd = (char *)&fname[0];
+
+				while (*fdnptr)	*fnptrd++ = *fdnptr++;
+				while (*fnptrs)	*fnptrd++ = *fnptrs++;
 
 				*fnptrd++ = *fnptrs++;
 
-				if (!load_font(&fname[0], &size, (long *)&xf))
+				if ( !load_font(&fname[0], &size, (long *)&xf, m) )
 				{
-					fixup_font(xf->font_head); //f1);
-
-					for (i = 0; i < 256; i++)
-						xf->cache[i] = 0;
+					fixup_font(xf->font_head);
 
 					if (v->font.loaded)
 					{
@@ -970,8 +1093,41 @@ setup_fonts(VIRTUAL *v, SIZ_TAB *st, DEV_TAB *dt)
 				if (!(*fnptrs))
 					break;
 			}
+
+			/* If no fonts were loaded, no use keeping the buffer */
+			if (m->base == m->free)
+			{
+				fonts_are_loaded = 0;
+				if (m->base)
+				{
+					free_mem(m->base);
+					(long)m->base = m->size = (long)m->free = 0;
+				}
+			}
+			else
+				fonts_are_loaded = 1;
+			
 		}
 	}
-	return;
 }
 
+static void
+unload_vdi_fonts(VIRTUAL *v)
+{
+	struct gdf_membuff *m = &loaded_vdi_gdfs;
+
+	if (m->base)
+		free_mem(m->base);
+	bzero(m, sizeof(struct gdf_membuff));
+
+	v->font.pts	= 0;
+	v->font.chup	= 0;
+	v->font.scaled	= 0;
+	v->font.sclsts	= 0;
+	v->font.scratch_head = 0;
+
+	v->font.lcount	= 0;
+	v->font.loaded	= 0;
+
+	fonts_are_loaded = 0;
+}

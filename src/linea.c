@@ -4,11 +4,11 @@
 #include "draw.h"
 #include "line.h"
 #include "libkern.h"
-#include "mouse.h"
-#include "mousedrv.h"
+#include "mouseapi.h"
 #include "ovdi_defs.h"
 #include "ovdi_types.h"
 #include "vdi_defs.h"
+#include "linea_vars.h"
 #include "linea.h"
 #include "polygon.h"
 #include "vdi_globals.h"
@@ -99,7 +99,7 @@ init_linea_vartab(VIRTUAL *v, LINEA_VARTAB *la)
 	la->cur_font = sysfnt10p->font_head; //v->fring->;
 
 	if (v)
-		la->cur_work = v;
+		(VIRTUAL *)la->cur_work = v;
 
 	la->def_font = la->cur_font = sysfnt10p->font_head;
 	la->font_ring[0] = sysfnt08p->font_head;
@@ -143,14 +143,8 @@ linea_reschange(LINEA_VARTAB *la, RASTER *r, COLINF *c)
 void
 set_linea_vector(void)
 {
-	short sr;
-
-	if (old_LineA_Handler)
-		return;
-
-	Supexec(set_vector);
-
-	return;
+	if (!old_LineA_Handler)
+		Supexec(set_vector);
 }
 
 static void

@@ -22,9 +22,9 @@ all-here: $(TARGET)
 CFLAGS-gdf_text.c = -Wno-uninitialized
 #CFLAGS-mousedrv.c = -fcall-saved-d0 -fcall-saved-d1 -fcall-saved-a0, -fcall-saved-a1
 
-DEFINITIONS = -mshort
-LD = $(CC) -mshort -nostdlib -Wl,--entry -Wl,__start
-LIBS =  $(LIBKERN)
+DEFINITIONS =
+LD = $(CC) -nostdlib -Wl,--entry -Wl,__start
+LIBS =  $(LIBKERN) $(LIBGENERIC)
 CPU = 020-60
 STRIPFLAGS = 
 
@@ -33,7 +33,7 @@ SGENFILES = $(TARGET)
 OBJS = $(COBJS:.c=.o) $(SOBJS:.s=.o) $(SSOBJS:.S=.o)
 
 
-$(TARGET): $(OBJS) $(LIBKERNTARGET)
-	$(LD) $(CFLAGS) -o $@ $(OBJS) $(LIBS)
+$(TARGET): $(OBJS) $(LIBKERNTARGET) $(LIBGENERICTARGET)
+	$(LD) $(CFLAGS) $(GENERAL) -o $@ $(OBJS) $(LIBS)
 
 include $(top_srcdir)/DEPENDENCIES

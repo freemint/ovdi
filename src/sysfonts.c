@@ -1,5 +1,19 @@
 #include "gdf_defs.h"
 
+short	sysfnt_minwchar;
+short	sysfnt_maxwchar;
+short	sysfnt_minhchar;
+short	sysfnt_maxhchar;
+short	sysfnt_faces;
+
+struct	xgdf_head *sysfnt08p = 0;
+struct	xgdf_head *sysfnt09p = 0;
+struct	xgdf_head *sysfnt10p = 0;
+
+struct	xgdf_head xsystemfont08;
+struct	xgdf_head xsystemfont09;
+struct	xgdf_head xsystemfont10;
+
 short systemfont08[] = /* latin081.fnt */
 {
 0x6922, 0x0800, 0x4953, 0x4f20, 0x4d53, 0x4220, 0x5043, 0x2d38, 

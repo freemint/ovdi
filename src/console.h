@@ -1,21 +1,28 @@
 #ifndef	_CONSOLE_H
 #define _CONSOLE_H
 
-#include "linea.h"
+#include "linea_vars.h"
 #include "ovdi_defs.h"
 #include "vdi_defs.h"
 
 #define BLINK_ON	1
 
+/* Cursor types definitions */
+#define TCT_BLOCK		0	/* Standard block-type cursor */
+#define TCT_LEFT_SL	1	/* Left-oriented Vertical Single-Line */
+#define TCT_BOTTOM_SL 	2	/* Bottom-oriented single-line horizontal cursor */
+
 struct	console
 {
 	FONT_HEAD 		*f;
+	FONT_HEAD		*loaded_font;
 	struct ovdi_driver	*drv;
 	struct raster		*r;
 	struct colinf		*colinf;
 	struct linea_vartab	*la;
 	
-	short	tc_flags;	/* text cursor flags */
+	short		tc_flags;	/* text cursor flags */
+	short		tc_type;
 
 	short		tps;
 	short		curs_hide_ct;
@@ -35,20 +42,24 @@ struct	console
 	void (*draw_character)(struct console *c, short character);
 
 	void (*csout_char)(short character);
+
+	const char *fontpath;
+	char fontfile[32];
 };
 typedef struct console CONSOLE;
 
 typedef void (*EscFunc)(CONSOLE *c);
 
 CONSOLE * init_console(OVDI_HWAPI *hw, RASTER *r, LINEA_VARTAB *la);
-void install_console_handlers(CONSOLE *c);
-void change_console_resolution(CONSOLE *c, struct raster *r);
-void enter_console(CONSOLE *c);
-void exit_console(CONSOLE *c);
-short conf_textcursor_blink(CONSOLE *c, short mode, short rate);
-void con_state_handler(CONSOLE *c, short character);
-void rawcon_output(CONSOLE *c, short chr);
-void VT52_handler(CONSOLE *c, short character);
+void	install_console_handlers(CONSOLE *c);
+void	change_console_resolution(CONSOLE *c, struct raster *r);
+void	set_console_font(CONSOLE *c, const char *fontpath, char *fontfile);
+void	enter_console(CONSOLE *c);
+void	exit_console(CONSOLE *c);
+short	conf_textcursor_blink(CONSOLE *c, short mode, short rate);
+void	con_state_handler(CONSOLE *c, short character);
+void	rawcon_output(CONSOLE *c, short chr);
+void	VT52_handler(CONSOLE *c, short character);
 
 void Esc_nosys		(CONSOLE *c);
 void Esc_A		(CONSOLE *c);

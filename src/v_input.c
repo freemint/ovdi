@@ -5,7 +5,7 @@
 #include "vdi_defs.h"
 #include "v_input.h"
 #include "mousedrv.h"
-#include "kbddrv.h"
+#include "kbdapi.h"
 
 #define SCAN_F1		0x3b
 #define SCAN_F10	0x44
@@ -50,7 +50,6 @@ vqin_mode( VDIPB *pb, VIRTUAL *v)
 		pb->intout[0] = mode & REQ_MODE ? 1 : 2;
 
 	pb->contrl[N_INTOUT] = 1;
-	return;
 }
 
 void
@@ -58,7 +57,6 @@ vsin_mode( VDIPB *pb, VIRTUAL *v)
 {
 	pb->intout[0] = lvsin_mode( v, pb->intin[0], pb->intin[1]);
 	pb->contrl[N_INTOUT] = 1;
-	return;
 }
 	
 short
@@ -69,26 +67,10 @@ lvsin_mode( VIRTUAL *v, short dev, short mode)
 
 	switch (dev)
 	{
-		case 1:
-		{
-			flag = (short *)&v->locator;
-			break;
-		}
-		case 2:
-		{
-			flag = (short *)&v->valuator;
-			break;
-		}
-		case 3:
-		{
-			flag = (short *)&v->choise;
-			break;
-		}
-		case 4:
-		{
-			flag = (short *)&v->string;
-			break;
-		}
+		case 1: flag = (short *)&v->locator;	break;
+		case 2: flag = (short *)&v->valuator;	break;
+		case 3:	flag = (short *)&v->choise;	break;
+		case 4:	flag = (short *)&v->string;	break;
 	}
 
 	if (flag)
@@ -127,7 +109,6 @@ vxx_locator( VDIPB *pb, VIRTUAL *v)
 
 	if (v->locator & REQ_MODE)
 	{
-
 		do {}
 		while ( (!(key = (*v->kbdapi->keywaiting)())) &&
 			(!(bs = (*v->mouseapi->getbutstat)() & 0xffffUL))
@@ -151,9 +132,6 @@ vxx_locator( VDIPB *pb, VIRTUAL *v)
 			
 		(*v->mouseapi->getmcoords)((short *)&pb->ptsout[0]);
 		pb->contrl[N_PTSOUT] = 1;
-
-		display("buttons %lx, key %lx\n", bs, key);
-
 	}
 	else /* Sample mode */
 	{
@@ -237,7 +215,6 @@ vxx_choice( VDIPB *pb, VIRTUAL *v)
 			}
 		}
 	}
-	return;
 }
 
 /* string (keyboard) */
@@ -281,16 +258,11 @@ vxx_string( VDIPB *pb, VIRTUAL *v)
 		}
 		pb->contrl[N_INTOUT] = i;
 	}
-	return;
 }
 
 void
 vq_key_s( VDIPB *pb, VIRTUAL *v)
 {
-	//unsigned long ks;
-
-	//ks = (*v->kbdapi->getks)();
 	pb->intout[0] = (short)(((*v->kbdapi->getks)()) & 0xf);
 	pb->contrl[N_INTOUT] = 1;
-	return;
 }

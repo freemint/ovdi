@@ -6,6 +6,16 @@ include $(top_srcdir)/../../RULES
 #
 # private definitions
 #
+LIBGENERICTARGET = libgeneric.a
+LIBGENERICSTMP = $(top_srcdir)/generic/libgeneric.a
+LIBGENERIC = -L$(top_srcdir)/drivers/generic -lgeneric
+
+#
+# libkern target
+#
+LIBKERNTARGET = libkern$(CPU).a
+LIBKERNSTMP = $(top_srcdir)/../../sys/libkern/libkern$(CPU).a
+LIBKERN = -L$(top_srcdir)/../../sys/libkern -lkern$(CPU)
 
 #
 # global CFLAGS and ASFLAGS
@@ -16,9 +26,3 @@ MODEL = -m68$(CPU)
 CFLAGS = $(INCLUDES) $(DEFINITIONS) $(MODEL) $(GENERAL) $(OPTS) $(WARN)
 ASFLAGS = $(INCLUDES) $(DEFINITIONS) $(GENERAL) -m68030
 
-#
-# libkern target
-#
-LIBKERNTARGET = libkern$(CPU).a
-LIBKERNSTMP = $(top_srcdir)/../../sys/libkern/libkern$(CPU).a
-LIBKERN = -L$(top_srcdir)/../../sys/libkern -lkern$(CPU)

@@ -1,6 +1,6 @@
 
 #include "ovdi_defs.h"
-#include "time.h"
+#include "timerapi.h"
 #include "vdi_defs.h"
 #include "v_time.h"
 
@@ -15,5 +15,4 @@ vex_timv( VDIPB *pb, VIRTUAL *v)
 	pb->intout[0] = (*v->timeapi->get_tps)();
 
 	pb->contrl[N_INTOUT] = 1;
-	return;
 }

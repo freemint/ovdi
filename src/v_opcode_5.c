@@ -257,5 +257,4 @@ v_opcode_5(VDIPB *pb, VIRTUAL *v)
 		if (func)
 			(*func)(pb, v);
 	}
-	return;
 }

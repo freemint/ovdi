@@ -1,6 +1,8 @@
 #ifndef	_oMEMORY_C
 #define _oMEMORY_C
 
+#include "libkern.h"
+
 #define	MX_STRAM	0
 #define MX_TTRAM	1
 #define MX_PREFSTRAM	2
@@ -12,8 +14,8 @@
 #define MX_SUPER	MX_MPSEL | (3 << 4)
 #define MX_READABLE	MX_MPSEL | (4 << 4)
 
-long omalloc	(unsigned long amount, unsigned short type);
-void free_mem	(void *loc);
+void *	_cdecl	omalloc		(unsigned long amount, short type);
+void 	_cdecl	free_mem	(void *loc);
 
 
 #endif	/* _oMEMORY_C */

@@ -15,8 +15,7 @@ vro_cpyfm( VDIPB *pb, VIRTUAL *v)
 
 	s = (MFDB *)((((unsigned long)pb->contrl[7]) << 16) | (unsigned short)pb->contrl[8]);
 	d = (MFDB *)((((unsigned long)pb->contrl[9]) << 16) | (unsigned short)pb->contrl[10]);
-	ro_cpyfm( r, s, d, (short *)&pb->ptsin[0], v->clip.flag ? (VDIRECT *)&v->clip.x1 : (VDIRECT *)&r->x1, pb->intin[0]);
-	return;
+	RO_CPYFM( r, s, d, (short *)&pb->ptsin[0], v->clip.flag ? (VDIRECT *)&v->clip.x1 : (VDIRECT *)&r->x1, pb->intin[0]);
 }
 
 void
@@ -33,8 +32,7 @@ vrt_cpyfm( VDIPB *pb, VIRTUAL *v)
 
 	s = (MFDB *)((((unsigned long)pb->contrl[7]) << 16) | (unsigned short)pb->contrl[8]);
 	d = (MFDB *)((((unsigned long)pb->contrl[9]) << 16) | (unsigned short)pb->contrl[10]);
-	rt_cpyfm( r, v->colinf, s, d, (short *)&pb->ptsin[0], v->clip.flag ? (VDIRECT *)&v->clip.x1 : (VDIRECT *)&r->x1, fgc, bgc, wrmode);
-	return;
+	RT_CPYFM( r, v->colinf, s, d, (short *)&pb->ptsin[0], v->clip.flag ? (VDIRECT *)&v->clip.x1 : (VDIRECT *)&r->x1, fgc, bgc, wrmode);
 }
 
 void
@@ -45,7 +43,6 @@ vr_trnfm( VDIPB *pb, VIRTUAL *v)
 	s = (MFDB *)(unsigned long)(((unsigned long)pb->contrl[7] << 16) | (unsigned short)pb->contrl[8]);
 	d = (MFDB *)(unsigned long)(((unsigned long)pb->contrl[9] << 16) | (unsigned short)pb->contrl[10]);
 	trnfm( v, s, d);
-	return;
 }
 
 void
@@ -83,5 +80,4 @@ v_get_pixel( VDIPB *pb, VIRTUAL *v)
 	}
 
 	pb->contrl[N_INTOUT] = 2;
-	return;
 }

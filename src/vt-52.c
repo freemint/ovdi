@@ -3,14 +3,17 @@
 #include "console.h"
 #include "draw.h"
 #include "display.h"
+#include "fonts.h"
+#include "file.h"
 #include "gdf_defs.h"
 #include "gdf_text.h"
 #include "libkern.h"
+#include "memory.h"
 #include "ovdi_defs.h"
 #include "ovdi_rasters.h"
 #include "ovdi_types.h"
 #include "rasters.h"
-#include "vbi.h"
+#include "vbiapi.h"
 #include "vdi_defs.h"
 #include "vdi_globals.h"
 #include "../../sys/mint/arch/asm_spl.h"
@@ -26,6 +29,8 @@
 #define conterm		*(char *)(0x484)
 
 static void set_vectors(void);
+static void recalc_columnrows(CONSOLE *c);
+static void new_font(CONSOLE *c, FONT_HEAD *f);
 
 static EscFunc ctrl_codes[] =
 {
@@ -121,12 +126,9 @@ CONSOLE *
 init_console(OVDI_HWAPI *hw, RASTER *r, LINEA_VARTAB *la)
 {
 	CONSOLE *c = &console;
-	FONT_HEAD *f;
 
 	bzero(&console, sizeof(CONSOLE));
 
-	f	= sysfnt09p->font_head; //sysfnt10p;
-	c->f	= f;
 	c->r	= r;
 	c->drv	= hw->driver;
 	c->la	= la;
@@ -134,7 +136,9 @@ init_console(OVDI_HWAPI *hw, RASTER *r, LINEA_VARTAB *la)
 	c->curs_hide_ct = 1;
 	c->tps = (*hw->vbi->get_tics)();
 
-	/* console driver */
+	/*
+	 * console driver
+	*/
 	c->enter_console	= &console_enter;
 	c->exit_console		= &console_exit;
 	c->draw_text_cursor	= &draw_text_cursor;
@@ -149,22 +153,9 @@ init_console(OVDI_HWAPI *hw, RASTER *r, LINEA_VARTAB *la)
 	la->v_cur_ct = 1 * 66;
 
 	la->v_cur_flag	= V_LINEWRAP;
-	la->v_fnt_ad = f->dat_table;
-	la->v_fnt_nd = f->last_ade;
-	la->v_fnt_st = f->first_ade;
-	la->v_fnt_wd = f->form_width;
-	la->v_off_ad = f->off_table;
 
-	la->fbase = f->dat_table;
-	la->fwidth = f->form_width;
-	la->style = 0;
-	la->litemask = f->lighten;
-	la->weight = f->thicken;
-	la->roff = f->right_offset;
-	la->loff = f->left_offset;
-	la->scale = 0;
-	la->chup = 0;
-
+	c->tc_type = TCT_LEFT_SL;
+	new_font(c, sysfnt10p->font_head);
 	change_console_resolution(c, r);
 
 	return c;
@@ -177,8 +168,6 @@ install_console_handlers(CONSOLE *c)
 	set_xconout_raw(c, (long)&rawcon_output);
 
 	(void)Supexec(set_vectors);
-
-	return;
 }
 
 static void
@@ -198,11 +187,52 @@ set_vectors(void)
 	spl(sr);
 }
 
+static void
+recalc_columnrows(CONSOLE *c)
+{
+	LINEA_VARTAB *la = c->la;
+	FONT_HEAD *f	= c->f;
+	RASTER *r	= c->r;
+
+	la->v_cur_x	= la->v_cur_y = la->v_sav_x = la->v_sav_y = 0;
+	la->v_cel_ht	= f->top + f->bottom + 1;
+	la->v_cel_wr	= 0;	/* Not used!!! */
+	la->v_cel_mx	= ((r->x2 + 1) / f->max_cell_width) - 1;
+	la->v_cel_my	= ((r->y2 + 1) / (f->top + f->bottom + 1)) - 1;
+}
+
+static void
+new_font(CONSOLE *c, FONT_HEAD *f)
+{
+	LINEA_VARTAB *la = c->la;
+
+	c->f = f;
+
+	la->v_fnt_ad = f->dat_table;
+	la->v_fnt_nd = f->last_ade;
+	la->v_fnt_st = f->first_ade;
+	la->v_fnt_wd = f->form_width;
+	la->v_off_ad = f->off_table;
+
+	la->fbase = f->dat_table;
+	la->fwidth = f->form_width;
+	la->style = 0;
+	la->litemask = f->lighten;
+	la->weight = f->thicken;
+	la->roff = f->right_offset;
+	la->loff = f->left_offset;
+	la->scale = 0;
+	la->chup = 0;
+
+	la->v_cur_ad	= (unsigned char *)c->r->base;
+	la->v_cur_of	= 0;
+}
+
 void
 change_console_resolution(CONSOLE *c, RASTER *r)
 {
 	short i, hwpen;
-	FONT_HEAD *f = c->f;
+	//FONT_HEAD *f = c->f;
 	LINEA_VARTAB *la = c->la;
 	COLINF *cinf;
 
@@ -248,19 +278,77 @@ change_console_resolution(CONSOLE *c, RASTER *r)
 	c->pattern.data		= &consfill;
 
 	/* Initialize the Line A variables used by the console/vt52 emulator */
+#if 0
 	la->v_cur_x	= la->v_cur_y = la->v_sav_x = la->v_sav_y = 0;
 	la->v_cel_ht	= f->top + f->bottom + 1;
 	la->v_cel_wr	= 0;	/* Not used!!! */
-	la->v_cel_mx	= (r->x2 / f->max_cell_width); // - 1;
-	la->v_cel_my	= (r->y2 / (f->top + f->bottom + 1)); // - 1;
+	la->v_cel_mx	= ((r->x2 + 1) / f->max_cell_width) - 1; // - 1;
+	la->v_cel_my	= ((r->y2 + 1) / (f->top + f->bottom + 1)) - 1; // - 1;
+#endif
 	la->v_col_fg	= cinf->color_vdi2hw[1];
 	la->v_col_bg	= cinf->color_vdi2hw[0];
 
+#if 0
 	la->v_cur_ad	= (unsigned char *)r->base;
 	la->v_cur_of	= 0;
-
+#endif
 	la->textfg	= cinf->color_vdi2hw[1];
 	la->textbg	= cinf->color_vdi2hw[0];
+
+	recalc_columnrows(c);
+}
+
+void
+set_console_font(CONSOLE *c, const char *path, char *fname)
+{
+	FONT_HEAD *f;
+	char *dst, *src;
+	long fs;
+	char fqpn[128+32];
+	
+ /* Crealte Fully Qualified Path Name and get size of fontfile */
+	dst = (char *)&fqpn;
+	if (path)
+		(const char *)src = path;
+	else if (c->fontpath)
+		(const char *)src = c->fontpath;
+	else
+		src = 0;
+
+	if (src)
+		while (*src) *dst++ = *src++;
+	src = fname;
+	while (*src) *dst++ = *src++;
+	*src = 0;
+
+	src = (char *)&fqpn;
+	fs = get_file_size( src );
+
+	if (fs > 0)
+	{
+		f = (FONT_HEAD *)omalloc(fs, 0);
+		if (f)
+		{
+			if ( load_file( src, fs, (char *)f) != fs)
+			{
+				free_mem(f);
+				return;
+			}
+			/* Font sucessfully loaded, now we can point things to the new font */
+			if (c->loaded_font)
+				free_mem(c->loaded_font);
+			fixup_font(f);
+			new_font(c, f);
+			recalc_columnrows(c);
+			c->loaded_font = f;
+			c->f = f;
+			if (path)
+				c->fontpath = path;
+			dst = c->fontfile;
+			while (*fname) *dst++ = *fname++;
+			*dst = 0;
+		}
+	}
 }
 
 void
@@ -924,7 +1012,6 @@ console_enter(CONSOLE *c)
 	*  to text mode, or does things needed to enter console.
 	*  Virtual consoles, anyone?
 	*/
-	return;
 }
 
 void
@@ -933,7 +1020,6 @@ console_exit(CONSOLE *c)
 	/* Nothing to do. This is where drivers go back to the normal
 	*  mode, which will show the AES, for example.
 	*/
-	return;
 }
 /* Erase nlines from cursor x and y.
 * If nlines == -1, erase from x, y to end of screen.
@@ -948,12 +1034,15 @@ erase_lines( CONSOLE *c, short x1, short y1, short x2, short y2)
 	FONT_HEAD *f;
 	RASTER *r;
 	COLINF *ci;
+	Ffilled_rect fr;
+
 	short cwidth, cheight, lines;
 	short coords[4];
 
 	f = c->f;
 	r = c->r;
 	ci = c->colinf;
+	fr = DRAW_FILLEDRECT_PTR(r);	//r->drawers->draw_filledrect;
 
 
 	cwidth = f->max_cell_width;
@@ -967,7 +1056,7 @@ erase_lines( CONSOLE *c, short x1, short y1, short x2, short y2)
 		coords[1] = y1 * cheight;
 		coords[2] = ((x2 + 1) * cwidth) - 1;
 		coords[3] = ((y1 + 1) * cheight) - 1;
-		rectfill(r, ci, (VDIRECT *)&coords, (VDIRECT *)&r->x1, &c->pattern, FIS_SOLID);
+		(*fr)(r, ci, (VDIRECT *)&coords, (VDIRECT *)&r->x1, &c->pattern, FIS_SOLID);
 	}
 	else if (lines == 2)
 	{
@@ -975,13 +1064,13 @@ erase_lines( CONSOLE *c, short x1, short y1, short x2, short y2)
 		coords[1] = y1 * cheight;
 		coords[2] = ((c->la->v_cel_mx + 1) * cwidth) - 1;
 		coords[3] = ((y1 + 1) * cheight) - 1;
-		rectfill(r, ci, (VDIRECT *)&coords, (VDIRECT *)&r->x1, &c->pattern, FIS_SOLID);
+		(*fr)(r, ci, (VDIRECT *)&coords, (VDIRECT *)&r->x1, &c->pattern, FIS_SOLID);
 
 		coords[0] = 0;
 		coords[1] = (y1 + 1) * cheight;
 		coords[2] = (x2 * cwidth) - 1;
 		coords[3] = ((y2 + 1) * cheight) - 1;
-		rectfill(r, ci, (VDIRECT *)&coords, (VDIRECT *)&r->x1, &c->pattern, FIS_SOLID);
+		(*fr)(r, ci, (VDIRECT *)&coords, (VDIRECT *)&r->x1, &c->pattern, FIS_SOLID);
 	}
 	else
 	{
@@ -989,21 +1078,20 @@ erase_lines( CONSOLE *c, short x1, short y1, short x2, short y2)
 		coords[1] = y1 * cheight;
 		coords[2] = ((c->la->v_cel_mx + 1) * cwidth) - 1;
 		coords[3] = ((y1 + 1) * cheight) - 1;
-		rectfill(r, ci, (VDIRECT *)&coords, (VDIRECT *)&r->x1, &c->pattern, FIS_SOLID);
+		(*fr)(r, ci, (VDIRECT *)&coords, (VDIRECT *)&r->x1, &c->pattern, FIS_SOLID);
 
 		coords[0] = 0;
 		coords[1] = (y1 + 1) * cheight;
 		coords[2] = ((c->la->v_cel_mx + 1) * cwidth) - 1;
 		coords[3] = (y2 * cheight) - 1;
-		rectfill(r, ci, (VDIRECT *)&coords, (VDIRECT *)&r->x1, &c->pattern, FIS_SOLID);
+		(*fr)(r, ci, (VDIRECT *)&coords, (VDIRECT *)&r->x1, &c->pattern, FIS_SOLID);
 
 		coords[0] = 0;
 		coords[1] = y2 * cheight;
 		coords[2] = (x2 * cwidth) - 1;
 		coords[3] = ((y2 + 1) * cheight) - 1;
-		rectfill(r, ci, (VDIRECT *)&coords, (VDIRECT *)&r->x1, &c->pattern, FIS_SOLID);
+		(*fr)(r, ci, (VDIRECT *)&coords, (VDIRECT *)&r->x1, &c->pattern, FIS_SOLID);
 	}
-	return;
 }
 
 /* Scroll nlines lines starting at y direction way ... yeah. */
@@ -1054,8 +1142,7 @@ scroll_lines( CONSOLE *c, short y, short nlines, short direction)
 	}
 
 	src.fd_addr = dst.fd_addr = 0;
-	ro_cpyfm( r, &src, &dst, pts, (VDIRECT *)&r->x1, 3);
-	return;
+	RO_CPYFM( r, &src, &dst, pts, (VDIRECT *)&r->x1, 3);
 }
 
 void
@@ -1070,31 +1157,41 @@ draw_text_cursor(CONSOLE *c)
 	cwidth = c->f->max_cell_width;
 	cheight = c->f->top + c->f->bottom + 1;
 
-#if 1
-	/* horizontal two-pixel line */
-	coords[0] = c->la->v_cur_x * cwidth;
-	coords[1] = ((c->la->v_cur_y + 1) * cheight) - 2;
-	coords[2] = coords[0] + cwidth - 1;
-	coords[3] = coords[1] + 2;
-#else
-	/* block */
-	coords[0] = c->la->v_cur_x * cwidth;
-	coords[1] = c->la->v_cur_y * cheight;
-	coords[2] = coords[0] + cwidth - 1;
-	coords[3] = coords[1] + cheight - 1;
-#endif
-
+	switch (c->tc_type)
+	{
+		case TCT_BOTTOM_SL:
+		{	/* horizontal one-pixel line */
+			coords[0] = c->la->v_cur_x * cwidth;
+			coords[1] = coords[3] = ((c->la->v_cur_y + 1) * cheight) - 1;
+			coords[2] = coords[0] + cwidth - 1;
+			break;
+		}
+		case TCT_LEFT_SL:
+		{	/* vertical, left oriented, one-pixel line */
+			coords[0] = c->la->v_cur_x * cwidth;
+			coords[1] = c->la->v_cur_y * cheight;
+			coords[2] = coords[0];
+			coords[3] = coords[1] + cheight - 1;
+			break;
+		}
+		case TCT_BLOCK:
+		default:
+		{	/* block */
+			coords[0] = c->la->v_cur_x * cwidth;
+			coords[1] = c->la->v_cur_y * cheight;
+			coords[2] = coords[0] + cwidth - 1;
+			coords[3] = coords[1] + cheight - 1;
+			break;
+		}
+	}
 	c->pattern.wrmode = MD_XOR - 1;
-	rectfill( r, c->colinf, (VDIRECT *)&coords, (VDIRECT *)&r->x1, &c->pattern, FIS_SOLID);
-
-	return;
+	DRAW_FILLEDRECT( r, c->colinf, (VDIRECT *)&coords, (VDIRECT *)&r->x1, &c->pattern, FIS_SOLID);
 }
 
 void
 undraw_text_cursor(CONSOLE *c)
 {
 	(*c->draw_text_cursor)(c);
-	return;
 }
 
 void
@@ -1109,9 +1206,10 @@ draw_character(CONSOLE *c, short chr)
 	f = c->f;
 	r = c->r;
 
-	cwidth = f->max_cell_width;
-	cheight = f->top + f->bottom + 1;
-	expand_gdf_font( f, &fontd, chr, (long)0);
+	cwidth		= f->max_cell_width;
+	cheight		= f->top + f->bottom + 1;
+	fontd.fd_addr	= 0;
+	expand_gdf_font( f, &fontd, chr);
 
 	coords[4] = c->la->v_cur_x * cwidth;
 	coords[5] = c->la->v_cur_y * cheight;
@@ -1124,19 +1222,26 @@ draw_character(CONSOLE *c, short chr)
 
 	dst.fd_addr = 0;
 
-	if (c->la->v_cur_flag & V_INVERSED)
+	if (r->planes == 1)
 	{
-		fc = c->la->v_col_bg;
-		bc = c->la->v_col_fg;
+		if (c->la->v_cur_flag & V_INVERSED)
+			RO_CPYFM(r, &fontd, &dst, (short *)coords, (VDIRECT *)&r->x1, 12);
+		else
+			RO_CPYFM(r, &fontd, &dst, (short *)coords, (VDIRECT *)&r->x1, 3);
 	}
 	else
 	{
-		fc = c->la->v_col_fg;
-		bc = c->la->v_col_bg;
+		if (c->la->v_cur_flag & V_INVERSED)
+		{
+			fc = c->la->v_col_bg;
+			bc = c->la->v_col_fg;
+		}
+		else
+		{
+			fc = c->la->v_col_fg;
+			bc = c->la->v_col_bg;
+		}
+
+		RT_CPYFM( r, c->colinf, &fontd, &dst, (short *)coords, (VDIRECT *)&r->x1, fc, bc, 0);
 	}
-
-
-	rt_cpyfm( r, c->colinf, &fontd, &dst, (short *)coords, (VDIRECT *)&r->x1, fc, bc, 0);
-
-	return;
 }

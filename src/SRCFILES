@@ -3,6 +3,7 @@
 
 HEADER = \
 	bootup.h \
+	cnf.h \
 	colors.h \
 	console.h \
 	display.h \
@@ -13,26 +14,27 @@ HEADER = \
 	gdf_defs.h \
 	gdf_text.h \
 	global.h \
-	icb.h \
-	kbddrv.h \
+	kbdapi.h \
 	libkern.h \
 	linea.h \
+	linea_vars.h \
 	math.h \
 	memory.h \
+	module.h \
 	mouse.h \
-	mousedrv.h \
 	ovdi.h \
 	ovdi_defs.h \
+	ovdi_mouse.h \
 	ovdi_rasters.h \
 	ovdi_types.h \
+	parser.h \
 	patch_gem.h \
 	polygon.h \
 	rasters.h \
-	res.h \
 	styles.h \
 	tables.h \
-	time.h \
-	vbi.h \
+	timerapi.h \
+	vbiapi.h \
 	vdi_defs.h \
 	vdi_globals.h \
 	v_attribs.h \
@@ -49,17 +51,10 @@ HEADER = \
 	v_time.h \
 	workstation.h \
 	xbios.h \
-	xcb.h \
-	1b_driver.h \
-\
-	4b_driver.h \
-\
-	8b_driver.h \
-\
-	16b_driver.h
 
 	
 COBJS = \
+	cnf.c \
 	colors.c \
 	crtinit.c \
 	display.c \
@@ -67,12 +62,11 @@ COBJS = \
 	file.c \
 	fonts.c \
 	gdf_text.c \
-	ikbd_mouse.c \
-	kbddrv.c \
 	line.c \
 	linea.c \
 	math.c \
 	memory.c \
+	module.c \
 	mousedrv.c \
 	ovdi.c \
 	ovdi_dev.c \
@@ -82,8 +76,6 @@ COBJS = \
 	rasters.c \
 	sysfonts.c \
 	syspalette.c \
-	time.c \
-	vbi.c \
 	vt-52.c \
 	v_attribs.c \
 	v_escape.c \
@@ -98,27 +90,14 @@ COBJS = \
 	v_text.c \
 	v_time.c \
 	workstation.c \
-	xbios.c \
-	1b_driver.c \
-\
-	4b_driver.c \
-\
-	8b_driver.c \
-\
-	16b_driver.c
+	xbios.c
 	
 SOBJS = \
 	contermh.s \
-	timeasm.s \
-	vbiasm.s \
 	handler.s \
-	ikbd_mouse_asm.s \
 	lineaasm.s \
 	mousedrv_asm.s \
 	xbiosasm.s \
-	xcb_calls.s \
-\
-	8b_drvasm.s
 
 
 SSOBJS = \

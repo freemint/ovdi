@@ -5,7 +5,7 @@
 void install_xbios	(void);
 void uninstall_xbios	(void);
 
-void enable_xbios	(VIRTUAL *v);
+void enable_xbios	(OVDI_HWAPI *hw);
 void disable_xbios	(void);
 
 #endif	/* _OVDI_XBIOS_H */

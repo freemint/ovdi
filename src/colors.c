@@ -1,53 +1,82 @@
+/*
+ * This file belongs to oVDI.
+ *
+ * This file contains color and pixel related functions.
+ *
+ * Copyright 2004 Odd Skancke <ozk@atari.org>
+ * All rights reserved.
+ *
+ * Author: Odd Skancke <ozk@atari.org>
+ * Started: 2004-01-01
+ *
+ * please send suggestions, patches or bug reports to me.
+ *
+ *
+ * changes since last version:
+ *
+ * - initial revision
+ *
+ * known bugs:
+ *
+ * -
+ *
+ * todo:
+ *
+ *
+ */
+
+/*
+ * To illustrate how pixelformat is described, here is the one that describes
+ * Falcon pixelformat.
+ * This descritor is also used by vq_extend()
+
+ * Falcon's 15-bit pixelformat bit layout
+ * char pf_15b_falc[] =
+ * {
+ *	  5,  11,   1,		5 red bits start at bit 11. Add one to get to next red bit
+ *	 11, 255,   0,		11 unused red bits followin the above red bits
+ *
+ *	  5,   6,   1,		5 green bits starting at bit 8
+ *	 11, 255,   0,		11 Unused green bits
+ *
+ *	  5,   0,   1,		5 blue bits start at bit 0
+ *	 11, 255,   0,		11 unused blue bits
+ *
+ *	 32, 255,   0,		32 unused alpha channel bits
+ *
+ *	  1,   5,   1,		1 overlay bit, starting at bit 5
+ *	 31, 255,   0,		31 unused genlock/overlay bits
+ *
+ *	 32, 255,   0,		No unused bits
+ *	 0			end of table
+ * };
+ */
 #include "colors.h"
 #include "display.h"
 #include "ovdi_defs.h"
 #include "vdi_defs.h"
 
-/* Calculate real RGB values based on 'relative' RGB values (0 - 1000). */
-
 /*
-* To illustrate how pixelformat is described, here is the one that describes
-* Falcon pixelformat. 
-* This descritor is also used by vq_extend()
-
-* Falcon's 15-bit pixelformat bit layout
-* char pf_15b_falc[] =
-* {
-*	  5,  11,   1,		5 red bits start at bit 11. Add one to get to next red bit
-*	 11, 255,   0,		11 unused red bits followin the above red bits
-*
-*
-*	  5,   6,   1,		5 green bits starting at bit 8
-*	 11, 255,   0,		11 Unused green bits
-*
-*	  5,   0,   1,		5 blue bits start at bit 0
-*	 11, 255,   0,		11 unused blue bits
-*
-*	 32, 255,   0,		32 unused alpha channel bits
-*
-*	  1,   5,   1,		1 overlay bit, starting at bit 5
-*	 31, 255,   0,		31 unused genlock/overlay bits
-*
-*	 32, 255,   0,		No unused bits
-*	 0			end of table
-* };
+ * Calculate real RGB values based on 'relative' RGB values (0 - 1000).
+ * if pixelret is non-NULL, pixel value is written to that pointer.
 */
 void
 reqrgb_2_actrgb(char *pixfmt, RGB_LIST *levels, RGB_LIST *reqrgb, RGB_LIST *rgbvals, unsigned long *pixelret)
 {
 
-	rgbvals->red	= (unsigned short)(((long)reqrgb->red 	* levels->red) / 1000);
-	rgbvals->green	= (unsigned short)(((long)reqrgb->green * levels->green) / 1000);
-	rgbvals->blue	= (unsigned short)(((long)reqrgb->blue 	* levels->blue) / 1000);
-	rgbvals->alpha	= (unsigned short)(((long)reqrgb->alpha * levels->alpha) / 1000);
-	rgbvals->ovl	= (unsigned short)(((long)reqrgb->ovl 	* levels->ovl) / 1000);
+	rgbvals->red	= (unsigned short)(((long)reqrgb->red 	* levels->red + 500) / 1000);
+	rgbvals->green	= (unsigned short)(((long)reqrgb->green * levels->green + 500) / 1000);
+	rgbvals->blue	= (unsigned short)(((long)reqrgb->blue 	* levels->blue + 500) / 1000);
+	rgbvals->alpha	= (unsigned short)(((long)reqrgb->alpha * levels->alpha + 500) / 1000);
+	rgbvals->ovl	= (unsigned short)(((long)reqrgb->ovl 	* levels->ovl + 500) / 1000);
 
 	if (pixelret)
 		*pixelret = calc_pixelvalue( pixfmt, rgbvals);
-
-	return;
 }
-
+/*
+ * Convert real RGB values 'values', using RGB levels 'levels' into
+ * relative RGB values written to 'result'.
+*/
 void
 get_rgb_relatives( RGB_LIST *values, RGB_LIST *levels, RGB_LIST *result)
 {
@@ -56,8 +85,6 @@ get_rgb_relatives( RGB_LIST *values, RGB_LIST *levels, RGB_LIST *result)
 	result->blue	= ((long)values->blue	* 1000) / levels->blue;
 	result->alpha	= ((long)values->alpha	* 1000) / levels->alpha;
 	result->ovl	= ((long)values->ovl	* 1000) / levels->ovl;
-
-	return;
 }
 
 /* Return specified channel of a pixel-value. which selects what channel to get
@@ -94,7 +121,7 @@ get_color_bits( char *pf, unsigned long pixel, short which)
 	return colbits;
 }
 
-/* Get levels per channel in a pixel */
+/* Get intensity levels per channel in a pixel */
 void
 get_rgb_levels( register char *pf, RGB_LIST *levels)
 {
@@ -107,8 +134,6 @@ get_rgb_levels( register char *pf, RGB_LIST *levels)
 	levels->blue	= (unsigned short)(1 << rgbbits.blue) - 1;
 	levels->alpha	= (unsigned short)(1 << rgbbits.alpha) - 1;
 	levels->ovl	= (unsigned short)(1 << rgbbits.ovl) - 1;
-
-	return;
 }
 
 /* Get number of bits per channel in a pixel */
@@ -149,14 +174,11 @@ get_rgb_bits( register char *pf, RGB_LIST *rgbbits)
 		pf += 3;
 	}
 	
-
 	rgbbits->red	= red;
 	rgbbits->green	= green;
 	rgbbits->blue	= blue;
 	rgbbits->alpha	= alpha;
 	rgbbits->ovl	= ovl;
-
-	return;
 }
 
 /* Calculate the true pixelvalue (as written to video-ram) */

@@ -4,10 +4,10 @@
 #include "draw.h"
 #include "fonts.h"
 #include "gdf_defs.h"
-#include "kbddrv.h"
+//#include "kbddrv.h"
 #include "libkern.h"
 #include "line.h"
-#include "linea.h"
+#include "linea_vars.h"
 #include "memory.h"
 #include "mousedrv.h"
 #include "ovdi_defs.h"
@@ -15,7 +15,7 @@
 #include "polygon.h"
 #include "rasters.h"
 #include "std_driver.h"
-#include "vbi.h"
+//#include "vbi.h"
 #include "vdi_defs.h"
 #include "vdi_globals.h"
 #include "v_attribs.h"
@@ -33,23 +33,31 @@ static short setup_drawers_jumptable(OVDI_DRAWERS *src, OVDI_DRAWERS *dst, short
 
 static OVDI_DRAWERS defdrawers = 
 {
-	rectfill,
-	draw_arc,
-	draw_pieslice,
-	draw_circle,
-	draw_ellipse,
-	draw_ellipsearc,
-	draw_ellipsepie,
-	draw_rbox,
-	abline,
-	habline,
-	vabline,
-	wide_line,
-	draw_spans,
-	filled_poly,
-	pmarker,
-	rt_cpyfm,
-	ro_cpyfm,
+	{ /* struct vdiprimitives */
+		rectfill,
+		draw_arc,
+		draw_pieslice,
+		draw_circle,
+		draw_ellipse,
+		draw_ellipsearc,
+		draw_ellipsepie,
+		draw_rbox,
+
+		abline,
+		habline,
+		vabline,
+		pline,
+		wide_line,
+
+		draw_spans,
+		draw_mspans,
+
+		filled_poly,
+		pmarker,
+
+		rt_cpyfm,
+		ro_cpyfm,
+	},
 
 	0,	/* draw_pixel */
 	0,	/* read_pixel */
@@ -63,7 +71,6 @@ static OVDI_DRAWERS defdrawers =
 
 	0,	/* draw_mcurs */
 	0,	/* undraw_mcurs */
-
 };
 
 static OVDI_UTILS defutils =
@@ -101,9 +108,10 @@ static OVDI_UTILS defutils =
 static OVDI_DRAWERS *other_drawers[] =
 {
  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
- 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 };
 
+#if 0
 static OVDI_UTILS	root_utils;
 static OVDI_DRAWERS	root_drawers;
 static OVDI_DRAWERS	drawers_1b;
@@ -114,10 +122,63 @@ static OVDI_DRAWERS	drawers_15b;
 static OVDI_DRAWERS	drawers_16b;
 static OVDI_DRAWERS	drawers_24b;
 static OVDI_DRAWERS	drawers_32b;
+#endif
 
+/*
+ * initialize the function tables associated with a raster,
+ * like the 'ovdi_drawers' structures and 'ovdi_utils' structure.
+*/
 void
 init_raster(OVDI_DRIVER *drv, RASTER *r)
 {
+	char *mem;
+
+	if (!r->odrawers)
+	{
+		mem = (char *)omalloc( sizeof(other_drawers) + (sizeof(OVDI_DRAWERS) * 8) + sizeof(OVDI_UTILS), MX_PREFTTRAM | MX_PRIVATE );
+
+		if (mem)
+		{
+			(long)r->odrawers = (long)mem;
+			bzero(mem, sizeof(other_drawers));
+			mem	+= sizeof(other_drawers);
+
+			r->odrawers[1]	= (OVDI_DRAWERS *)mem;
+			mem	+= sizeof(OVDI_DRAWERS);
+
+			r->odrawers[2] = (OVDI_DRAWERS *)mem;
+			mem	+= sizeof(OVDI_DRAWERS);
+
+			r->odrawers[4] = (OVDI_DRAWERS *)mem;
+			mem	+= sizeof(OVDI_DRAWERS);
+
+			r->odrawers[8] = (OVDI_DRAWERS *)mem;
+			mem	+= sizeof(OVDI_DRAWERS);
+
+			r->odrawers[15] = (OVDI_DRAWERS *)mem;
+			mem	+= sizeof(OVDI_DRAWERS);
+
+			r->odrawers[16] = (OVDI_DRAWERS *)mem;
+			mem	+= sizeof(OVDI_DRAWERS);
+
+			r->odrawers[24] = (OVDI_DRAWERS *)mem;
+			mem	+= sizeof(OVDI_DRAWERS);
+
+			r->odrawers[32] = (OVDI_DRAWERS *)mem;
+			mem	+= sizeof(OVDI_DRAWERS);
+
+			r->utils = (OVDI_UTILS *)mem;
+
+			*r->utils = defutils;
+
+			setup_drawers_jumptable(drv->drawers_1b, r->odrawers[1], 1);
+			setup_drawers_jumptable(drv->drawers_8b, r->odrawers[8], 8);
+			setup_drawers_jumptable(drv->drawers_15b, r->odrawers[15], 15);
+			setup_drawers_jumptable(drv->drawers_16b, r->odrawers[16], 16);
+		}
+	}
+
+#if 0
 	r->odrawers = other_drawers;
 
 	setup_drawers_jumptable(drv->drawers_1b, &drawers_1b, 1);
@@ -131,6 +192,7 @@ init_raster(OVDI_DRIVER *drv, RASTER *r)
 
 	root_utils	= defutils;
 	r->utils	= &root_utils;
+#endif
 
 }
 
@@ -291,14 +353,34 @@ clone_colinf(COLINF *dst, COLINF *src)
 	dst->pens	= src->pens;
 	dst->planes	= src->planes;
 }
-	
+
+/*
+ * Setup ovdi_drawers structure.
+*/	
 static short
 setup_drawers_jumptable(OVDI_DRAWERS *src, OVDI_DRAWERS *dst, short planes)
 {
 	short i;
+	long *srcp, *dstp, *defp;
 
 	*dst = defdrawers;
 
+	/*
+	 * Set up the VDI primitive function pointers.
+	 * If graphics driver provide a pointer, we take that, else we
+	 * take the pointer from the default table.
+	*/
+	srcp = (long *)&src->p;
+	dstp = (long *)&dst->p;
+	defp = (long *)&defdrawers.p;
+	for (i = 0; i < sizeof(VDIPRIMITIVES) >> 2; i++)
+	{
+		if (*srcp)
+			*dstp++ = *srcp++;
+		else
+			*dstp++ = *defp++; srcp++;
+	}
+				
 	switch (planes)
 	{
 		case 1:

@@ -1,9 +1,9 @@
 #ifndef _STD_DRIVER_H
 #define _STD_DRIVER_H
 
-#include "1b_driver.h"
-#include "4b_driver.h"
-#include "8b_driver.h"
-#include "16b_driver.h"
+#include "drivers/generic/1b_generic.h"
+#include "drivers/generic/4b_generic.h"
+#include "drivers/generic/8b_generic.h"
+#include "drivers/generic/16b_generic.h"
 
 #endif	/* _STD_DRIVER_H */

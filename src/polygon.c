@@ -16,9 +16,12 @@ filled_poly(RASTER *r, COLINF *c, short *pts, short n, VDIRECT *clip, short *poi
 	long spans;
 	long max_spans;
 	short *coords;
+	Fspans s;
 
 	if (!n)
 		return;
+
+	s = DRAW_SPANS_PTR(r); //r->drawers->draw_spans;
 
 	max_spans = ((pointasize / 5)/2) - 1;
 
@@ -98,7 +101,7 @@ filled_poly(RASTER *r, COLINF *c, short *pts, short n, VDIRECT *clip, short *poi
 		if (spans > max_spans)
 		{			/* Should really check against size of points array! */
 			for (i = n; i < (n+(spans*3)); i += 3)
-				draw_spans(r, c, points[i+1], points[i+2], points[i], ptrn);
+				(*s)(r, c, points[i+1], points[i+2], points[i], ptrn);
 
 			spans = 0;
 			coords = &points[n];
@@ -133,7 +136,7 @@ filled_poly(RASTER *r, COLINF *c, short *pts, short n, VDIRECT *clip, short *poi
 	if (spans)
 	{
 		for (i = n; i < (n+(spans*3)); i += 3)
-			draw_spans(r, c, points[i+1], points[i+2], points[i], ptrn);
+			(*s)(r, c, points[i+1], points[i+2], points[i], ptrn);
 	}
 #endif
 }

@@ -1,47 +1,46 @@
+#include <osbind.h>
+
 #include "display.h"
 #include "file.h"
+#include "vdi_defs.h"
 #include "fonts.h"
 #include "gdf_defs.h"
-#include "vdi_defs.h"
+#include "memory.h"
 #include "vdi_globals.h"
 
-char fonts_buffer[];
-char *nextfont = (char *)&fonts_buffer;
-long total_fsize = 0;
-char fonts_buffer[1024UL*1024UL];
-
-/* This stupid use of a fixed buffer is only temporary! */
 long
-load_font( char *fn, long *size, long *loc)
+load_font( char *fn, long *size, long *loc, struct gdf_membuff *m)
 {
-	long fs, lbytes;
-	char *b = nextfont;
+	long fs, lbytes, used;
+	char *b = m->free;
 	XGDF_HEAD *xf;
 
+	used = (long)m->free - (long)m->base;
 	fs = get_file_size(fn);
 
-	if (total_fsize + fs + sizeof(XGDF_HEAD) > sizeof(fonts_buffer))
-	{
+	if ( (used + fs + sizeof(XGDF_HEAD)) > m->size)
 		return -1;
-	}
 
 	if (fs < 0)
 		return fs;
 
 	xf = (XGDF_HEAD *)b;
+	bzero(xf, sizeof(XGDF_HEAD));
 	b += sizeof(XGDF_HEAD);
 
-	lbytes = load_file( fn, fs, b );
-
+	lbytes = load_file( fn, fs, b);
 	if (lbytes < 0)
 		return lbytes;
+	else if (lbytes != fs)
+		return -1;
 
 	xf->font_head = (FONT_HEAD *)b;
 
-	nextfont += lbytes+3 + sizeof(XGDF_HEAD);
-	(long)nextfont &= (long)0xfffffffcUL;
-
-	total_fsize += lbytes + sizeof(XGDF_HEAD);;
+	m->free  += (lbytes + sizeof(XGDF_HEAD) + 3) & ~3;
+	
+	//scrnlog("Font '%s' loaded into %lx. fonthead %lx, Size %ld, nxtfree %lx\n", fn, xf, xf->font_head, lbytes + sizeof(XGDF_HEAD), (long)xf + lbytes + sizeof(XGDF_HEAD) );
+	//scrnlog("mbase %lx, mfree %lx, msize %ld\n\n", m->base, m->free, m->size);
+	
 
 	if (size)
 		*size = lbytes;
@@ -108,59 +107,151 @@ fixup_font( FONT_HEAD *font )
 }
 
 /* Set up the system font */
-extern char systemfont08[];
-extern char systemfont09[];
-extern char systemfont10[];
+/* User selected system-fonts or NULL */
+static XGDF_HEAD *
+load_sysfont(char *path, char *file, struct gdf_membuff *m)
+{
+	XGDF_HEAD *xf = 0;
+	char *fname;
+	char fqpn[128];
 
+	fname	= (char *)&fqpn;
+	while (*path) *fname++ = *path++;
+	while (*file) *fname++ = *file++;
+	*fname = 0;
+
+	if ( !load_font((char *)fqpn, 0, (long *)&xf, m) )
+	{
+		fixup_font(xf->font_head);
+	}
+	return xf;
+}
+/* This is called !ONCE! upon boot to initialize the default system fonts!
+ * Because of this, we dont keep the gdf_membuff for the systemfonts,
+ * as this memory will never be released
+*/
 void
 init_systemfonts(SIZ_TAB *st, DEV_TAB *dt)
 {
-	short i;
-	FONT_HEAD *f1;
-	XGDF_HEAD *xf;
 
 	if (!sysfnt08p)
 	{
+		short i;
+		long fs, size = 0;
+		char *buff;
+		FONT_HEAD *f1;
+		XGDF_HEAD *xf;
+		struct gdf_membuff m;
+		char savpath[128];
+
+		Dgetpath( (char *)&savpath, 0);
+		Dsetpath( (char *)gdf_path );
 
 		sysfnt_minwchar = sysfnt_minhchar = 0x7fff;
 		sysfnt_maxwchar = sysfnt_maxhchar = 0;
 
 		sysfnt_faces	= 1;
 
-		f1 = (FONT_HEAD *)&systemfont08;
-		xf = &xsystemfont08;
-		xf->links = 1;
-		xf->font_head = f1;
-		for (i = 0; i < 256; i++)
-			xf->cache[i] = 0;
-		fixup_font(f1);
+	/* Figure out size of buffer needed to hold loaded system-fonts */
+		if (sysf08_name[0])
+		{
+			fs = get_file_size((char *)sysf08_name);
+			if (fs > 0)
+				size =  (fs + sizeof(XGDF_HEAD) + 3) & ~3;
+			else
+				sysf08_name[0] = 0;
+		}
+		if (sysf09_name[0])
+		{
+			fs = get_file_size((char *)sysf09_name);
+			if (fs > 0)
+				size += (fs + sizeof(XGDF_HEAD) + 3) & ~3;
+			else
+				sysf09_name[0] = 0;
+		}
+		if (sysf10_name[0])
+		{
+			fs = get_file_size((char *)sysf10_name);
+			if (fs > 0)
+				size += (fs + sizeof(XGDF_HEAD) + 3) & ~3;
+			else
+				sysf09_name[0] = 0;
+		}
+		if (size)
+		{
+			buff = (char *)omalloc(size, 0);
+			if (!buff) /* If no buffer obtainable, use internal systemfonts */
+				sysf08_name[0] = sysf09_name[0] = sysf10_name[0] = 0;
+			else
+			{
+				m.base = buff;
+				m.free = buff;
+				m.size = size;
+			}
+		}
+
+	/* system font 08 points */
+		xf = 0;
+		if (sysf08_name[0])
+			xf = load_sysfont((char *)gdf_path, (char *)sysf08_name, &m);
+		if (xf)
+			f1 = xf->font_head;
+		else
+		{
+			f1 = (FONT_HEAD *)&systemfont08;
+			xf = &xsystemfont08;
+			xf->links = 1;
+			xf->font_head = f1;
+			for (i = 0; i < 256; i++)
+				xf->cache[i] = 0;
+			fixup_font(f1);
+		}
 		sysfnt08p = xf;
 		f1->id = 1;
 
-		f1 = (FONT_HEAD *)&systemfont09;
-		xf = &xsystemfont09;
-		xf->links = 1;
-		xf->font_head = f1;
-		for (i = 0; i < 256; i++)
-			xf->cache[i] = 0;
-		fixup_font(f1);
+	/* system font 09 points */
+		xf = 0;
+		if (sysf09_name[0])
+			xf = load_sysfont((char *)gdf_path, (char *)sysf09_name, &m);
+		if (xf)
+			f1 = xf->font_head;
+		else
+		{
+			f1 = (FONT_HEAD *)&systemfont09;
+			xf = &xsystemfont09;
+			xf->links = 1;
+			xf->font_head = f1;
+			for (i = 0; i < 256; i++)
+				xf->cache[i] = 0;
+			fixup_font(f1);
+		}
 		sysfnt09p = xf;
 		f1->id = 1;
 		if ((add_font(sysfnt08p, xf)) == 1)
 			sysfnt_faces++;
 
-		f1 = (FONT_HEAD *)&systemfont10;
-		xf = &xsystemfont10;
-		xf->links = 1;
-		xf->font_head = f1;
-		for (i = 0; i < 256; i++)
-			xf->cache[i] = 0;
-		fixup_font(f1);
-		sysfnt10p = xf; //f1;
+	/* system font 10 points */
+		xf = 0;
+		if (sysf10_name[0])
+			xf = load_sysfont((char *)gdf_path, (char *)sysf10_name, &m);
+		if (xf)
+			f1 = xf->font_head;
+		else
+		{
+			f1 = (FONT_HEAD *)&systemfont10;
+			xf = &xsystemfont10;
+			xf->links = 1;
+			xf->font_head = f1;
+			for (i = 0; i < 256; i++)
+				xf->cache[i] = 0;
+			fixup_font(f1);
+		}
+		sysfnt10p = xf;
 		f1->id = 1;
 		if ((add_font(sysfnt08p, xf)) == 1)
 			sysfnt_faces++;
 
+	/* Fill in SIZ tab with max/min char with/height */
 		xf = sysfnt08p;
 		while(xf)
 		{
@@ -184,7 +275,76 @@ init_systemfonts(SIZ_TAB *st, DEV_TAB *dt)
 		st->maxwchar	= sysfnt_maxwchar;
 		st->minhchar	= sysfnt_minhchar;
 		st->maxhchar	= sysfnt_maxhchar;
+
+		Dsetpath( (char *)&savpath );
 	}
+}
+
+/* This cache stuff is very, very simple and preliminary.... */
+long		gdf_cache_size = 0;
+static char	*font_cache = 0;
+static char	*next_free = 0;
+GDF_CACHED *
+gdf_get_cachemem(XGDF_HEAD *xf, short chr)
+{
+	short width;
+	long fdatlen, cachentlen, usedcache;
+	FONT_HEAD *f = xf->font_head;
+	GDF_CACHED *cachent = 0;
+	char *nextfree = next_free;
+
+	if (!(nextfree = next_free))
+	{
+		if (!gdf_cache_size)
+			return 0;
+		font_cache = (char *)omalloc(gdf_cache_size + 4, MX_PREFTTRAM | MX_SUPER);
+		if (!font_cache)
+			return 0;
+		next_free = nextfree = font_cache;
+	}
+	
+	if (chr < f->first_ade || chr > f->last_ade)
+		chr = 0x3f;
+
+	chr	-= f->first_ade;
+	width	 = f->off_table[chr +  1] - f->off_table[chr];
+	
+	usedcache	= (long)nextfree - (long)font_cache;
+	fdatlen		= ((long)width * f->form_height) << 1;
+	cachentlen	= fdatlen + sizeof(GDF_CACHED);
+
+	if ( (cachentlen + usedcache) <= gdf_cache_size)
+	{
+		cachent			=  (GDF_CACHED *)nextfree;
+		cachent->mfdb.fd_addr	=  (char *)cachent + sizeof(GDF_CACHED);
+		cachent->font		=  xf;
+		cachent->chridx		=  chr;
+		next_free		+= cachentlen;
+		xf->cache[chr + f->first_ade] = cachent;
+	}
+	//else
+		//scrnlog("fontcache exhausted!\n");
+
+	return cachent;
+}
+
+void
+gdf_free_cache(void)
+{
+	short i;
+
+	if (font_cache)
+	{
+		/* For now we need to clear the cache-table for the systemfonts */
+		for (i = 0; i < 256; i++)
+		{
+			sysfnt08p->cache[i] = 0;
+			sysfnt09p->cache[i] = 0;
+			sysfnt10p->cache[i] = 0;
+		}
+		free_mem(font_cache);
+	}
+	font_cache = next_free = 0;
 }
 
 /* Returns 0 if added font was not a new face, only new size */

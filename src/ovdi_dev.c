@@ -1,3 +1,4 @@
+#if 0
 #include <mint/mintbind.h>
 #include <fcntl.h>
 
@@ -502,8 +503,13 @@ static OVDI_DRIVER *
 dev_open(OVDI_DEVICE *dev)
 {
 	OVDI_DRIVER *drv = &driver;
+	RESOLUTION res;
+	char fname[] = "c:\\auto\\ovdiboot.bib\0";
 
 	drv->dev	= dev;
+
+	if ( Load_Resolution((char *)&fname, 0, &res) )
+		do_set_res(drv, &res);
 
 	(void)dev_get_res_info(drv);
 
@@ -514,10 +520,14 @@ static long
 dev_close(OVDI_DRIVER *drv)
 {
 	RESOLUTION res;
-	char fname[] = "c:\\auto\\emulator.bib\0";
+	char fnam0[] = "c:\\auto\\ovdiboot.bib\0";
+	char fnam1[] = "c:\\auto\\emulator.bib\0";
 
-	if ( !(Load_Resolution((char *)&fname, 0, &res)) )
-		return 0;
+	if ( !(Load_Resolution((char *)&fnam0, 0, &res)) )
+	{
+		if ( !(Load_Resolution((char *)&fnam1, 0, &res)) )
+			return 0;
+	}
 
 	do_set_res(drv, &res);
 	(void)dev_get_res_info(drv);
@@ -727,3 +737,4 @@ dev_vreschk(short x, short y)
 	do_p_chng_vrt((long)xcb->p_chng_vrt, x, y);
 	return;
 }
+#endif 

@@ -1,3 +1,4 @@
+
 /*
  * XaAES - XaAES Ain't the AES (c) 1992 - 1998 C.Graham
  *                                 1999 - 2003 H.Robbers
@@ -256,29 +257,54 @@ scrnlog(const char *t, ...)
 	return;
 }
 
+static char logfile_name[128] = { 0 };
+void
+set_log_file(const char *fname)
+{
+	short i;
+	char *lfn;
+
+	i = 0;
+	lfn = (char *)&logfile_name[0];
+
+	while (*fname && i < 128)
+	{
+		*lfn++ = *fname++;
+		i++;
+	}
+
+	*lfn++ = 0;
+}
+
 void
 log(const char *t, ...)
 {
+	char *logname;
 	char line[512];
 	va_list args;
 	int l;
 	short fh;
 
-	va_start(args, t);
-	l = vsdisplay(line, t, args);
-	l = ins_cr(line, l);
-	va_end(args);
+	logname = (char *)&logfile_name;
 
-	fh = Fopen("e:\\ovdi.log\0", O_RDWR);
-	if (fh < 0)
-		fh = Fcreate("e:\\ovdi.log\0", O_RDWR);
+	if (*logname)
+	{
+		va_start(args, t);
+		l = vsdisplay(line, t, args);
+		l = ins_cr(line, l);
+		va_end(args);
 
-	if (fh < 0)
-		return;
+		fh = Fopen(logname, O_RDWR);
+		if (fh < 0)
+			fh = Fcreate(logname, O_RDWR);
 
-	Fseek( 0L, fh, SEEK_END);
-	Fwrite(fh, (long)l, (const char *)&line);
-	Fclose(fh);
+		if (fh < 0)
+			return;
+
+		Fseek( 0L, fh, SEEK_END);
+		Fwrite(fh, (long)l, (const char *)&line);
+		Fclose(fh);
+	}
 	return;
 }
 

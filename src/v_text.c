@@ -20,7 +20,6 @@ vst_load_fonts( VDIPB *pb, VIRTUAL *v)
 	}
 
 	pb->contrl[N_INTOUT] = 1;
-	return;
 }
 
 short
@@ -42,14 +41,12 @@ vst_unload_fonts( VDIPB *pb, VIRTUAL *v)
 		v->font.loaded = 0;
 		v->font.lcount = 0;
 	}
-	return;
 }
 
 void
 lvst_wrmode( VIRTUAL *v, short wrmode)
 {
 	set_writingmode( wrmode, &v->font.wrmode);
-	return;
 }
 
 void
@@ -61,17 +58,13 @@ vst_alignment( VDIPB *pb, VIRTUAL *v)
 	pb->intout[1] = v->font.valign;
 
 	pb->contrl[N_INTOUT] = 2;
-	return;
 }
 
 void
 lvst_alignment( VIRTUAL *v, short halign, short valign)
 {
-
 	v->font.halign = halign > MAX_HALIGN ? MAX_HALIGN : halign;
 	v->font.valign = valign > MAX_VALIGN ? MAX_VALIGN : valign;
-
-	return;
 }
 
 void
@@ -80,7 +73,6 @@ vst_color( VDIPB *pb, VIRTUAL *v)
 	lvst_color( v, pb->intin[0]);
 	pb->intout[0] = v->colinf->color_hw2vdi[v->font.color];
 	pb->contrl[N_INTOUT] = 1;
-	return;
 }
 
 void
@@ -95,7 +87,6 @@ lvst_color( VIRTUAL *v, register short color)
 		color = maxcolor - 1;
 
 	v->font.color = v->colinf->color_vdi2hw[color];
-	return;
 }
 
 void
@@ -105,7 +96,6 @@ vst_effects( VDIPB *pb, VIRTUAL *v)
 	pb->intout[0] = v->font.style;
 
 	pb->contrl[N_INTOUT] = 1;
-	return;
 }
 
 void
@@ -113,30 +103,24 @@ lvst_effects( VIRTUAL *v, register short style)
 {
 	v->font.style = style & F_SUPPORTED;
 	get_font_chrfx_ofst(v->font.header, v->font.style, &v->font.fx_x_ofst, &v->font.fx_y_ofst);
-	return;
 }
 
 void
 vst_font( VDIPB *pb, VIRTUAL *v)
 {
-
-
 	if ( (lvst_font( v, pb->intin[0])) )
 		pb->intout[0] = v->font.header->id;
 	else
 		pb->intout[0] = 0;
 
 	pb->contrl[N_INTOUT] = 1;
-	return;
 }
 
 int
 lvst_font( VIRTUAL *v, short id)
 {
-
 	XGDF_HEAD *sf, *lf;
 	short sr, lr;
-
 
 	lr = -1;
 
@@ -155,7 +139,6 @@ lvst_font( VIRTUAL *v, short id)
 		v->font.scaled	= 0;
 		v->font.sclsts	= 0;
 		get_font_chrfx_ofst(sf->font_head, v->font.style, &v->font.fx_x_ofst, &v->font.fx_y_ofst);
-		//display("set font1 %s", sf->name);
 		return 1;
 	}
 
@@ -173,11 +156,9 @@ lvst_font( VIRTUAL *v, short id)
 			v->font.scaled	= 0;
 			v->font.sclsts	= 0;
 			get_font_chrfx_ofst(lf->font_head, v->font.style, &v->font.fx_x_ofst, &v->font.fx_y_ofst);
-			//display("set font2 %s", lf->name);
 			return 1;
 		}
 	}
-
 	
 	if (sr != 2 && lr == 2)
 	{
@@ -194,18 +175,14 @@ lvst_font( VIRTUAL *v, short id)
 			(void)lvst_point( v, v->font.size );
 		else
 			(void)lvst_height( v, v->font.size );
-		//display("set font3 %s\n", sf->name);
 		return 1;
 	}
-
 	return 0;
 }
 
 void
 vst_point( VDIPB *pb, VIRTUAL *v )
 {
-
-
 	if ( (lvst_point( v, pb->intin[0] )) )
 	{
 		short hcell;
@@ -218,14 +195,11 @@ vst_point( VDIPB *pb, VIRTUAL *v )
 	}
 	else
 	{
-		display("vst_point: This should never happen!");
 		pb->intout[0] = 0;
 	}
 
 	pb->contrl[N_INTOUT] = 1;
 	pb->contrl[N_PTSOUT] = 2;
-	
-	return;
 }
 
 int
@@ -236,9 +210,7 @@ lvst_point ( VIRTUAL *v, short point )
 	short sr, lr;
 
 	lr = 0;
-
 	sr = find_fontbypoint(v->fring, v->font.header->id, point, (long *)&sf );
-
 	if (sr == 1)
 	{
 		fnth		= sf->font_head;
@@ -307,7 +279,6 @@ vst_height( VDIPB *pb, VIRTUAL *v )
 
 	pb->contrl[N_INTOUT] = 0;
 	pb->contrl[N_PTSOUT] = 2;
-	return;
 }
 
 int
@@ -318,9 +289,7 @@ lvst_height ( VIRTUAL *v, short height )
 	short sr, lr;
 
 	lr = 0;
-
 	sr = find_fontbyheight(v->fring, v->font.header->id, height, (long *)&sf );
-
 	if (sr == 1)
 	{
 		fnth		= sf->font_head;
@@ -376,7 +345,6 @@ vst_rotation( VDIPB *pb, VIRTUAL *v)
 	pb->intout[0] = v->font.angle;
 
 	pb->contrl[N_INTOUT] = 1;
-	return;
 }
 
 void
@@ -384,7 +352,6 @@ lvst_rotation( VIRTUAL *v, short angle)
 {
 
 	v->font.angle = 0;
-	return;
 #if 0
 	if (angle < 450)
 		v->font.angle = 0;
@@ -397,9 +364,7 @@ lvst_rotation( VIRTUAL *v, short angle)
 	else
 		v->font.angle = 3600;
 
-	return;	
-#endif	
-
+#endif
 }
 
 void
@@ -412,8 +377,6 @@ v_gtext( VDIPB *pb, VIRTUAL *v)
 
 	output_gdftext( v, (POINT *)&pb->ptsin[0], (short *)&pb->intin[0], slen,
 			0, 0, 0);
-
-	return;
 }
 
 void
@@ -438,13 +401,11 @@ vqt_attributes( VDIPB *pb, VIRTUAL *v)
 
 	pb->contrl[N_INTOUT] = 6;
 	pb->contrl[N_PTSOUT] = 2;
-	return;
 }
 
 void
 vqt_extent( VDIPB *pb, VIRTUAL *v)
 {
-
 	short angle, width, height;
 	register short *points;
 	FONT_HEAD *f;
@@ -519,7 +480,6 @@ vqt_extent( VDIPB *pb, VIRTUAL *v)
 		}
 	}
 	pb->contrl[N_PTSOUT] = 4;
-	return;
 }
 
 void
@@ -541,10 +501,7 @@ vqt_fontinfo( VDIPB *pb, VIRTUAL *v)
 		pb->ptsout[6] = f->right_offset;	/* Effx 2 */
 	}
 	else
-	{
-		pb->ptsout[4] = 0;			/* Effx 1 */
-		pb->ptsout[6] = 0;			/* Effx 2 */
-	}
+		pb->ptsout[4] = pb->ptsout[6] = 0;	/* Effx 1 & Effx 2 */
 
 	pb->ptsout[5] = f->half;			/* Dist 2 */
 	pb->ptsout[7] = f->ascent;			/* Dist 3 */
@@ -553,8 +510,6 @@ vqt_fontinfo( VDIPB *pb, VIRTUAL *v)
 
 	pb->contrl[N_PTSOUT] = 5;
 	pb->contrl[N_INTOUT] = 2;
-
-	return;
 }
 
 void
@@ -566,7 +521,6 @@ vqt_name( VDIPB *pb, VIRTUAL *v)
 	short index;
 	FONT_HEAD *f;
 	XGDF_HEAD *xf;
-
 
 	index = find_fontbyindex( v->fring, pb->intin[0], (long *)&xf);
 
@@ -585,18 +539,10 @@ vqt_name( VDIPB *pb, VIRTUAL *v)
 	f = xf->font_head;
 	dfname = (short *)&pb->intout[1];
 	for (i = 0, sfname = (unsigned char *)&f->name, dfname = (short *)&pb->intout[1]; (*dfname++ = *sfname++); i++){}
-
-	while ( i < 32 )
-	{
-		*dfname++ = 0;
-		i++;
-	}
+	while ( i < 32 ) { *dfname++ = 0; i++; }
 	
 	pb->intout[0] = f->id;
-
 	pb->contrl[N_INTOUT] = 33;
-
-	return;	
 }
 
 void
@@ -616,10 +562,7 @@ vqt_width( VDIPB *pb, VIRTUAL *v)
 		pb->intout[0] = chr;
 
 		offtab = f->off_table;
-		if (f->flags & F_HORZ_OFF)
-			hortab = f->hor_table;
-		else
-			hortab = 0;
+		hortab = f->flags & F_HORZ_OFF ? f->hor_table : 0;
 
 		chr -= f->first_ade;
 		pb->ptsout[0] = offtab[chr + 1] - offtab[chr];
@@ -630,12 +573,9 @@ vqt_width( VDIPB *pb, VIRTUAL *v)
 			pb->ptsout[2] = hortab[chr + 1];
 		}
 		else
-		{
 			pb->ptsout[1] =	pb->ptsout[2] = 0;
-		}
 	}
 
 	pb->contrl[N_INTOUT] = 1;
 	pb->contrl[N_PTSOUT] = 3;
-	return;
 }

@@ -32,7 +32,10 @@ int vsdisplay(char *to, const char *f, va_list sp);
 int sdisplay(char *s, const char *t, ...);
 int fdisplay(int fl, int echo, const char *t, ...);
 int display(const char *t, ...);
-void scrnlog(const char *t, ...);
-void log(const char *t, ...);
+
+void set_log_file(const char *fname);
+
+void _cdecl scrnlog(const char *t, ...);
+void _cdecl log(const char *t, ...);
 
 #endif /* _display_h */

@@ -1,6 +1,10 @@
 #ifndef	_OVDIFILE_H
 #define _OVDIFILE_H
 
+#ifndef _cdecl
+#define _cdecl
+#endif
+
 /* structure for getxattr */
 struct xattr
 {
@@ -23,8 +27,8 @@ struct xattr
 };
 typedef	struct xattr XATTR;
 
-long get_file_size( char *filename );
-long load_file( char *filename, long bytes, char *buffer);
+long _cdecl get_file_size( char *filename );
+long _cdecl load_file( char *filename, unsigned long bytes, char *buffer);
 
 
 #endif /* _OVDIFILE_H */

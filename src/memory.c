@@ -4,8 +4,8 @@
 
 extern short MiNT;
 
-long
-omalloc(unsigned long amount, unsigned short type)
+void * _cdecl
+omalloc(unsigned long amount, short type)
 {
 	long start;
 
@@ -14,11 +14,12 @@ omalloc(unsigned long amount, unsigned short type)
 	else
 		start = (long)Malloc( amount );
 
-	return start;
+	return (void *)start;
 }
 
-void
+void _cdecl
 free_mem(void *loc)
 {
 	Mfree(loc);
 }
+	

@@ -1,10 +1,11 @@
 #include <mint/mintbind.h>
 #include <fcntl.h>
 
+#include "libkern.h"
 #include "file.h"
 #include "vdi_globals.h"
 
-long
+long _cdecl
 get_file_size( char *fn )
 {
 	long	fs;
@@ -37,8 +38,8 @@ get_file_size( char *fn )
 	return fs;
 }
 
-long
-load_file(char *fn, long bytes, char *b)
+long _cdecl
+load_file(char *fn, unsigned long bytes, char *b)
 {
 	long fh, lbytes;
 

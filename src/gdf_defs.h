@@ -38,6 +38,7 @@ typedef struct font_head FONT_HEAD;
 struct gdf_cached
 {
 	struct xgdf_head	*font;
+	short			chridx;
 	struct mfdb		mfdb;
 };
 typedef struct gdf_cached GDF_CACHED;
@@ -51,4 +52,23 @@ struct	xgdf_head
 };
 typedef struct xgdf_head XGDF_HEAD;
 	
+/* gemdos fonts string offsets */
+/* used to calculate offsets into a text string */
+struct gdfso
+{
+	short str_poff;
+	short chr_poff;
+	short str_coff;
+	short width;
+};
+typedef struct gdfso GDFSO;
+
+struct gdf_membuff
+{
+	char	*base;
+	long	size;
+	char	*free;
+};
+
+
 #endif	/* _GDF_DEFS_H */

@@ -6,10 +6,6 @@
 #include "rasters.h"
 #include "vdi_defs.h"
 
-unsigned short font_cache[512*1024L];
-unsigned long used_fntcache = 0L;
-unsigned short *nextfree = (short *)&font_cache;
-
 void
 output_gdftext( VIRTUAL *v, POINT *xy, short *text, short textlen, short jlen, short wf, short cf)
 {
@@ -19,14 +15,14 @@ output_gdftext( VIRTUAL *v, POINT *xy, short *text, short textlen, short jlen, s
 	long sc, sw, sca, swa, scs, sws;
 	VDIRECT *clip;
 	VDIRECT clp, src, dst;
-	MFDB /*fontd,*/ screen;
+	MFDB fontd, screen;
 	MFDB *fmfdb;
 	short colors[2];
 	short coords[8];
 	FONT_HEAD *f;
 	XGDF_HEAD *xf;
 
-	//fmfdb = &fontd;
+	fmfdb = &fontd;
 
 	f	= v->font.header;
 	xf	= v->font.current;
@@ -166,6 +162,7 @@ output_gdftext( VIRTUAL *v, POINT *xy, short *text, short textlen, short jlen, s
 	x2 = x1 + (width - 1);
 	y2 = y1 + (f->form_height - 1);
 
+
 	dst.x1 = x1;
 	dst.y1 = y1;
 	dst.x2 = x2;
@@ -213,19 +210,24 @@ output_gdftext( VIRTUAL *v, POINT *xy, short *text, short textlen, short jlen, s
 
 /* CACHE SHIT */
 	chr = *text++ & 0xff;
+
 	if (xf->cache[chr])
 		fmfdb = &xf->cache[chr]->mfdb;
 	else
 	{
 		GDF_CACHED *cache;
 
-		expand_gdf_font( f, 0, chr, (long *)&cache);
-		xf->cache[chr] = cache;
-		fmfdb = &cache->mfdb;
+		cache = gdf_get_cachemem(xf, chr);
+		if (cache)
+			fmfdb		= &cache->mfdb;
+		else
+		{
+			fmfdb		= &fontd;
+			fmfdb->fd_addr	= 0;
+		}
+		expand_gdf_font( f, fmfdb, chr);
 	}
 /* END */
-//	expand_gdf_font( f, fmfdb/*&fontd*/, *text++ & 0xff, (long)0);
-
 	nxt_x1 = dst.x1;
 
 	if (nxt_x1 > clip->x2)
@@ -293,13 +295,17 @@ output_gdftext( VIRTUAL *v, POINT *xy, short *text, short textlen, short jlen, s
 		{
 			GDF_CACHED *cache;
 
-			expand_gdf_font( f, 0, chr, (long *)&cache);
-			xf->cache[chr] = cache;
-			fmfdb = &cache->mfdb;
+			cache = gdf_get_cachemem(xf, chr);
+			if (cache)
+				fmfdb		= &cache->mfdb;
+			else
+			{
+				fmfdb		= &fontd;
+				fmfdb->fd_addr	= 0;
+			}
+			expand_gdf_font( f, fmfdb, chr);
 		}
 /* END */
-//		expand_gdf_font( f, fmfdb/*&fontd*/, chr, (long)0);
-
 		tmp = nxt_x1 + (fmfdb->fd_w - 1);
 
 		if (tmp >= clip->x1)
@@ -316,34 +322,25 @@ output_gdftext( VIRTUAL *v, POINT *xy, short *text, short textlen, short jlen, s
 
 unsigned short fontdatabuff[1024 * 10];
 unsigned short *nxtfdb = fontdatabuff;
-
+/*
+ * Expand data for a font 'chr' into a MFDB.
+ * Only 'fd_addr' of the MFDB is evaluated as input param by this routine,
+ * the rest of the MFDB is initialized accordinly to the font expanded.
+ *
+ * If fd_addr pointer of the MFDB is NULL, this function will place
+ * the font-data in 'fontdatabuff', and set fd_addr accordingly.
+ * If fd_addr is set, font data is expanded into area pointed to by it.
+*/
 void
-expand_gdf_font( FONT_HEAD *f, MFDB *font, short chr, long *ret)
+expand_gdf_font( FONT_HEAD *f, MFDB *fmfdb, short chr)
 {
 	int i, j;
-	MFDB *fmfdb;
 	unsigned short *fdatptr, *edatptr;
 	short x1, x2, woffset, cwidth;
 	short strtbits, groups, endbits, spans, spanm, ebm;
 	unsigned short fdat;
-	GDF_CACHED *cachent;
-
 
 	fdatptr = (unsigned short *)f->dat_table;
-
-	if (font)
-	{
-		fmfdb = font;
-		edatptr = (unsigned short *)&fontdatabuff;
-	}
-	else
-	{
-		cachent		=  (GDF_CACHED *)nextfree;
-		nextfree	+= ((sizeof(GDF_CACHED))) >> 1;
-		fmfdb		=  &cachent->mfdb;
-		edatptr		=  nextfree;
-		used_fntcache	+= sizeof(GDF_CACHED);
-	}
 
 	if (chr < f->first_ade || chr > f->last_ade)
 		chr = 0x3f;
@@ -354,7 +351,11 @@ expand_gdf_font( FONT_HEAD *f, MFDB *font, short chr, long *ret)
 	cwidth = x2 - x1;
 	x2--;
 
-	fmfdb->fd_addr = edatptr;
+	if (!fmfdb->fd_addr)
+		edatptr = (unsigned short *)fmfdb->fd_addr = (unsigned short *)&fontdatabuff;
+	else
+		edatptr = (unsigned short *)fmfdb->fd_addr;
+
 	fmfdb->fd_w = cwidth;
 	fmfdb->fd_h = f->form_height;
 	fmfdb->fd_wdwidth = (cwidth + 15) >> 4;
@@ -363,12 +364,6 @@ expand_gdf_font( FONT_HEAD *f, MFDB *font, short chr, long *ret)
 	fmfdb->fd_r1 = 0;
 	fmfdb->fd_r2 = 0;
 	fmfdb->fd_r3 = 0;
-
-	if (!font)
-	{
-		nextfree	+= ((long)fmfdb->fd_w * fmfdb->fd_h);
-		used_fntcache	+= (long)fmfdb->fd_w * fmfdb->fd_h << 1;
-	}
 
 	woffset = x1 >> 4;
 	x1 &= 15;
@@ -436,13 +431,4 @@ expand_gdf_font( FONT_HEAD *f, MFDB *font, short chr, long *ret)
 		}
 		fdatptr += f->form_width >> 1;
 	}
-
-	if (ret)
-	{
-		if (font)
-			*ret = (long)fmfdb;
-		else
-			*ret = (long)cachent;
-	}
-	return;
 }

@@ -90,13 +90,10 @@ _crtinit(void)
 	/* keep length of program area */
 	_PgmSize = m;
 
-	ovdi_init();
-
-#ifdef	PRG_TEST
-	Pterm(0);
-#else
-	Ptermres(_PgmSize, 0);
-#endif
+	if (!ovdi_init())
+		Ptermres(_PgmSize, 0);
+	else
+		Pterm(0);
 
 notenough:
 	Cconws("Fatal error: insufficient memory\r\n");

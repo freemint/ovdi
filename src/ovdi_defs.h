@@ -4,35 +4,50 @@
 typedef struct raster RASTER;
 typedef struct colinf COLINF;
 typedef struct virtual VIRTUAL;
-typedef struct ovdi_lib OVDI_LIB;
+typedef struct ovdi_hwapi OVDI_HWAPI;
 
 typedef struct ovdi_driver OVDI_DRIVER;
 typedef struct ovdi_device OVDI_DEVICE;
 
 #include "vdi_defs.h"
-#include "mousedrv.h"
-
-//#include "ovdi_dev.h"
-
+#include "ovdi_mouse.h"
 
 #define MAX_VIRTUALS		512
 #define MAX_VDI_FUNCTIONS	140
 #define SCRATCH_BUFFER_SIZE	1024
 
-/* Flag definitions for 'flags' in struct raster */
-#define R_IS_SCREEN	1
-#define R_IN_VRAM	2
+/*
+* Flag definitions for 'flags' in struct raster
+*/
+#define R_IS_SCREEN	1		/* Indicates that this raster is the physical screen raster */
+#define R_IN_VRAM	2		/* Indicates that raster is accessible hardware accelerator, where it exists */
 
-/* Structure describing a raster - all drawing primitives get its info from */
-/* this structure */
+/*
+ * Macro to check if wheter or not the raster is accessed by hardware,
+ * for example if accelerator is finished
+*/
+#define SYNC_RASTER(n) {			\
+	if (n->sync)				\
+	{					\
+		do {}				\
+		while ( !(*n->sync)() );	\
+	}					\
+}
+
+/*
+ * Structure describing a raster - all drawing primitives get its info from
+ * this structure
+*/
 struct raster
 {
 	/* The top part of raster structure is filled	*/
 	/* in by the device driver upon resolution	*/
 	/* changes, etc.				*/
+	int			(*sync)(void);		/* Hardware ready? (accelerator done, etc) */
 	unsigned char		*base;
 	unsigned long		lenght;
 	short			flags;
+	short			realflags;
 	short			format;
 	short			w, h;
 	short			x1, y1, x2, y2;
@@ -48,11 +63,14 @@ struct raster
 	struct ovdi_drawers	*drawers;
 	struct ovdi_drawers	(**odrawers);
 	struct ovdi_utils	*utils;
-	RGB_LIST		rgb_levels;
-	RGB_LIST		rgb_bits;
+	RGB_LIST		rgb_levels;		/* Number of levels for Red, Green, Blue, Alpha and Ovl parts */
+	RGB_LIST		rgb_bits;		/* Number of bits used for Red, Green, Blue, Alpha and Ovl */
 };
 //typedef struct raster RASTER;
 
+/*
+ * This structure carries all information regarding color.
+*/
 struct colinf
 {
 	short		pens;
@@ -63,18 +81,21 @@ struct colinf
 	long		*pixelvalues;		/* Pixelvalues, as they're written into video-ram */
 	RGB_LIST	*request_rgb;		/* Requested, relative RGB values (0 - 1000) */
 	RGB_LIST	*actual_rgb;		/* Actual RGB values, used to construct pixelvalues */
-//	RGB_LIST	*rgb_levels;		/* Number of levels for Red, Green, Blue, Alpha and Ovl parts */
-//	RGB_LIST	*rgb_bits;		/* Number of bits used for Red, Green, Blue, Alpha and Ovl */
 };
 //typedef struct colinf COLINF;
 
+#if 0
 struct drawinf
 {
 	RASTER		*r;
 	COLINF		*c;
 };
 typedef struct drawinf DRAWINF;
+#endif
 
+/*
+ * All drawing primitives use this structure.
+*/
 struct pattern_attribs
 {
 	short		expanded;		/* True if the pattern is expanded and valid. */
@@ -164,7 +185,10 @@ struct pattern_data
 	unsigned short data[(2*16) * 16];
 	unsigned short edata[(2*16) * 16];
 };
-	
+
+/*
+ * This is the main VIRTUAL structure.
+*/	
 struct virtual
 {
 	short			func;
@@ -218,16 +242,6 @@ struct virtual
 	struct timeapi		*timeapi;
 	struct vbiapi		*vbiapi;
 
-#if 0
-	short			*color_vdi2hw;
-	short			*color_hw2vdi;
-	long			*pixelvalues;		/* Pixelvalues, as they're written into video-ram */
-	RGB_LIST		*request_rgb;		/* Requested, relative RGB values (0 - 1000) */
-	RGB_LIST		*actual_rgb;		/* Actual RGB values, used to construct pixelvalues */
-	RGB_LIST		*rgb_levels;		/* Number of levels for Red, Green, Blue, Alpha and Ovl parts */
-	RGB_LIST		*rgb_bits;		/* Number of bits used for Red, Green, Blue, Alpha and Ovl */
-#endif
-
 	long			ptsbuffsiz;
 	long			spanbuffsiz;
 	short			ptsbuff[PTSBUFF_SIZ >> 1];
@@ -235,17 +249,22 @@ struct virtual
 
 };
 
+/*
+ * Root hardware API. Together the pointers in this structure
+ * makes up a complete physical VDI device.
+*/
 struct ovdi_hwapi
 {
+	struct	ovdi_device	*device;
 	struct	ovdi_driver	*driver;
 	struct	console		*console;
 	struct	colinf		*colinf;
 	struct	kbdapi		*keyboard;
 	struct	mouseapi	*mouse;
+	struct	pdvapi		*pointdev;
 	struct	timeapi		*time;
 	struct	vbiapi		*vbi;
 };
-typedef struct ovdi_hwapi OVDI_HWAPI;
 
 typedef void (*GDP_function)(VDIPB *pb, VIRTUAL *v);
 typedef void (*vdi_function)(VDIPB *pb, VIRTUAL *v);
@@ -266,10 +285,6 @@ struct ovdi_vtab
 typedef struct ovdi_vtab OVDI_VTAB;
 
 
-struct ovdi_lib
-{
-	int	(*getcookie)(long tag, long *ret);
-};
 /* *************************************************************************** */
 /* *************************************************************************** */
 /* *************************************************************************** */
@@ -365,42 +380,139 @@ typedef pixel_blit pixel_blits[16];
   * to the current drawers structure. Drivers contain one such structure for each 
   * color-depth mode (1, 2, 4, 8, 15, 16, 24 and 32 bit color modes) respectively.
  */
+typedef	void (*Ffilled_rect)	( RASTER *r, COLINF *c, VDIRECT *corners, VDIRECT *clip, PatAttr *ptrn, short fis);
+typedef	void (*Ffilledpoly)	( RASTER *r, COLINF *c, short *pts, short n, VDIRECT *clip, short *points, long pointasize, PatAttr *ptrn);
+
+typedef	void (*Farc)		( VIRTUAL *v, short xc, short yc, short xrad, short beg_ang, short end_ang, short *points, PatAttr *ptrn);
+typedef	void (*Fcircle)		( VIRTUAL *v, short xc, short yc, short xrad, short *points, PatAttr *ptrn);
+typedef	void (*Fellipse)	( VIRTUAL *v, short xc, short yc, short xrad, short yrad, short *points, PatAttr *ptrn);
+typedef	void (*Fellarc)		( VIRTUAL *v, short xc, short yc, short xrad, short yrad, short beg_ang, short end_ang, short *points, PatAttr *ptrn);
+typedef	void (*Frbox)		( VIRTUAL *v, short gdp_code, VDIRECT *corners, PatAttr *ptrn);
+
+typedef	void (*Fpline)		( RASTER *r, COLINF *c, short *pts, long numpts, VDIRECT *clip, short *points, long pointasize, LINE_ATTRIBS *latr, PatAttr *ptrn);
+typedef	void (*Fhvline)		( RASTER *r, COLINF *c, short xory1, short xory2, short xory, PatAttr *ptrn);
+typedef	void (*Fabline)		( RASTER *r, COLINF *c, struct vdirect *pnts, PatAttr *ptrn);
+
+typedef	void (*Fspans)		( RASTER *r, COLINF *c, short x1, short x2, short y, PatAttr *ptrn);
+typedef void (*Fmspans)		( RASTER *r, COLINF *c, short x1, short x2, short y1, short y2, PatAttr *ptrn);
+
+typedef	void (*Fpmarker)	( RASTER *v, COLINF *c, POINT *origin, VDIRECT *clip, short type, short size, short w_in, short h_in, PatAttr *ptrn);
+
+typedef	void (*Ftcpyfm)		( RASTER *r, COLINF *c, MFDB *src, MFDB *dst, short *pnts, VDIRECT *clip, short fgcol, short bgcol, short wrmode);
+typedef	void (*Focpyfm)		( RASTER *r, MFDB *src, MFDB *dst, short *pnts, VDIRECT *clip, short wrmode);
+
+ /*
+  * This table contains pointers to the VDI primitives.
+  * A graphics hardware driver can provide its own code by filling in the
+  * pointer to its replacement function in the drawing function table it
+  * returns via OVDI_DRIVER. 
+ */
+
+#define DRAW_FILLEDRECT_PTR(a)	(a->drawers->p.draw_filledrect)
+
+#define DRAW_ARC_PTR(a)		(a->raster->drawers->p.draw_arc)
+#define DRAW_PIESLICE_PTR(a)	(a->raster->drawers->p.draw_pieslice)
+#define DRAW_CIRCLE_PTR(a)	(a->raster->drawers->p.draw_circle)
+#define DRAW_ELLIPSE_PTR(a)	(a->raster->drawers->p.draw_ellipse)
+#define DRAW_ELLIPSEARC_PTR(a)	(a->raster->drawers->p.draw_ellipsearc)
+#define DRAW_ELLIPSEPIE_PTR(a)	(a->raster->drawers->p.draw_ellipsepie)
+#define DRAW_RBOX_PTR(a)	(a->raster->drawers->p.draw_rbox)
+
+#define DRAW_ABLINE_PTR(a)	(a->drawers->p.draw_abline)
+#define DRAW_HLINE_PTR(a)	(a->drawers->p.draw_hline)
+#define DRAW_VLINE_PTR(a)	(a->drawers->p.draw_vline)
+#define DRAW_PLINE_PTR(a)	(a->drawers->p.draw_pline)
+#define DRAW_WIDELINE_PTR(a)	(a->drawers->p.draw_wideline)
+
+#define DRAW_SPANS_PTR(a)	(a->drawers->p.draw_spans)
+#define DRAW_MSPANS_PTR(a)	(a->drawers->p.draw_mspans)
+
+#define DRAW_FILLEDPOLY_PTR(a)	(a->drawers->p.draw_filledpoly)
+#define DRAW_PMARKER_PTR(a)	(a->drawers->p.draw_pmarker)
+
+#define RT_CPYFM_PTR(a)		(a->drawers->p.rt_cpyfm)
+#define RO_CPYFM_PTR(a)		(a->drawers->p.ro_cpyfm)
+
+#define DRAW_FILLEDRECT(a,b,c,d,e,f)		({(*DRAW_FILLEDRECT_PTR(a))(a,b,c,d,e,f);})
+#define DRAW_ARC(a,b,c,d,e,f,g,h)		({(*DRAW_ARC_PTR(a))(a,b,c,d,e,f,g,h);})
+#define DRAW_PIESLICE(a,b,c,d,e,f,g,h)		({(*DRAW_PIESLICE_PTR(a))(a,b,c,d,e,f,g,h);})
+#define DRAW_CIRCLE(a,b,c,d,e,f)		({(*DRAW_CIRCLE_PTR(a))(a,b,c,d,e,f);})
+#define DRAW_ELLIPSE(a,b,c,d,e,f,g)		({(*DRAW_ELLIPSE_PTR(a))(a,b,c,d,e,f,g);})
+#define DRAW_ELLIPSEARC(a,b,c,d,e,f,g,h,i)	({(*DRAW_ELLIPSEARC_PTR(a))(a,b,c,d,e,f,g,h,i);})
+#define DRAW_ELLIPSEPIE(a,b,c,d,e,f,g,h,i)	({(*DRAW_ELLIPSEPIE_PTR(a))(a,b,c,d,e,f,g,h,i);})
+#define DRAW_RBOX(a,b,c,d)			({(*DRAW_RBOX_PTR(a))(a,b,c,d);})
+
+#define DRAW_ABLINE(a,b,c,d)			({(*DRAW_ABLINE_PTR(a))(a,b,c,d);})
+#define DRAW_HLINE(a,b,c,d,e,f)			({(*DRAW_HLINE_PTR(a))(a,b,c,d,e,f);})
+#define DRAW_VLINE(a,b,c,d,e,f)			({(*DRAW_VLINE_PTR(a))(a,b,c,d,e,f);})
+#define DRAW_PLINE(a,b,c,d,e,f,g,h,i)		({(*DRAW_PLINE_PTR(a))(a,b,c,d,e,f,g,h,i);})
+#define DRAW_WIDELINE(a,b,c,d,e,f,g,h,i)	({(*DRAW_WIDELINE_PTR(a))(a,b,c,d,e,f,g,h,i);})
+
+#define DRAW_SPANS(a,b,c,d,e,f)			({(*DRAW_SPANS_PTR(a))(a,b,c,d,e,f);})
+#define DRAW_MSPANS(a,b,c,d,e,f,g)		({(*DRAW_MSPANS_PTR(a))(a,b,c,d,e,f,g);})
+
+#define DRAW_FILLEDPOLY(a,b,c,d,e,f,g,h)	({(*DRAW_FILLEDPOLY_PTR(a))(a,b,c,d,e,f,g,h);})
+#define DRAW_PMARKER(a,b,c,d,e,f,g,h,i)		({(*DRAW_PMARKER_PTR(a))(a,b,c,d,e,f,g,h,i);})
+
+#define RT_CPYFM(a,b,c,d,e,f,g,h,i)		({(*RT_CPYFM_PTR(a))(a,b,c,d,e,f,g,h,i);})
+#define RO_CPYFM(a,b,c,d,e,f)			({(*RO_CPYFM_PTR(a))(a,b,c,d,e,f);})
+
+struct vdiprimitives
+{
+	Ffilled_rect	draw_filledrect;
+	Farc		draw_arc;
+	Farc		draw_pieslice;
+	Fcircle		draw_circle;
+	Fellipse	draw_ellipse;
+	Fellarc		draw_ellipsearc;
+	Fellarc		draw_ellipsepie;
+	Frbox		draw_rbox;
+
+	Fabline		draw_abline;
+	Fhvline		draw_hline;
+	Fhvline		draw_vline;
+	Fpline		draw_pline;
+	Fpline		draw_wideline;
+
+	Fspans		draw_spans;
+	Fmspans		draw_mspans;
+	
+	Ffilledpoly	draw_filledpoly;
+	Fpmarker	draw_pmarker;
+
+	Ftcpyfm		rt_cpyfm;
+	Focpyfm		ro_cpyfm;
+};
+typedef struct vdiprimitives VDIPRIMITIVES;
+
+#define DRAW_SOLID_RECT_PTR(a)	(a->drawers->draw_solid_rect)
+#define DRAW_SOLID_RECT(a,b,c,d,e)	({(*DRAW_SOLID_RECT_PTR(a))(a,b,c,d,e);})
+
 struct ovdi_drawers
 {
 /* REMEMBER TO UPDATE THE TABLES IN WORKSTATION WHEN MODIFYING HERE !!!!!!!!!!!!!!!!11 */ 
-	void		(*draw_filledrect)	( RASTER *r, COLINF *c, VDIRECT *corners, VDIRECT *clip, PatAttr *ptrn, short fis);
-	void		(*draw_arc)		( VIRTUAL *v, short xc, short yc, short xrad, short beg_ang, short end_ang, short *points, PatAttr *ptrn);
-	void		(*draw_pieslice)	( VIRTUAL *v, short xc, short yc, short xrad, short beg_ang, short end_ang, short *points, PatAttr *ptrn);
-	void		(*draw_circle)		( VIRTUAL *v, short xc, short yc, short xrad, short *points, PatAttr *ptrn);
-	void		(*draw_ellipse)		( VIRTUAL *v, short xc, short yc, short xrad, short yrad, short *points, PatAttr *ptrn);
-	void		(*draw_ellipsearc)	( VIRTUAL *v, short xc, short yc, short xrad, short yrad, short beg_ang, short end_ang, short *points, PatAttr *ptrn);
-	void		(*draw_ellipsepie)	( VIRTUAL *v, short xc, short yc, short xrad, short yrad, short beg_ang, short end_ang, short *points, PatAttr *ptrn);
-	void		(*draw_rbox)		( VIRTUAL *v, short gdp_code, VDIRECT *corners, PatAttr *ptrn);
-	void		(*draw_abline)		( RASTER *r, COLINF *c, struct vdirect *pnts, PatAttr *ptrn);
-	void		(*draw_habline)		( RASTER *r, COLINF *c, short x1, short x2, short y, PatAttr *ptrn);
-	void		(*draw_vabline)		( RASTER *r, COLINF *c, short y1, short y2, short x, PatAttr *ptrn);
-	void		(*draw_wideline)	( RASTER *r, COLINF *c, short *pts, long numpts, VDIRECT *clip, short *points, long pointasize, LINE_ATTRIBS *latr, PatAttr *ptrn);
-	void		(*draw_spans)		( RASTER *r, COLINF *c, short x1, short x2, short y, PatAttr *ptrn);
-	void		(*draw_filledpoly)	( RASTER *r, COLINF *c, short *pts, short n, VDIRECT *clip, short *points, long pointasize, PatAttr *ptrn);
-	void		(*draw_pmarker)		( RASTER *v, COLINF *c, POINT *origin, VDIRECT *clip, short type, short size, short w_in, short h_in, PatAttr *ptrn);
 
-	void		(*rt_cpyfm)		( RASTER *r, COLINF *c, MFDB *src, MFDB *dst, short *pnts, VDIRECT *clip, short fgcol, short bgcol, short wrmode);
-	void		(*ro_cpyfm)		( RASTER *r, MFDB *src, MFDB *dst, short *pnts, VDIRECT *clip, short wrmode);
-
- /* Functions below here is always color-depth dependant. If driver dont provide
-  * these, standard and VERY, VERY slow ones are used. */
+ /*
+  * The VDI primitive functions
+ */
+	VDIPRIMITIVES	p;
+	
+ /*	
+  * Functions below here is always color-depth dependant. If driver dont provide
+  * these, standard and VERY, VERY slow ones are used.
+ */
 	void		(*draw_pixel)		( unsigned char *adr, long data);
 	void		(*read_pixel)		( unsigned char *adr, long data);
 	void		(*put_pixel)		( unsigned char *base, short bypl, short x, short y, unsigned long data);
 	unsigned long	(*get_pixel)		( unsigned char *base, short bypl, short x, short y);
 
 	void		(*draw_solid_rect)	( RASTER *r, COLINF *c, short *corners, short wrmode, short color);
-	/*pixel_blits	vdi_pixels;*/
-	pixel_blits	drp;
-	pixel_blits	dlp;
+	pixel_blits	drp;	/* Draw Raster Points */
+	pixel_blits	dlp;	/* Draw line Points */
 	pixel_blits	pixel_blits;
 	raster_blits	raster_blits;
 
+	/* Mouse cursor rendering */
 	draw_mc		draw_mcurs;
 	undraw_mc	undraw_mcurs;
 
@@ -445,9 +557,14 @@ struct ovdi_utils
 };
 typedef struct ovdi_utils OVDI_UTILS;
 
-
-//typedef	struct ovdidrv_functab OVDIDRV_FUNCTAB;
-
+/*
+ * This is the graphics hardware driver structure. Contains information about
+ * current video mode (raster), and diverse function tables. A driver can
+ * provide its own routines for just about any VDI drawing primitives via this
+ * structure. All function pointers can be NULL's in which case oVDI fills in
+ * its internal generic functions. Some of these generic functions might be
+ * VERY SLOW!
+*/ 
 struct ovdi_driver
 {
 	long		version;
@@ -475,6 +592,12 @@ struct ovdi_driver
 
 	OVDI_DEVICE	*dev;
 
+/*
+ * These are pointers to a ovdi_drawers function table for each
+ * color depth the driver supports.
+ * These pointers must be set, even if it points to a function table
+ * of only NULL pointers.
+*/
 	struct ovdi_drawers	*drawers_1b;
 	struct ovdi_drawers	*drawers_2b;
 	struct ovdi_drawers	*drawers_4b;
@@ -484,25 +607,18 @@ struct ovdi_driver
 	struct ovdi_drawers	*drawers_24b;
 	struct ovdi_drawers	*drawers_32b;
 	
-/* If add_vbifunc is NULL, the built in vbi functions are copied into
- * these elements and used.
- * If driver wants to provide vbi functions, ALL the below functions
- * are considered to be valid if add_vbifunc is not NULL */
-#if 0
-	short		(*add_vbifunc)(unsigned long function, unsigned long tics);
-	short		(*get_vbitics)(void);
-	void		(*remove_vbifunc)(unsigned long function);
-	void		(*reset_vbi)(void);
-	void		(*enable_vbi)(void);
-	void		(*disable_vbi)(void);
-#endif
-
 };
 
+/*
+ * This is the graphics hardware device API. All graphics hardware
+ * access and driver functions goes via this API.
+*/
 struct ovdi_device
 {
-	long version;
-	char *name;
+	struct ovdi_device	*nxtapi;
+	long 			version;
+	char 			*sname;
+	char			*lname;
 
 	OVDI_DRIVER *	(*open)(struct ovdi_device *dev);
 	long		(*close)(OVDI_DRIVER *drv);
@@ -514,9 +630,7 @@ struct ovdi_device
 	void		(*vsync)(OVDI_DRIVER *drv);
 
  	void		(*vreschk)(short x, short y);
+	int		(*msema)(void);
 };
-
-OVDI_DEVICE *	device_init		(struct ovdi_lib *lib);
-
 
 #endif	/* _OVDI_DEFS_H */

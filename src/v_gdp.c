@@ -45,7 +45,6 @@ v_gdp( VDIPB *pb, VIRTUAL *v)
 	if (gdp)
 		(*gdp)(pb, v);
 
-	return;
 }
 
 /* Sup opcode 1 */
@@ -54,6 +53,7 @@ v_bar( VDIPB *pb, VIRTUAL *v)
 {
 	RASTER *r = v->raster;
 	COLINF *c = v->colinf;
+	OVDI_DRAWERS *drw = r->drawers;
 	VDIRECT *clip;
 	LINE_ATTRIBS *latr;
 	short interior;
@@ -64,7 +64,7 @@ v_bar( VDIPB *pb, VIRTUAL *v)
 	latr = &v->line;
 
 	sortcpy_corners(&pb->ptsin[0], &coords[0]);
-	rectfill( r, c, (VDIRECT *)&coords[0], clip,
+	DRAW_FILLEDRECT( r, c, (VDIRECT *)&coords[0], clip,
 			interior == FIS_USER ? &v->udpat : &v->pattern, interior);
 
 	if (v->fill.perimeter)
@@ -76,93 +76,66 @@ v_bar( VDIPB *pb, VIRTUAL *v)
 		coords[6] = coords[8] = coords[0];
 		coords[3] = coords[9] = coords[1];
 
-		pline( r, c, (short *)&coords, 5, clip, (short *)&ptsbuff, sizeof(ptsbuff), latr, &v->perimdata);
+		DRAW_PLINE( r, c, (short *)&coords, 5, clip, (short *)&ptsbuff, sizeof(ptsbuff), latr, &v->perimdata);
 	}
-	return;
 }
 
 /* Sub opcode 2 */
 void
 v_arc( VDIPB *pb, VIRTUAL *v)
 {
-	//short points[MAX_ARC_CT * 3];
-
-	draw_arc( v, 	pb->ptsin[0], pb->ptsin[1], pb->ptsin[6], 
+	DRAW_ARC( v,  pb->ptsin[0], pb->ptsin[1], pb->ptsin[6], 
 			pb->intin[0], pb->intin[1],
-			(short *)&v->ptsbuff, //(short *)&points,
+			(short *)&v->ptsbuff,
 			v->fill.interior == FIS_USER ? &v->udpat : &v->pattern);
-
-	return;
 }
 
 /* Sub opcode 3 */
 void
 v_pieslice( VDIPB *pb, VIRTUAL *v)
 {
-	//short points[MAX_ARC_CT * 3];
-
-	draw_pieslice( v, pb->ptsin[0], pb->ptsin[1], pb->ptsin[6],
+	DRAW_PIESLICE( v, pb->ptsin[0], pb->ptsin[1], pb->ptsin[6],
 			  pb->intin[0], pb->intin[1],
-			  (short *)&v->ptsbuff, //(short *)&points,
+			  (short *)&v->ptsbuff,
 			  v->fill.interior == FIS_USER ? &v->udpat : &v->pattern);
-
-	return;
 }
 			  
 /* Sub opcode 4 */
 void
 v_circle( VDIPB *pb, VIRTUAL *v)
 {
-	//short points[MAX_ARC_CT * 3];
-
-	draw_circle( v, pb->ptsin[0], pb->ptsin[1], pb->ptsin[4],
-			(short *)&v->ptsbuff, //(short *)&points,
+	DRAW_CIRCLE( v, pb->ptsin[0], pb->ptsin[1], pb->ptsin[4],
+			(short *)&v->ptsbuff,
 			v->fill.interior == FIS_USER ? &v->udpat : &v->pattern);
-
-
-	return;
 }
 
 /* Sup opcode 5 */
 void
 v_ellipse( VDIPB *pb, VIRTUAL *v)
 {
-	//short points[MAX_ARC_CT *3];
-
-	draw_ellipse( v, pb->ptsin[0], pb->ptsin[1], pb->ptsin[2], pb->ptsin[3],
-			(short *)&v->ptsbuff, //(short *)&points,
+	DRAW_ELLIPSE( v, pb->ptsin[0], pb->ptsin[1], pb->ptsin[2], pb->ptsin[3],
+			(short *)&v->ptsbuff,
 			v->fill.interior == FIS_USER ? &v->udpat : &v->pattern);
-
-
-	return;
 }
 
 /* Sub opcode 6 */
 void
 v_ellarc( VDIPB *pb, VIRTUAL *v)
 {
-	//short points[MAX_ARC_CT * 3];
-
-	draw_ellipsearc( v,	pb->ptsin[0], pb->ptsin[1], pb->ptsin[2], pb->ptsin[3],
+	DRAW_ELLIPSEARC( v, pb->ptsin[0], pb->ptsin[1], pb->ptsin[2], pb->ptsin[3],
 				pb->intin[0], pb->intin[1],
-				(short *)&v->ptsbuff, //(short *)&points,
+				(short *)&v->ptsbuff,
 				v->fill.interior == FIS_USER ? &v->udpat : &v->pattern);
-
-	return;
 }
 
 /* Sub opcode 7 */
 void
 v_ellpie( VDIPB *pb, VIRTUAL *v)
 {
-	//short points[MAX_ARC_CT * 3];
-
-	draw_ellipsepie( v,	pb->ptsin[0], pb->ptsin[1], pb->ptsin[2], pb->ptsin[3],
+	DRAW_ELLIPSEPIE( v, pb->ptsin[0], pb->ptsin[1], pb->ptsin[2], pb->ptsin[3],
 				pb->intin[0], pb->intin[1],
-				(short *)&v->ptsbuff, //(short *)&points,
+				(short *)&v->ptsbuff,
 				v->fill.interior == FIS_USER ? &v->udpat : &v->pattern);
-
-	return;
 }
 
 /* Sub opcode 8 */
@@ -172,10 +145,8 @@ v_rbox( VDIPB *pb, VIRTUAL *v)
 	short corners[4];
 
 	sortcpy_corners((short *)&pb->ptsin[0], (short *)&corners);
-	draw_rbox( v, 8, (VDIRECT *)&corners,
+	DRAW_RBOX( v, 8, (VDIRECT *)&corners,
 			v->fill.interior == FIS_USER ? &v->udpat : &v->pattern);
-
-	return;
 }
 
 /* Sub opcode 9 */
@@ -184,10 +155,8 @@ v_rfbox( VDIPB *pb, VIRTUAL *v)
 {
 	short corners[4];
 	sortcpy_corners((short *)&pb->ptsin[0], (short *)&corners);
-	draw_rbox( v, 9, (VDIRECT *)&corners,
+	DRAW_RBOX( v, 9, (VDIRECT *)&corners,
 			v->fill.interior == FIS_USER ? &v->udpat : &v->pattern);
-
-	return;
 }
 
 void
@@ -208,9 +177,8 @@ v_justified( VDIPB *pb, VIRTUAL *v)
 		output_gdftext( v, (POINT *)&pb->ptsin[0], (short *)&pb->intin[2], slen,
 				   plen, pb->intin[0], pb->intin[1]);
 	}
-
-	return;
 }
+
 void
 v_bez_onoff( VDIPB *pb, VIRTUAL *v)
 {

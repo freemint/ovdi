@@ -622,6 +622,9 @@ rt_cpyfm(RASTER *r, COLINF *c, MFDB *src, MFDB *dst, short *pnts, VDIRECT *clip,
 		}
 
 		
+		if (d_is_screen)
+			SYNC_RASTER(r);
+
 		for (i = 0; i < height; i++) //i = height; i > 0; i--)
 		{
 
@@ -765,6 +768,9 @@ rt_cpyfm(RASTER *r, COLINF *c, MFDB *src, MFDB *dst, short *pnts, VDIRECT *clip,
 			groups = 0;
 			tailbits = width;
 		}
+
+		if (d_is_screen)
+			SYNC_RASTER(r);
 
 		for (i = 0; i < height; i++) //i = height; i > 0; i--)
 		{
@@ -917,6 +923,9 @@ ro_cpyfm(RASTER *r, MFDB *src, MFDB *dst, short *pts, VDIRECT *clip, short wrmod
 		return;
 
 	rop = drawers->raster_blits[wrmode];
+
+	if (rpb->d_is_scrn)
+		SYNC_RASTER(r);
 
 	if (rop)
 		(*rop)(rpb);

@@ -4,7 +4,7 @@
 TARGET = ovdi.prg
 
 SHELL = /bin/sh
-SUBDIRS =
+SUBDIRS = drivers drivers/generic
 
 srcdir = .
 top_srcdir = .
@@ -33,7 +33,7 @@ SGENFILES = $(TARGET)
 OBJS = $(COBJS:.c=.o) $(SOBJS:.s=.o) $(SSOBJS:.S=.o)
 
 
-$(TARGET): $(OBJS) $(LIBKERNTARGET) $(LIBGENERICTARGET)
+$(TARGET): $(OBJS) $(LIBKERNTARGET) #$(LIBGENERICTARGET)
 	$(LD) $(CFLAGS) $(GENERAL) -o $@ $(OBJS) $(LIBS)
 
 include $(top_srcdir)/DEPENDENCIES

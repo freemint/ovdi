@@ -17,6 +17,6 @@ $(LIBKERNTARGET) $(LIBKERNSTMP):
 #
 # libgeneric target
 #
-$(LIBGENERICTARGET) $(LIBGENERICSTMP):
-	cd $(top_srcdir)/drivers/generic; \
-		$(MAKE) libgeneric.a
+#$(LIBGENERICTARGET) $(LIBGENERICSTMP):
+#	cd $(top_srcdir)/drivers/generic; \
+#		$(MAKE) libgeneric.a

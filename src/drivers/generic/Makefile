@@ -37,4 +37,4 @@ $(TARGET): $(OBJS)
 	
 #	$(LD) $(CFLAGS) -o $@ $(OBJS) $(LIBS)
 
-# include $(top_srcdir)/DEPENDENCIES
+include $(top_srcdir)/DEPENDENCIES

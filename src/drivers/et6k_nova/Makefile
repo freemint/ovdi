@@ -4,7 +4,7 @@
 TARGET = et6knova.vdi
 
 SHELL = /bin/sh
-SUBDIRS =
+SUBDIRS = ../../drivers/generic
 
 srcdir = .
 top_srcdir = ../..
@@ -30,7 +30,7 @@ CPU = 020-60
 SGENFILES = $(TARGET)
 OBJS = $(COBJS:.c=.o) $(SOBJS:.s=.o)
 
-$(TARGET): $(OBJS) $(LIBKERNTARGET) $(LIBGENERICTARGET)
+$(TARGET): $(OBJS) $(LIBKERNTARGET) #$(LIBGENERICTARGET)
 	$(LD) $(CFLAGS) $(GENERAL) -o $@ $(OBJS) $(LIBS)
 
 

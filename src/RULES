@@ -4,7 +4,7 @@
 include $(top_srcdir)/../../RULES
 
 #
-# private definitions
+# libgeneric target
 #
 LIBGENERICTARGET = libgeneric.a
 LIBGENERICSTMP = $(top_srcdir)/generic/libgeneric.a

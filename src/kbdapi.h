@@ -6,16 +6,16 @@
 struct kbdapi
 {
 	struct kbdapi	*nxtapi;
-	O_32		version;
+	long		version;
 	char		*sname;
 	char		*lname;
 	char		*pathname;
 	char		*filename;
-	O_Int		(*install)	(void);
-	O_Int		(*keywaiting)	(void);
-	O_Int		(*getkey)	(O_16 *ret_asci, O_16 *ret_scan, O_32 *ret_state);
-	void		(*waitkey)	(O_16 *ret_asci, O_16 *ret_scan, O_32 *ret_state);
-	O_32		(*getks)	(void);
+	short		(*install)	(void);
+	short		(*keywaiting)	(void);
+	short		(*getkey)	(short *ret_asci, short *ret_scan, long *ret_state);
+	void		(*waitkey)	(short *ret_asci, short *ret_scan, long *ret_state);
+	long		(*getks)	(void);
 };
 typedef struct kbdapi KBDAPI;
 

@@ -6,7 +6,7 @@
 
 #include "8b_generic.h"
 
-extern O_u32 nib2long[];
+extern unsigned long nib2long[];
 extern void ds_REPLACE_8b	(struct fill16x_api *);
 extern void ds_TRANS_8b		(struct fill16x_api *);
 extern void ds_XOR_8b		(struct fill16x_api *);
@@ -16,12 +16,12 @@ static unsigned char fillbuff[16 * 16];
 static unsigned char maskbuff[16 * 16];
 
 void
-fill_16x_8b(RASTER *r, COLINF *c, O_Pos *corners, PatAttr *ptrn)
+fill_16x_8b(RASTER *r, COLINF *c, short *corners, PatAttr *ptrn)
 {
 	int height, y, wrmode, interior;
 	struct fill16x_api f;
-	O_u32 fill[4];
-	O_u32 mask[4];
+	unsigned long fill[4];
+	unsigned long mask[4];
 
 	/*
 	 * check if pattern is expanded and do expand it if it isnt
@@ -30,9 +30,9 @@ fill_16x_8b(RASTER *r, COLINF *c, O_Pos *corners, PatAttr *ptrn)
 	interior = ptrn->interior;
 	if (ptrn->expanded != 8 && interior > FIS_SOLID)
 	{
-		O_u16 data;
-		O_u32 lp0, lp1, lp2;
-		O_u32 *s, *d, *m;
+		unsigned short data;
+		unsigned long lp0, lp1, lp2;
+		unsigned long *s, *d, *m;
 
 		/*
 		 * If there is no pointer to expanded data buffer,
@@ -53,17 +53,17 @@ fill_16x_8b(RASTER *r, COLINF *c, O_Pos *corners, PatAttr *ptrn)
 		else
 			ptrn->expanded = 8;
 #if 1
-		s = (O_u32 *)ptrn->data;
-		d = (O_u32 *)ptrn->exp_data;
-		m = (O_u32 *)ptrn->mask;
-		lp0 = (O_u32)ptrn->color[wrmode];
+		s = (unsigned long *)ptrn->data;
+		d = (unsigned long *)ptrn->exp_data;
+		m = (unsigned long *)ptrn->mask;
+		lp0 = (unsigned long)ptrn->color[wrmode];
 		lp0 = (lp0 << 24) | (lp0 << 16) | (lp0 << 8) | lp0;
-		lp1 = (O_u32)ptrn->bgcol[wrmode];
+		lp1 = (unsigned long)ptrn->bgcol[wrmode];
 		lp1 = (lp1 << 24) | (lp1 << 16) | (lp1 << 8) | lp1;
 		
 		for (height = ptrn->height; height > 0; height--)
 		{
-			data = *(O_u16 *)((short *)s)++;
+			data = *(unsigned short *)((short *)s)++;
 
 			lp2 = nib2long[data & 0xf];
 			d[3] = (lp0 & lp2) | (lp1 & ~lp2);
@@ -141,8 +141,8 @@ fill_16x_8b(RASTER *r, COLINF *c, O_Pos *corners, PatAttr *ptrn)
 	else
 		y = corners[1] % ptrn->height;
 
-	f.s = (O_u32 *)ptrn->exp_data + ((long)y << 2);
-	f.m = (O_u32 *)ptrn->mask + ((long)y << 2);
+	f.s = (unsigned long *)ptrn->exp_data + ((long)y << 2);
+	f.m = (unsigned long *)ptrn->mask + ((long)y << 2);
 
 	switch (wrmode)
 	{

@@ -36,7 +36,7 @@
 
 extern const short systempalette[];
 
-static O_Int setup_drawers_jumptable(OVDI_DRAWERS *src, OVDI_DRAWERS *dst, O_Int planes);
+static short setup_drawers_jumptable(OVDI_DRAWERS *src, OVDI_DRAWERS *dst, short planes);
 
 static OVDI_DRAWERS defdrawers = 
 {
@@ -351,7 +351,7 @@ init_raster(OVDI_HWAPI *hw, RASTER *r)
 
 	
 RASTER *
-new_raster(OVDI_HWAPI *hw, char *base, O_Pos x2, O_Pos y2, RESFMT *res)
+new_raster(OVDI_HWAPI *hw, char *base, short x2, short y2, RESFMT *res)
 {
 	RASTER *r;
 	long lenght;
@@ -444,7 +444,7 @@ init_raster_rgb(RASTER *r)
 void
 reschange_devtab(DEV_TAB *dt, RASTER *r)
 {
-	O_u32 palettesize;
+	unsigned long palettesize;
 
 	dt->xres	= r->w - 1;
 	dt->yres	= r->h - 1;
@@ -466,7 +466,7 @@ reschange_devtab(DEV_TAB *dt, RASTER *r)
 	if (palettesize > 32767UL)
 		dt->palette = 0;
 	else
-		dt->palette = (O_u16)palettesize;
+		dt->palette = (unsigned short)palettesize;
 }
 
 void
@@ -496,13 +496,13 @@ new_colinf(char *pixelformat)
 		c = (COLINF *)mem;
 		mem += sizeof(COLINF);
 
-		c->color_vdi2hw = (O_16 *)mem;
+		c->color_vdi2hw = (short *)mem;
 		mem += 256 << 1;
 
-		c->color_hw2vdi = (O_16 *)mem;
+		c->color_hw2vdi = (short *)mem;
 		mem += 256 << 1;
 
-		c->pixelvalues = (O_u32 *)mem;
+		c->pixelvalues = (unsigned long *)mem;
 		mem += 256 << 2;
 
 		c->request_rgb = (RGB_LIST *)mem;
@@ -519,7 +519,7 @@ new_colinf(char *pixelformat)
 void
 init_colinf(RASTER *r, COLINF *c)
 {
-	O_16 *syspal;
+	short *syspal;
 	int i, pens;
 	RGB_LIST temp;
 
@@ -542,7 +542,7 @@ init_colinf(RASTER *r, COLINF *c)
 	}
 	c->pens		= pens;
 	c->planes	= r->res.planes;
-	syspal	= (O_16 *)&systempalette;
+	syspal	= (short *)&systempalette;
 	temp.alpha = temp.ovl = 0;
 	for (i = 0; i < pens; i++)
 	{
@@ -573,8 +573,8 @@ clone_colinf(COLINF *dst, COLINF *src)
 /*
  * Setup ovdi_drawers structure.
 */	
-static O_Int
-setup_drawers_jumptable(OVDI_DRAWERS *src, OVDI_DRAWERS *dst, O_Int planes)
+static short
+setup_drawers_jumptable(OVDI_DRAWERS *src, OVDI_DRAWERS *dst, short planes)
 {
 	int i;
 	long *srcp, *dstp, *defp;

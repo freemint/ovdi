@@ -15,8 +15,8 @@
 #define MX_SUPER	MX_MPSEL | (3 << 4)
 #define MX_READABLE	MX_MPSEL | (4 << 4)
 
-void *	_cdecl	omalloc		(O_u32 amount, O_Int type);
+void *	_cdecl	omalloc		(unsigned long amount, short type);
 void 	_cdecl	free_mem	(void *loc);
-void *	_cdecl	vrmalloc	(O_u32 amount);
+void *	_cdecl	vrmalloc	(unsigned long amount);
 
 #endif	/* _oMEMORY_C */

@@ -7,12 +7,12 @@
 
 /* data tables needed - in 4b_data.c */
 //extern long col2long4b[];
-extern O_u16 fillbuff1b[];
-extern O_u16 maskbuff1b[];
-extern O_u16 shifts1b[];
+extern unsigned short fillbuff1b[];
+extern unsigned short maskbuff1b[];
+extern unsigned short shifts1b[];
 
 void
-spans_16x_1b(RASTER *r, COLINF *c, O_Pos *spans, O_Int n, PatAttr *ptrn)
+spans_16x_1b(RASTER *r, COLINF *c, short *spans, short n, PatAttr *ptrn)
 {
 	int y, wrmode;
 	struct fill16x_api f;
@@ -104,7 +104,7 @@ spans_16x_1b(RASTER *r, COLINF *c, O_Pos *spans, O_Int n, PatAttr *ptrn)
 	SYNC_RASTER(r);
 	for (;n > 0; n--)
 	{
-		register O_Pos y1, x1, x2;
+		register short y1, x1, x2;
 		int sb;
 
 		y1 = *spans++;
@@ -140,7 +140,7 @@ singleline:
 	SYNC_RASTER(r);
 	for (;n > 0; n--)
 	{
-		register O_Pos y1, x1, x2;
+		register short y1, x1, x2;
 		int sb;
 
 		y1 = *spans++;

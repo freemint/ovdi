@@ -8,14 +8,14 @@ unsigned char *vram_base = 0;
 unsigned long vram_size = 0;
 
 void * _cdecl
-omalloc(O_u32 amount, O_Int type)
+omalloc(unsigned long amount, short type)
 {
-	O_32 start;
+	long start;
 
 	if (MiNT)
-		start = (O_32)Mxalloc( amount, type);
+		start = Mxalloc( amount, type);
 	else
-		start = (O_32)Malloc( amount );
+		start = Malloc( amount );
 
 	return (void *)start;
 }
@@ -37,8 +37,8 @@ vrmalloc(unsigned long amount)
 	if (vram_size)
 	{
 		/* alloc here */
-		return 0;
+		return NULL;
 	}
 	else
-		return 0;
+		return NULL;
 }

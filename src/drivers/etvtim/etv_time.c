@@ -18,7 +18,7 @@
 
 struct timedrv
 {
-	volatile O_16	flags;
+	volatile short	flags;
 	LINEA_VARTAB	*la;
 	void		(*user_tim)(void);
 	void		(*next_tim)(void);
@@ -26,18 +26,18 @@ struct timedrv
 
 void	init	(OVDI_LIB *l, struct module_desc *ret, char *p, char *f);
 
-extern O_u32 old_timeint;
+extern unsigned long old_timeint;
 extern void time_interruptw(void);
 static void donothing(void);
 
 void time_interrupt(void);
 
-static O_Int install(LINEA_VARTAB *la);
-static O_Int get_tics_per_sec(void);
-static O_Int add_time_interrupt(O_u32 function, O_u32 tics);
-static void delete_time_interrupt(O_u32 func);
-static O_u32 set_user_tim(O_u32 func);
-static O_u32 set_next_tim(O_u32 func);
+static short install(LINEA_VARTAB *la);
+static short get_tics_per_sec(void);
+static short add_time_interrupt(unsigned long function, unsigned long tics);
+static void delete_time_interrupt(unsigned long func);
+static unsigned long set_user_tim(unsigned long func);
+static unsigned long set_next_tim(unsigned long func);
 
 static void enable_tint(void);
 static void disable_tint(void);
@@ -75,7 +75,7 @@ static struct timeapi tapi =
 };
 
 #define MAX_TINTS	10
-static O_u32 timeints[] =
+static unsigned long timeints[] =
 {
 	0, 0, 0,
 	0, 0, 0,
@@ -115,7 +115,7 @@ init(OVDI_LIB *l, struct module_desc *ret, char *path, char *file)
 	}
 }
 
-static O_Int
+static short
 install(LINEA_VARTAB *la)
 {
 	short sr;
@@ -171,8 +171,8 @@ static void
 reset_time(void)
 {
 	int	i;
-	O_16	sr;
-	O_u32 *tints = timeints;
+	short	sr;
+	unsigned long *tints = timeints;
 
 	sr = spl7();
 	disable_tint();
@@ -189,7 +189,7 @@ reset_time(void)
 	return;
 }
 
-static O_Int
+static short
 get_tics_per_sec(void)
 {
 	return (1000/TPS);
@@ -199,7 +199,7 @@ get_tics_per_sec(void)
 void
 time_interrupt(void)
 {
-	register O_u32 *tints = (O_u32 *)&timeints;
+	register unsigned long *tints = (unsigned long *)&timeints;
 	register void (*func)(void);
 	register struct timedrv *td = &tdrv;
 
@@ -241,11 +241,11 @@ time_interrupt(void)
 /* Installs a function that is called each timer tick	*/
 /* Returns the 'handle' of the function or a negative	*/
 /* number on error.					*/
-static O_Int
-add_time_interrupt(O_u32 function, O_u32 tics)
+static short
+add_time_interrupt(unsigned long function, unsigned long tics)
 {
-	O_Int i;
-	register O_u32 *tints = (O_u32 *)&timeints;
+	short i;
+	register unsigned long *tints = (unsigned long *)&timeints;
 
 	for (i = 0; i < MAX_TINTS; i++)
 	{
@@ -269,11 +269,11 @@ add_time_interrupt(O_u32 function, O_u32 tics)
 }
 
 static void
-delete_time_interrupt(O_u32 function)
+delete_time_interrupt(unsigned long function)
 {
-	O_16 sr;
+	short sr;
 	int i;
-	register O_u32 *tints = (O_u32 *)&timeints;
+	register unsigned long *tints = (unsigned long *)&timeints;
 
 	for (i = 0; i < MAX_TINTS; i++)
 	{
@@ -300,42 +300,42 @@ delete_time_interrupt(O_u32 function)
 static void
 reset_user_tim(void)
 {
-	(void)set_user_tim((O_u32)&donothing);
+	(void)set_user_tim((unsigned long)&donothing);
 	return;
 }
 static void
 reset_next_tim(void)
 {
-	(void)set_next_tim((O_u32)&donothing);
+	(void)set_next_tim((unsigned long)&donothing);
 	return;
 }
 
-static O_u32
-set_user_tim(O_u32 function)
+static unsigned long
+set_user_tim(unsigned long function)
 {
-	O_16 sr;
+	short sr;
 	register struct timedrv *td = &tdrv;
-	O_u32 old;
+	unsigned long old;
 
 	sr = spl7();
-	old = (O_u32)td->user_tim;
-	(O_u32)td->user_tim = function;
-	(O_u32)td->la->user_tim = function;
+	old = (unsigned long)td->user_tim;
+	(unsigned long)td->user_tim = function;
+	(unsigned long)td->la->user_tim = function;
 	spl(sr);
 	return old;
 }
 
-static O_u32
-set_next_tim(O_u32 function)
+static unsigned long
+set_next_tim(unsigned long function)
 {
-	O_16 sr;
+	short sr;
 	register struct timedrv *td = &tdrv;
-	O_u32 old;
+	unsigned long old;
 
 	sr = spl7();
-	old = (O_u32)td->next_tim;
-	(O_u32)td->next_tim = function;
-	(O_u32)td->la->next_tim = function;
+	old = (unsigned long)td->next_tim;
+	(unsigned long)td->next_tim = function;
+	(unsigned long)td->la->next_tim = function;
 	spl(sr);
 	return old;
 }

@@ -20,7 +20,7 @@ long col2long4b[] =
 	0xffffffff,0xffffffff
 };
 
-O_u16 shifts4b[] = 
+unsigned short shifts4b[] = 
 {
 	0xffff,0xffff,
 	0xffff >> 1,0xffff >> 1,
@@ -41,5 +41,5 @@ O_u16 shifts4b[] =
 	0, 0
 };
 
-O_u16 fillbuff4b[4*16];
-O_u16 maskbuff4b[16];
+unsigned short fillbuff4b[4*16];
+unsigned short maskbuff4b[16];

@@ -15,7 +15,7 @@
 void
 vswr_mode( VDIPB *pb, VIRTUAL *v)
 {
-	O_Int wrmode;
+	short wrmode;
 	wrmode = pb->intin[0];
 	lvswr_mode( v, wrmode);
 	lvsf_wrmode( v, wrmode);		/* Fill writing mode */
@@ -27,13 +27,13 @@ vswr_mode( VDIPB *pb, VIRTUAL *v)
 }
 
 void
-lvswr_mode( VIRTUAL *v, O_Int wrmode)
+lvswr_mode( VIRTUAL *v, short wrmode)
 {
 	set_writingmode( wrmode, &v->wrmode);
 }
 
 void
-set_writingmode( O_Int wrmode, O_16 *ret)
+set_writingmode( short wrmode, short *ret)
 {
 	if (wrmode < MIN_MD_MODE)
 		wrmode = MIN_MD_MODE;
@@ -48,10 +48,10 @@ set_writingmode( O_Int wrmode, O_16 *ret)
 void
 vs_clip( VDIPB *pb, VIRTUAL *v)
 {
-	lvs_clip( v, pb->intin[0], (O_16 *)&pb->ptsin[0]);
+	lvs_clip( v, pb->intin[0], (short *)&pb->ptsin[0]);
 }
 void
-lvs_clip( VIRTUAL *v, O_Int flag, O_16 *rclip)
+lvs_clip( VIRTUAL *v, short flag, short *rclip)
 {
 	RASTER *r = v->raster;
 	CLIPRECT *clip = &v->clip;
@@ -59,7 +59,7 @@ lvs_clip( VIRTUAL *v, O_Int flag, O_16 *rclip)
 	if (flag == 1)
 	{
 
-		sortcpy_corners( rclip, (O_Pos *)&clip->x1);
+		sortcpy_corners( rclip, (short *)&clip->x1);
 
 		if (clip->x1 < 0)
 			clip->x1 = 0;
@@ -95,7 +95,7 @@ void
 vs_color( VDIPB *pb, VIRTUAL *v)
 {
 	RGB_LIST color;
-	O_Int cval, i;
+	short cval, i;
 	short *p;
 
 	p = (short *)&color;
@@ -121,8 +121,8 @@ vs_color( VDIPB *pb, VIRTUAL *v)
 	/* should this not return anything? */
 }
 
-O_Int
-calc_vdicolor( RASTER *r, COLINF *c, O_Int vdipen, RGB_LIST *color)
+short
+calc_vdicolor( RASTER *r, COLINF *c, short vdipen, RGB_LIST *color)
 {
 	short hwpen;
 
@@ -143,7 +143,7 @@ calc_vdicolor( RASTER *r, COLINF *c, O_Int vdipen, RGB_LIST *color)
 }
 
 void
-lvs_color( VIRTUAL *v, O_Int hwpen, RGB_LIST *color)
+lvs_color( VIRTUAL *v, short hwpen, RGB_LIST *color)
 {
 	if (v->driver == v->physical && v->raster->res.clut && !(v->flags & V_OSBM))
 		(*v->driver->dev->setcol)(v->driver, hwpen, color);
@@ -153,7 +153,7 @@ lvs_color( VIRTUAL *v, O_Int hwpen, RGB_LIST *color)
 void
 vq_color( VDIPB *pb, VIRTUAL *v)
 {
-	O_Int vdipen, hwpen, flag;
+	short vdipen, hwpen, flag;
 	COLINF *c;
 	RASTER *r;
 

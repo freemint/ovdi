@@ -17,7 +17,7 @@ void vex_curv	(VDIPB *pb, VIRTUAL *v);
 void vex_motv	(VDIPB *pb, VIRTUAL *v);
 void vex_timv	(VDIPB *pb, VIRTUAL *v);
 
-void lvsc_form	(VIRTUAL *v, O_Int index, MFORM *mf);
+void lvsc_form	(VIRTUAL *v, short index, MFORM *mf);
 
 
 #endif	/* _V_MOUSE_H */

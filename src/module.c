@@ -1,6 +1,7 @@
 #include <osbind.h>
 #include <mintbind.h>
 #include <mint/basepage.h>
+#include <stdio.h>
 
 #include "module.h"
 
@@ -15,7 +16,7 @@ load_module(char *filename, long *err)
 	if ((long)b < 0L)
 	{
 		*err = (long)b;
-		return 0;
+		return NULL;
 	}
 
 	keep	= 0x200 + b->p_tlen + b->p_dlen + b->p_blen;

@@ -19,10 +19,10 @@ void	init	(OVDI_LIB *l, struct module_desc *ret, char *p, char *f);
 extern void new_vbi_wrapper(void);
 void new_vbi (void);
 
-static O_Int	install(void);
-static O_Int	get_vbitics(void);
-static O_Int	add_vbi_function(O_u32 function, O_u32 tics);
-static void	remove_vbi_function(O_u32 function);
+static short	install(void);
+static short	get_vbitics(void);
+static short	add_vbi_function(unsigned long function, unsigned long tics);
+static void	remove_vbi_function(unsigned long function);
 static void	reset_vbi(void);
 static void	enable_vbi(void);
 static void	disable_vbi(void);
@@ -54,9 +54,9 @@ static VBIAPI vbiapi =
 	disable_vbi,
 };
 
-static O_u16 flags = 0;
+static unsigned short flags = 0;
 
-static O_u32 vbiints[] = 
+static unsigned long vbiints[] = 
 {
 	0, 0, 0,
 	0, 0, 0,
@@ -99,7 +99,7 @@ init(OVDI_LIB *l, struct module_desc *ret, char *path, char *file)
 */
 static void I(void);
 
-static O_Int
+static short
 install(void)
 {
 	reset_vbi();
@@ -111,22 +111,22 @@ static void
 I(void)
 {
 	int i;
-	O_16 nvbi;
-	O_u32 *VBI_entry;
+	short nvbi;
+	unsigned long *VBI_entry;
 
 	if (!(flags & VBI_INST))
 	{
-		nvbi = *(O_16 *)nvbls;
-		VBI_entry = (O_u32 *) *(O_u32 *)_vblqueue;
+		nvbi = *(short *)nvbls;
+		VBI_entry = (unsigned long *) *(unsigned long *)_vblqueue;
 
 		for (i = 0; i < nvbi; i++)
 		{
 			if (*VBI_entry == 0)
 			{
-				O_16 sr;
+				short sr;
 
 				sr = spl7();
-				*VBI_entry++ = (O_u32)&new_vbi_wrapper;
+				*VBI_entry++ = (unsigned long)&new_vbi_wrapper;
 				*VBI_entry = 0L;
 				spl(sr);
 				break;
@@ -169,7 +169,7 @@ disable_vbi(void)
 /*
  * return
 */
-static O_Int
+static short
 get_vbitics(void)
 {
 	return (1000/50);
@@ -181,7 +181,7 @@ get_vbitics(void)
 void
 new_vbi(void)
 {
-	register O_u32 *vints = (O_u32 *)&vbiints;
+	register unsigned long *vints = (unsigned long *)&vbiints;
 	register void (*func)(void);
 
 	if (!(flags & VBI_ENABLE))
@@ -202,17 +202,17 @@ new_vbi(void)
 	}
 }
 
-static O_Int
-add_vbi_function(O_u32 function, O_u32 tics)
+static short
+add_vbi_function(unsigned long function, unsigned long tics)
 {
 	int i;
-	O_u32 *vints = (O_u32 *)&vbiints;
+	unsigned long *vints = (unsigned long *)&vbiints;
 
 	for (i = 0; i < MAX_VINTS; i++)
 	{
 		if (!vints[2])
 		{
-			O_16 sr;
+			short sr;
 
 			sr = spl7();
 			vints[0] = 0;
@@ -230,11 +230,11 @@ add_vbi_function(O_u32 function, O_u32 tics)
 }
 
 static void
-remove_vbi_function(O_u32 function)
+remove_vbi_function(unsigned long function)
 {
 	short sr;
 	int i;
-	O_u32 *vints = (O_u32 *)&vbiints;
+	unsigned long *vints = (unsigned long *)&vbiints;
 
 	for (i = 0; i < MAX_VINTS; i++)
 	{

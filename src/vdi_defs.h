@@ -107,40 +107,40 @@ typedef struct mfdb MFDB;
 
 struct vdirect
 {
-	O_Pos x1;
-	O_Pos y1;
-	O_Pos x2;
-	O_Pos y2;
+	short x1;
+	short y1;
+	short x2;
+	short y2;
 };
 typedef struct vdirect VDIRECT;
 
 struct vdirect16
 {
-	O_16 x1;
-	O_16 y1;
-	O_16 x2;
-	O_16 y2;
+	short x1;
+	short y1;
+	short x2;
+	short y2;
 };
 typedef struct vdirect16 VDIRECT16;
 
 struct cliprect
 {
-	O_16 	flag;
-	O_Pos	x1, y1, x2, y2;
+	short 	flag;
+	short	x1, y1, x2, y2;
 };
 typedef struct cliprect CLIPRECT;
 
 struct point
 {
-	O_Pos x;
-	O_Pos y;
+	short x;
+	short y;
 };
 typedef struct point POINT;
 
 struct point16
 {
-	O_16 x;
-	O_16 y;
+	short x;
+	short y;
 };
 typedef struct point16 POINT16;
 

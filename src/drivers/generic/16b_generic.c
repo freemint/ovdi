@@ -24,16 +24,16 @@ static void NOTS_OR_D	(unsigned char *addr, long data);
 static void NOT_SANDD	(unsigned char *addr, long data);
 static void ALL_BLACK	(unsigned char *addr, long data);
 
-O_u32
-get_pixel_16b(unsigned char *sb, O_Int bpl, O_Pos x, O_Pos y)
+unsigned long
+get_pixel_16b(unsigned char *sb, short bpl, short x, short y)
 {
-	return ((*(O_u16 *)(sb + (long)((x << 1) + ((long)y * bpl)))) & 0xffff);
+	return ((*(unsigned short *)(sb + (long)((x << 1) + ((long)y * bpl)))) & 0xffff);
 }
 
 void
-put_pixel_16b(unsigned char *sb, O_Int bpl, O_Pos x, O_Pos y, O_u32 pixel)
+put_pixel_16b(unsigned char *sb, short bpl, short x, short y, unsigned long pixel)
 {
-	*(O_u16 *)(sb + (long)((x << 1) + ((long)y * bpl))) = (O_u16)pixel;
+	*(unsigned short *)(sb + (long)((x << 1) + ((long)y * bpl))) = (unsigned short)pixel;
 	return;
 }
 
@@ -79,31 +79,31 @@ pixel_blit rt_ops_16b[] =
 static void
 ALL_WHITE(unsigned char *addr, long data)
 {
-	*(O_u16 *)addr = 0xffff;
+	*(unsigned short *)addr = 0xffff;
 	return;
 }
 static void
 S_AND_D(unsigned char *addr, long data)
 {
-	*(O_u16 *)addr = (O_u16)data & *(O_u16 *)addr;
+	*(unsigned short *)addr = (unsigned short)data & *(unsigned short *)addr;
 	return;
 }
 static void
 S_AND_NOTD(unsigned char *addr, long data)
 {
-	*(O_u16 *)addr = (O_u16)data & ~(*(O_u16 *)addr);
+	*(unsigned short *)addr = (unsigned short)data & ~(*(unsigned short *)addr);
 	return;
 }
 static void
 S_ONLY(unsigned char *addr, long data)
 {
-	*(O_u16 *)addr = (O_u16)data;
+	*(unsigned short *)addr = (unsigned short)data;
 	return;
 }
 static void
 NOTS_AND_D(unsigned char *addr, long data)
 {
-	*(O_u16 *)addr &= (O_u16)~data;
+	*(unsigned short *)addr &= (unsigned short)~data;
 	return;
 }
 static void
@@ -114,61 +114,61 @@ D_ONLY(unsigned char *addr, long data)
 static void
 S_XOR_D(unsigned char *addr, long data)
 {
-	*(O_u16 *)addr ^= (O_u16)data;
+	*(unsigned short *)addr ^= (unsigned short)data;
 	return;
 }
 static void
 S_OR_D(unsigned char *addr, long data)
 {
-	*(O_u16 *)addr |= (O_u16)data;
+	*(unsigned short *)addr |= (unsigned short)data;
 	return;
 }
 static void
 NOT_SORD(unsigned char *addr, long data)
 {
-	*(O_u16 *)addr = ~((O_u16)data | *(O_u16 *)addr);
+	*(unsigned short *)addr = ~((unsigned short)data | *(unsigned short *)addr);
 	return;
 }
 static void
 NOT_SXORD(unsigned char *addr, long data)
 {
-	*(O_u16 *)addr = ~((O_u16)data ^ *(O_u16 *)addr);
+	*(unsigned short *)addr = ~((unsigned short)data ^ *(unsigned short *)addr);
 	return;
 }
 static void
 NOT_D(unsigned char *addr, long data)
 {
-	*(O_u16 *)addr = ~*(O_u16 *)addr;
+	*(unsigned short *)addr = ~*(unsigned short *)addr;
 	return;
 }
 static void
 S_OR_NOTD(unsigned char *addr, long data)
 {
-	*(O_u16 *)addr = (O_u16)data | ~*(O_u16 *)addr;
+	*(unsigned short *)addr = (unsigned short)data | ~*(unsigned short *)addr;
 	return;
 }
 static void
 NOT_S(unsigned char *addr, long data)
 {
-	*(O_u16 *)addr = (O_u16)~data;
+	*(unsigned short *)addr = (unsigned short)~data;
 	return;
 }
 static void
 NOTS_OR_D(unsigned char *addr, long data)
 {
-	*(O_u16 *)addr = (O_u16)~data | *(O_u16 *)addr;
+	*(unsigned short *)addr = (unsigned short)~data | *(unsigned short *)addr;
 	return;
 }
 static void
 NOT_SANDD(unsigned char *addr, long data)
 {
-	*(O_u16 *)addr = ~((O_u16)data & *(O_u16 *)addr);
+	*(unsigned short *)addr = ~((unsigned short)data & *(unsigned short *)addr);
 	return;
 }
 static void
 ALL_BLACK(unsigned char *addr, long data)
 {
-	*(O_u16 *)addr = 0x0;
+	*(unsigned short *)addr = 0x0;
 	return;
 }
 
@@ -1174,10 +1174,10 @@ draw_mousecurs_16b(register XMFORM *mf, register short x, register short y)
 	}
 
 	{
-		register O_u16 *src, *dst;
+		register unsigned short *src, *dst;
 		register int i, j, nl;
 
-		dst = (O_u16 *)ms->save;
+		dst = (unsigned short *)ms->save;
 		(long)src = (long)mf->scr_base + (long)(((long)y * bypl) + ((long)x << 1));
 
 		ms->width = width;
@@ -1201,15 +1201,15 @@ draw_mousecurs_16b(register XMFORM *mf, register short x, register short y)
 	if (mf->planes == 1)
 	{
 		register int i, j, nl, mnl, w;
-		register O_u32 fgc, bgc;
-		register O_u16 mask, data, ovl;
-		register O_u16 *ma;
-		register O_u16 *dst;
+		register unsigned long fgc, bgc;
+		register unsigned short mask, data, ovl;
+		register unsigned short *ma;
+		register unsigned short *dst;
 
 
 		nl = (bypl - (width << 1)) >> 1;
 		(long)dst = (long)mf->scr_base + (long)(((long)y * bypl) + ((long)x << 1));
-		ma = (O_u16 *)mf->data + (long)(yoff * mf->mfbypl) + (long)((xoff >> 4) << 1);
+		ma = (unsigned short *)mf->data + (long)(yoff * mf->mfbypl) + (long)((xoff >> 4) << 1);
 		xoff &= 0xf;
 		mnl = ((mf->width - (xoff + width)) >> 4) << 1;
 		fgc = mf->fg_pix;
@@ -1229,9 +1229,9 @@ draw_mousecurs_16b(register XMFORM *mf, register short x, register short y)
 					if (mask & ovl)
 					{
 						if (data & ovl)
-							*dst = (O_u16)fgc;
+							*dst = (unsigned short)fgc;
 						else
-							*dst = (O_u16)bgc;
+							*dst = (unsigned short)bgc;
 					}
 					dst++;
 					ovl >>= 1;
@@ -1249,9 +1249,9 @@ draw_mousecurs_16b(register XMFORM *mf, register short x, register short y)
 					if (mask & ovl)
 					{
 						if (data & ovl)
-							*dst = (O_u16)fgc;
+							*dst = (unsigned short)fgc;
 						else
-							*dst = (O_u16)bgc;
+							*dst = (unsigned short)bgc;
 					}
 					dst++;
 					ovl >>= 1;
@@ -1267,9 +1267,9 @@ draw_mousecurs_16b(register XMFORM *mf, register short x, register short y)
 				if (mask & ovl)
 				{
 					if (data & ovl)
-						*dst = (O_u16)fgc;
+						*dst = (unsigned short)fgc;
 					else
-						*dst = (O_u16)bgc;
+						*dst = (unsigned short)bgc;
 				}
 				dst++;
 				ovl >>= 1;
@@ -1281,9 +1281,9 @@ draw_mousecurs_16b(register XMFORM *mf, register short x, register short y)
 	else
 	{
 		register int i, j, dnl, snl, mnl, w;
-		register O_u16 mask, ovl;
-		register O_u16 *ma;
-		register O_u16 *src, *dst;
+		register unsigned short mask, ovl;
+		register unsigned short *ma;
+		register unsigned short *src, *dst;
 
 
 		dnl = (bypl - (width << 1)) >> 1;
@@ -1292,7 +1292,7 @@ draw_mousecurs_16b(register XMFORM *mf, register short x, register short y)
 		(long)src = (long)mf->data + (long)(((long)yoff * snl) + ((long)xoff << 1));
 		snl -= (width << 1);
 		snl >>= 1;
-		ma = (O_u16 *)mf->mask + (long)(yoff * ((mf->width >> 4) +1)) + (long)(xoff >> 4);
+		ma = (unsigned short *)mf->mask + (long)(yoff * ((mf->width >> 4) +1)) + (long)(xoff >> 4);
 		xoff &= 0xf;
 		mnl = (mf->width - (xoff + width)) >> 4;
 
@@ -1355,12 +1355,12 @@ void
 restore_msave_16b(XMSAVE *ms)
 {
 	register int width, w, height, nl;
-	register O_u16 *src, *dst;
+	register unsigned short *src, *dst;
 
 	if (ms->valid)
 	{
-		src = (O_u16 *)ms->save;
-		dst = (O_u16 *)ms->src;
+		src = (unsigned short *)ms->save;
+		dst = (unsigned short *)ms->src;
 		width = ms->width;
 		nl = (ms->bypl - (width << 1)) >> 1;
 		for (height = ms->height; height > 0; height--)

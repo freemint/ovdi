@@ -18,8 +18,8 @@ lvsl_initial(VIRTUAL *v)
 	PatAttr *l = &v->line;
 	int i;
 
-	l->exp_data	= (O_u16 *)&v->linedata.edata;
-	l->mask		= (O_u16 *)&v->linedata.mask;
+	l->exp_data	= (unsigned short *)&v->linedata.edata;
+	l->mask		= (unsigned short *)&v->linedata.mask;
 
 	set_fill_params(FIS_SOLID, 0, l, &l->interior, 0);
 	l->t.l.index = -1;
@@ -70,18 +70,18 @@ vsl_color(VDIPB *pb, VIRTUAL *v)
 	pb->contrl[N_INTOUT] = 1;
 }
 void
-lvsl_color( VIRTUAL *v, O_Int color)
+lvsl_color( VIRTUAL *v, short color)
 {
 	set_pa_fgcolor(&v->line, v->colinf, color);
 }
 
 void
-lvsl_bgcolor( VIRTUAL *v, O_Int color)
+lvsl_bgcolor( VIRTUAL *v, short color)
 {
 	set_pa_bgcolor(&v->line, v->colinf, color);
 }
 void
-lvsl_wrmode( VIRTUAL *v, O_Int wrmode)
+lvsl_wrmode( VIRTUAL *v, short wrmode)
 {
 	set_pa_writemode(&v->line, wrmode);
 }
@@ -92,7 +92,7 @@ vsl_ends( VDIPB *pb, VIRTUAL *v)
 	lvsl_ends(v, pb->intin[0], pb->intin[1]);
 }
 void
-lvsl_ends( VIRTUAL *v, O_Int begin, O_Int end)
+lvsl_ends( VIRTUAL *v, short begin, short end)
 {
 	set_pa_lineends(&v->line, begin, end);
 }
@@ -107,7 +107,7 @@ vsl_type( VDIPB *pb, VIRTUAL *v)
 }
 
 void
-lvsl_type( VIRTUAL *v, O_Int index)
+lvsl_type( VIRTUAL *v, short index)
 {
 	set_pa_lineindex(&v->line, index);
 }
@@ -118,11 +118,11 @@ vsl_udsty( VDIPB *pb, VIRTUAL *v)
 	lvsl_udsty( v, pb->intin[0]);
 }
 void
-lvsl_udsty( VIRTUAL *v, O_u16 pattern)
+lvsl_udsty( VIRTUAL *v, unsigned short pattern)
 {
 	set_pa_udline( &v->line, pattern);
 #if 0
-	v->line.ud = (O_u16)pattern;
+	v->line.ud = (unsigned short)pattern;
 	if (v->line.t.l.index == LI_USER-1)
 		v->line.expanded = 0;
 #endif
@@ -138,7 +138,7 @@ vsl_width( VDIPB *pb, VIRTUAL *v)
 }
 
 void
-lvsl_width( VIRTUAL *v, O_Int width)
+lvsl_width( VIRTUAL *v, short width)
 {
 	set_pa_linewidth(&v->line, width);
 #if 0
@@ -180,7 +180,7 @@ v_pline( VDIPB *pb, VIRTUAL *v)
 		in_pts++;
 		points.x2 = in_pts->x;
 		points.y2 = in_pts->y;
-		(*dl)(r, c, (O_Pos *)&points, 2, clip, (O_Pos *)&v->spanbuff, v->spanbuffsiz, &v->line);
+		(*dl)(r, c, (short *)&points, 2, clip, (short *)&v->spanbuff, v->spanbuffsiz, &v->line);
 		count--;
 	}
 }

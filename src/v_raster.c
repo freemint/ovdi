@@ -16,14 +16,14 @@ vro_cpyfm( VDIPB *pb, VIRTUAL *v)
 	int i;
 	MFDB *s, *d;
 	RASTER *r = v->raster;
-	O_Pos p[8];
+	short p[8];
 
 	for (i = 0; i < 8; i++)
 		p[i] = pb->ptsin[i];
 
 	s = *(MFDB **)&(pb->contrl[7]); //(MFDB *)((((unsigned long)pb->contrl[7]) << 16) | (unsigned short)pb->contrl[8]);
 	d = *(MFDB **)&(pb->contrl[9]); //(MFDB *)((((unsigned long)pb->contrl[9]) << 16) | (unsigned short)pb->contrl[10]);
-	RO_CPYFM( r, s, d, (O_Pos *)&p, v->clip.flag ? (VDIRECT *)&v->clip.x1 : (VDIRECT *)&r->x1, pb->intin[0]);
+	RO_CPYFM( r, s, d, (short *)&p, v->clip.flag ? (VDIRECT *)&v->clip.x1 : (VDIRECT *)&r->x1, pb->intin[0]);
 }
 
 void
@@ -33,7 +33,7 @@ vrt_cpyfm( VDIPB *pb, VIRTUAL *v)
 	MFDB *s, *d;
 	RASTER *r = v->raster;
 	int fgc, bgc, wrmode;
-	O_Pos p[8];
+	short p[8];
 
 	for (i = 0; i < 8; i++)
 		p[i] = pb->ptsin[i];
@@ -45,7 +45,7 @@ vrt_cpyfm( VDIPB *pb, VIRTUAL *v)
 
 	s = *(MFDB **)&(pb->contrl[7]); //(MFDB *)((((unsigned long)pb->contrl[7]) << 16) | (unsigned short)pb->contrl[8]);
 	d = *(MFDB **)&(pb->contrl[9]); //(MFDB *)((((unsigned long)pb->contrl[9]) << 16) | (unsigned short)pb->contrl[10]);
-	RT_CPYFM( r, v->colinf, s, d, (O_Pos *)&p, v->clip.flag ? (VDIRECT *)&v->clip.x1 : (VDIRECT *)&r->x1, fgc, bgc, wrmode);
+	RT_CPYFM( r, v->colinf, s, d, (short *)&p, v->clip.flag ? (VDIRECT *)&v->clip.x1 : (VDIRECT *)&r->x1, fgc, bgc, wrmode);
 }
 
 void
@@ -66,13 +66,13 @@ v_get_pixel( VDIPB *pb, VIRTUAL *v)
 {
 	int planes = v->driver->r.res.planes;
 	RASTER *r = v->raster;
-	O_u32 pixel;
+	unsigned long pixel;
 
 	pixel = (*r->drawers->get_pixel)(r->base, r->bypl, pb->ptsin[0], pb->ptsin[1]);
 
 	if (planes > 8)
 	{
-		O_16 red, green, blue;
+		short red, green, blue;
 
 		red = get_color_bits(r->res.pixelformat, pixel, 0);
 		green = get_color_bits(r->res.pixelformat, pixel, 1);
@@ -91,8 +91,8 @@ v_get_pixel( VDIPB *pb, VIRTUAL *v)
 	}
 	else
 	{
-		pb->intout[0] = (O_u16)pixel;
-		pb->intout[1] = v->colinf->color_hw2vdi[(O_u16)pixel];
+		pb->intout[0] = (unsigned short)pixel;
+		pb->intout[1] = v->colinf->color_hw2vdi[(unsigned short)pixel];
 	}
 
 	pb->contrl[N_INTOUT] = 2;

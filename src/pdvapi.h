@@ -5,31 +5,31 @@
 
 struct mdrv_cb
 {
-	void (*relcmove)(O_Int x, O_Int y);
-	void (*abscmove)(O_Int x, O_Int y);
-	void (*buttchng)(O_uInt bs);
-	void (*relwheel)(O_Int id, O_Int pos, O_uInt bs);
-	void (*abswheel)(O_Int id, O_Int pos, O_uInt bs);
+	void (*relcmove)(short x, short y);
+	void (*abscmove)(short x, short y);
+	void (*buttchng)(unsigned short bs);
+	void (*relwheel)(short id, short pos, unsigned short bs);
+	void (*abswheel)(short id, short pos, unsigned short bs);
 };
 typedef struct mdrv_cb MDRV_CB;
 	
 struct pdvinfo
 {
-	O_16	type;
-	O_16	buttons;
-	O_16	wheels;
+	short	type;
+	short	buttons;
+	short	wheels;
 };
 typedef struct pdvinfo PDVINFO;
 
 struct pdvapi
 {
 	struct pdvapi	*nxtapi;
-	O_32		version;
+	long		version;
 	char		*sname;
 	char		*lname;
 	char		*filename;
 	char		*pathname;
-	O_Int		(*install)(MDRV_CB *cb, PDVINFO *pdi);
+	short		(*install)(MDRV_CB *cb, PDVINFO *pdi);
 	void		(*exit)(void);
 	void		(*start)(void);
 	void		(*stop)(void);

@@ -13,8 +13,8 @@ lvsprm_initial( VIRTUAL *v)
 	PatAttr *prm = &v->perimeter;
 	int i;
 
-	prm->exp_data	= (O_u16 *)&v->perimeterdata.edata;
-	prm->mask	= (O_u16 *)&v->perimeterdata.mask;
+	prm->exp_data	= (unsigned short *)&v->perimeterdata.edata;
+	prm->mask	= (unsigned short *)&v->perimeterdata.mask;
 
 	set_fill_params( FIS_SOLID, 0, prm, &prm->interior, 0);
 
@@ -26,43 +26,43 @@ lvsprm_initial( VIRTUAL *v)
 }
 
 void
-lvsprm_color( VIRTUAL *v, O_Int color )
+lvsprm_color( VIRTUAL *v, short color )
 {
 	set_pa_fgcolor(&v->perimeter, v->colinf, color);
 }
 
 void
-lvsprm_bgcolor( VIRTUAL *v, O_Int color )
+lvsprm_bgcolor( VIRTUAL *v, short color )
 {
 	set_pa_bgcolor(&v->perimeter, v->colinf, color);
 }
 
 void
-lvsprm_wrmode( VIRTUAL *v, O_Int wrmode )
+lvsprm_wrmode( VIRTUAL *v, short wrmode )
 {
 	set_pa_writemode(&v->perimeter, wrmode);
 }
 
 void
-lvsprm_ends( VIRTUAL *v, O_Int begin, O_Int end)
+lvsprm_ends( VIRTUAL *v, short begin, short end)
 {
 	set_pa_lineends(&v->perimeter, begin, end);
 }
 
 void
-lvsprm_type( VIRTUAL *v, O_Int index)
+lvsprm_type( VIRTUAL *v, short index)
 {
 	set_pa_lineindex(&v->perimeter, index);
 }
 
 void
-lvsprm_udsty( VIRTUAL *v, O_u16 pattern)
+lvsprm_udsty( VIRTUAL *v, unsigned short pattern)
 {
 	set_pa_udline(&v->perimeter, pattern);
 }
 
 void
-lvsprm_width( VIRTUAL *v, O_Int width)
+lvsprm_width( VIRTUAL *v, short width)
 {
 	set_pa_linewidth(&v->perimeter, width);
 }

@@ -8,19 +8,19 @@
 #include "vdi_font.h"
 
 void
-output_gdftext( VIRTUAL *v, POINT *xy, O_16 *text, O_Int textlen, O_Int jlen, O_Int wf, O_Int cf)
+output_gdftext( VIRTUAL *v, POINT *xy, short *text, short textlen, short jlen, short wf, short cf)
 {
 	int i;
-	O_16 chr;
-	O_Int strwidth, width, words, spaces, direction, wordx, charx, rmwordx, rmcharx;
-	O_Pos x1, y1, x2, y2, tmp, left_offset, right_offset, nxt_x1;
+	short chr;
+	short strwidth, width, words, spaces, direction, wordx, charx, rmwordx, rmcharx;
+	short x1, y1, x2, y2, tmp, left_offset, right_offset, nxt_x1;
 	long sc, sw, sca, swa, scs, sws;
 	VDIRECT *clip;
 	VDIRECT clp, src, dst;
 	MFDB fontd, screen;
 	MFDB *fmfdb;
-	O_16 colors[2];
-	O_Pos coords[8];
+	short colors[2];
+	short coords[8];
 	FONT_HEAD *f;
 	XGDF_HEAD *xf;
 
@@ -315,7 +315,7 @@ output_gdftext( VIRTUAL *v, POINT *xy, O_16 *text, O_Int textlen, O_Int jlen, O_
 			coords[4] = nxt_x1 < clip->x1 ? clip->x1 : nxt_x1;
 			coords[0] = coords[4] - nxt_x1;
 			coords[2] = coords[6] - nxt_x1;
-			rt_cpyfm( v->raster, v->colinf, fmfdb, (MFDB *)&screen, (O_Pos *)coords, clip, v->font.color, v->font.bgcol, v->font.wrmode);
+			rt_cpyfm( v->raster, v->colinf, fmfdb, (MFDB *)&screen, (short *)coords, clip, v->font.color, v->font.bgcol, v->font.wrmode);
 		}
 	}
 	return;
@@ -333,7 +333,7 @@ unsigned short *nxtfdb = fontdatabuff;
  * If fd_addr is set, font data is expanded into area pointed to by it.
 */
 void
-expand_gdf_font( FONT_HEAD *f, MFDB *fmfdb, O_Int chr)
+expand_gdf_font( FONT_HEAD *f, MFDB *fmfdb, short chr)
 {
 	int i, j;
 	unsigned short *fdatptr, *edatptr;

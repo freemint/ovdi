@@ -6,17 +6,17 @@
 struct vbiapi
 {
 	struct vbiapi	*nxtapi;
-	O_32		version;
+	long		version;
 	char		*sname;
 	char		*lname;
 	char		*filename;
 	char		*pathname;
 	
-	O_Int		(*install)(void);
+	short		(*install)(void);
 
-	O_Int		(*get_tics)(void);
-	O_Int		(*add_func)(O_u32 func, O_u32 tics);
-	void		(*del_func)(O_u32 func);
+	short		(*get_tics)(void);
+	short		(*add_func)(unsigned long func, unsigned long tics);
+	void		(*del_func)(unsigned long func);
 	void		(*reset)(void);
 	void		(*enable)(void);
 	void		(*disable)(void);

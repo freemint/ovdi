@@ -7,20 +7,20 @@
 
 /* data tables needed - in 4b_data.c */
 extern long col2long4b[];
-extern O_u16 fillbuff4b[];
-extern O_u16 maskbuff4b[];
-extern O_u16 shifts4b[];
+extern unsigned short fillbuff4b[];
+extern unsigned short maskbuff4b[];
+extern unsigned short shifts4b[];
 
 void
-fill_16x_4b(RASTER *r, COLINF *c, O_Pos *corners, PatAttr *ptrn)
+fill_16x_4b(RASTER *r, COLINF *c, short *corners, PatAttr *ptrn)
 {
 	int height, y, wrmode;
 	struct fill16x_api f;
-	O_u32 slp[2];
-	O_u16 slm;
-	//O_u32 lp0, lp1, lsm, lem, lmask;
-	//O_u16 *m;
-	//O_u32 *s, *d;
+	unsigned long slp[2];
+	unsigned short slm;
+	//unsigned long lp0, lp1, lsm, lem, lmask;
+	//unsigned short *m;
+	//unsigned long *s, *d;
 
 	/*
 	 * check if pattern is expanded and do expand it if it isnt
@@ -30,7 +30,7 @@ fill_16x_4b(RASTER *r, COLINF *c, O_Pos *corners, PatAttr *ptrn)
 	if (ptrn->expanded != 4 && ptrn->interior > FIS_SOLID)
 	{
 		//short color;
-		//O_u16 data, p0, p1, p2, p3;
+		//unsigned short data, p0, p1, p2, p3;
 		short col[2];
 
 		/*
@@ -58,8 +58,8 @@ fill_16x_4b(RASTER *r, COLINF *c, O_Pos *corners, PatAttr *ptrn)
 			ptrn->planes, PF_ATARI, ptrn->data,
 			4, PF_ATARI, ptrn->exp_data, (short *)&col, ptrn->mask);
 #else
-		s = (O_u32 *)ptrn->data;
-		d = (O_u32 *)ptrn->exp_data;
+		s = (unsigned long *)ptrn->data;
+		d = (unsigned long *)ptrn->exp_data;
 		m = ptrn->mask;
 		height = ptrn->height;
 
@@ -80,7 +80,7 @@ fill_16x_4b(RASTER *r, COLINF *c, O_Pos *corners, PatAttr *ptrn)
 		for (; height > 0; height--)
 		{
 			p0 = p1 = p2 = p3 = 0;
-			data = *(O_u16 *)((O_u16 *)s)++;
+			data = *(unsigned short *)((unsigned short *)s)++;
 			*m++ = data;
 			for (i = 0; i < 16; i++)
 			{
@@ -131,7 +131,7 @@ fill_16x_4b(RASTER *r, COLINF *c, O_Pos *corners, PatAttr *ptrn)
 		default: return;
 	}
 	{
-		register O_Pos y1, x1, x2;
+		register short y1, x1, x2;
 		register int sb;
 
 		x1	= *corners++;
@@ -182,7 +182,7 @@ singleline:
 		default: return;
 	}
 	{
-		register O_Pos y1, x1, x2;
+		register short y1, x1, x2;
 		register int sb;
 
 		x1	= *corners++;

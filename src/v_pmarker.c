@@ -13,8 +13,8 @@ lvsm_initial(VIRTUAL *v)
 	PatAttr *pm = &v->pmarker;
 	int i;
 
-	pm->exp_data	= (O_u16 *)&v->pmarkerdata.edata;
-	pm->mask	= (O_u16 *)&v->pmarkerdata.mask;
+	pm->exp_data	= (unsigned short *)&v->pmarkerdata.edata;
+	pm->mask	= (unsigned short *)&v->pmarkerdata.mask;
 
 	set_fill_params(FIS_SOLID, 0, pm, &pm->interior, 0);
 	pm->t.p.type = -1;
@@ -29,7 +29,7 @@ lvsm_initial(VIRTUAL *v)
 *  polymarkers
 */
 void
-lvsm_linetype( VIRTUAL *v, O_Int linetype )
+lvsm_linetype( VIRTUAL *v, short linetype )
 {
 	set_pa_pmrk_lineindex(&v->pmarker, linetype);
 }
@@ -63,30 +63,30 @@ vsm_type( VDIPB *pb, VIRTUAL *v)
 }
 
 void
-lvsm_color( VIRTUAL *v, O_Int color)
+lvsm_color( VIRTUAL *v, short color)
 {
 	set_pa_fgcolor(&v->pmarker, v->colinf, color);
 }
 void
-lvsm_bgcolor( VIRTUAL *v, O_Int color)
+lvsm_bgcolor( VIRTUAL *v, short color)
 {
 	set_pa_bgcolor(&v->pmarker, v->colinf, color);
 }
 
 
 void
-lvsm_height( VIRTUAL *v, O_Int height)
+lvsm_height( VIRTUAL *v, short height)
 {
 	set_pa_pmrk_size(&v->pmarker, 0, height);
 }
 
 void
-lvsm_type( VIRTUAL *v, O_Int type)
+lvsm_type( VIRTUAL *v, short type)
 {
 	set_pa_pmrk_type(&v->pmarker, type);
 }
 void
-lvsm_wrmode( VIRTUAL *v, O_Int wrmode)
+lvsm_wrmode( VIRTUAL *v, short wrmode)
 {
 	set_pa_writemode(&v->pmarker, wrmode);
 }
@@ -95,8 +95,8 @@ v_pmarker( VDIPB *pb, VIRTUAL *v)
 {
 	RASTER *r;
 	VDIRECT *clip;
-	O_Int count, type, height, width;
-	O_16 *inpts;
+	short count, type, height, width;
+	short *inpts;
 	POINT pts;
 	Fpmarker f;
 
@@ -109,7 +109,7 @@ v_pmarker( VDIPB *pb, VIRTUAL *v)
 	f	= DRAW_PMARKER_PTR(r);
 	clip	= v->clip.flag ? (VDIRECT *)&v->clip.x1 : (VDIRECT *)&r->x1;
 
-	inpts	= (O_16 *)&pb->ptsin[0];
+	inpts	= (short *)&pb->ptsin[0];
 	width	= v->pmarker.t.p.width;
 	height	= v->pmarker.t.p.height;
 	type	= v->pmarker.t.p.type;

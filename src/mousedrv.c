@@ -37,31 +37,31 @@ static void set_new_mform(MFORM *mf);
 static void set_xmf_color(XMFORM *xmf);
 
 /* ASM wrappers - just because I cannot get gcc to save d0-d7/a0-a6 instead of d2-d7/a2-a6 */
-extern void m_abs_move(O_Int x, O_Int y);
-extern void m_rel_move(O_Int x, O_Int y);
-extern void m_but_chg(O_u16 bs);
+extern void m_abs_move(short x, short y);
+extern void m_rel_move(short x, short y);
+extern void m_but_chg(unsigned short bs);
 extern void m_int(void);
 
 static void enable_mouse(void);
 static void disable_mouse(void);
 
-void mouse_relative_move( O_Int x, O_Int y) __attribute__ (());
-void mouse_absolute_move(O_Int x, O_Int y);
-void mouse_buttons_change(O_uInt bs);
+void mouse_relative_move( short x, short y) __attribute__ (());
+void mouse_absolute_move(short x, short y);
+void mouse_buttons_change(unsigned short bs);
 
-static void scale_mouse(MOUSEDRV *, O_Int, O_Int);
+static void scale_mouse(MOUSEDRV *, short, short);
 static void check_coords(MOUSEDRV *);
 
 static void reset_mouse_curs(void);
-static void show_mouse_curs(O_Int);
+static void show_mouse_curs(short);
 static void hide_mouse_curs(void);
 static void enable_mouse_curs(void);
 static void disable_mouse_curs(void);
 void mouse_interrupt(void);
 
-static O_u32 get_button_status(void);
-static void get_mouse_coordinates(O_16 *xy);
-static O_u32 set_mouse_vector(O_Int vecnum, O_u32 vector);
+static unsigned long get_button_status(void);
+static void get_mouse_coordinates(short *xy);
+static unsigned long set_mouse_vector(short vecnum, unsigned long vector);
 static void mdonothing(void);
 
 static MOUSEAPI	mapi;
@@ -70,11 +70,11 @@ static MOUSEDRV	md;
 //XMFORM		*current_xmf;
 static XMFORM	std_xmf;
 static XMSAVE	std_xms;
-static O_u8	mfdata[16*16*32];
-static O_u16	mfmask[16];
-static O_u8	msbuff[16*16*32];
+static unsigned char	mfdata[16*16*32];
+static unsigned short	mfmask[16];
+static unsigned char	msbuff[16*16*32];
 
-static O_16 arrow_cdb[] = 
+static short arrow_cdb[] = 
 {
 	1,0,1,0,1,
 
@@ -311,7 +311,7 @@ static void
 set_new_mform(MFORM *mf)
 {
 	int i;
-	register O_u16 *dest, *data, *mask;
+	register unsigned short *dest, *data, *mask;
 	register MOUSEDRV *m = &md;
 	register XMFORM *xmf = m->current_xmf;
 
@@ -330,9 +330,9 @@ set_new_mform(MFORM *mf)
 
 	set_xmf_color(xmf);
 
-	dest = (O_u16 *)xmf->data;
-	data = (O_u16 *)&mf->data;
-	mask = (O_u16 *)&mf->mask;
+	dest = (unsigned short *)xmf->data;
+	data = (unsigned short *)&mf->data;
+	mask = (unsigned short *)&mf->mask;
 
 	for (i = 0; i < 16; i++)
 	{
@@ -375,12 +375,12 @@ set_xmf_color(XMFORM *xmf)
 /* These are the functions called by mouse device drivers	*/
 /* (layer 2) to let the high-level know about mouse activity	*/
 void
-mouse_relative_move(O_Int x, O_Int y)
+mouse_relative_move(short x, short y)
 {
 	register MOUSEDRV *m = &md;
 	register LINEA_VARTAB *la = m->la;
-	register O_Int nx __asm__ ("d0") = x;
-	register O_Int ny __asm__ ("d1") = y;
+	register short nx __asm__ ("d0") = x;
+	register short ny __asm__ ("d1") = y;
 
 	nx += m->current_x;
 	ny += m->current_y;
@@ -424,12 +424,12 @@ mouse_relative_move(O_Int x, O_Int y)
 }
 
 void
-mouse_absolute_move(O_Int x, O_Int y)
+mouse_absolute_move(short x, short y)
 {
 	register MOUSEDRV *m = &md;
 	register LINEA_VARTAB *la = m->la;
-	register O_Int nx __asm__ ("d0") = x;
-	register O_Int ny __asm__ ("d1") = y;
+	register short nx __asm__ ("d0") = x;
+	register short ny __asm__ ("d1") = y;
 
 	scale_mouse(m, nx, ny);
 	check_coords(m);
@@ -471,11 +471,11 @@ mouse_absolute_move(O_Int x, O_Int y)
 }
 
 void
-mouse_buttons_change(O_uInt bs)
+mouse_buttons_change(unsigned short bs)
 {
 	register MOUSEDRV *m = &md;
-	register O_uInt nbs __asm__ ("d0") = bs;
-	register O_uInt obs = m->current_bs;
+	register unsigned short nbs __asm__ ("d0") = bs;
+	register unsigned short obs = m->current_bs;
 
 
 	if (nbs == obs)
@@ -515,14 +515,14 @@ check_coords(MOUSEDRV *m)
 	return;
 }
 	
-static O_16 speed_tab[] =
+static short speed_tab[] =
 { 0, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 5, 5, 6, 6, 14, 255, 255 };
 
 static void
-scale_mouse(MOUSEDRV *m, O_Int x, O_Int y)
+scale_mouse(MOUSEDRV *m, short x, short y)
 {
-	O_Int nx, ny, x_off, y_off, idx;
-	O_16 *st;
+	short nx, ny, x_off, y_off, idx;
+	short *st;
 
 	nx = x - m->current_x;
 	if (nx < 0)
@@ -539,7 +539,7 @@ scale_mouse(MOUSEDRV *m, O_Int x, O_Int y)
 	idx = x_off > y_off ? x_off : y_off;
 
 	x_off = 0;
-	st = (O_16 *)&speed_tab;
+	st = (short *)&speed_tab;
 	while (idx > *st++)
 		x_off++;
 
@@ -616,7 +616,7 @@ disable_mouse_curs(void)
 }
 	
 static void
-show_mouse_curs(O_Int reset)
+show_mouse_curs(short reset)
 {
 	register MOUSEDRV *m = &md;
 
@@ -665,21 +665,21 @@ hide_mouse_curs(void)
 	return;
 }
 
-static O_u32
+static unsigned long
 get_button_status(void)
 {
 	MOUSEDRV *m = &md;
-	O_u32 bs;
+	unsigned long bs;
 
-	bs = (O_u32)m->last_bs << 16;
+	bs = (unsigned long)m->last_bs << 16;
 	m->last_bs = 0;
-	bs |= (O_u16)m->current_bs;
+	bs |= (unsigned short)m->current_bs;
 	return bs;
 }
 
 
 static void
-get_mouse_coordinates(O_16 *xy)
+get_mouse_coordinates(short *xy)
 {
 	MOUSEDRV *m = &md;
 
@@ -689,30 +689,30 @@ get_mouse_coordinates(O_16 *xy)
 	return;
 }
 
-static O_u32
-set_mouse_vector(O_Int vecnum, O_u32 vector)
+static unsigned long
+set_mouse_vector(short vecnum, unsigned long vector)
 {
 	register MOUSEDRV *m = &md;
-	O_u32 oldvec = 0;
+	unsigned long oldvec = 0;
 
 	switch (vecnum)
 	{
 		case MVEC_BUT:
 		{
-			oldvec = (O_u32)m->la->user_but;
-			(O_u32)m->la->user_but = vector;
+			oldvec = (unsigned long)m->la->user_but;
+			(unsigned long)m->la->user_but = vector;
 			break;
 		}
 		case MVEC_CUR:
 		{
-			oldvec = (O_u32)m->la->user_cur;
-			(O_u32)m->la->user_cur = vector;
+			oldvec = (unsigned long)m->la->user_cur;
+			(unsigned long)m->la->user_cur = vector;
 			break;
 		}
 		case MVEC_MOV:
 		{
-			oldvec = (O_u32)m->la->user_mot;
-			(O_u32)m->la->user_mot = vector;
+			oldvec = (unsigned long)m->la->user_mot;
+			(unsigned long)m->la->user_mot = vector;
 			break;
 		}
 	}

@@ -13,7 +13,7 @@ void ds_ERASE_8b	(struct fill16x_api *);
 static unsigned char fillbuff[16 * 16];
 static unsigned char maskbuff[16 * 16];
 
-O_u32 nib2long[] = 
+unsigned long nib2long[] = 
 {
 	0x00000000,
 	0x000000ff,
@@ -61,8 +61,8 @@ ds_REPLACE_8b(struct fill16x_api *f)
 		}
 		if ((i = f->words) > 0)
 		{
-			register O_u32 *src = (long *)s;
-			register O_u32 lp0, lp1, lp2, lp3;
+			register unsigned long *src = (long *)s;
+			register unsigned long lp0, lp1, lp2, lp3;
 			lp0 = *src++, lp1 = *src++, lp2 = *src++, lp3 = *src;
 			for (; i > 0; i--) {
 				*(long *)((long *)d)++ = lp0;
@@ -175,7 +175,7 @@ void
 ds_XOR_8b(struct fill16x_api *f)
 {
 	int i;
-	register O_u32 lp0 = 0xffffffffL;
+	register unsigned long lp0 = 0xffffffffL;
 	register char *d = (char *)f->d;
 
 	if (f->words < 0)
@@ -212,7 +212,7 @@ void
 ds_ERASE_8b(struct fill16x_api *f)
 {
 	int i;
-	register O_u32 lp0 = 0xffffffffL;
+	register unsigned long lp0 = 0xffffffffL;
 	register char *d = (char *)f->d;
 	register char *m = (char *)f->m;
 
@@ -245,8 +245,8 @@ ds_ERASE_8b(struct fill16x_api *f)
 		}
 		if ((i = f->words) > 0)
 		{
-			register O_u32 lp1, lp2, lp3;
-			register O_u32 *msk = (long *)m;
+			register unsigned long lp1, lp2, lp3;
+			register unsigned long *msk = (long *)m;
 			lp0 = *msk++, lp1 = *msk++, lp2 = *msk++, lp3 = *msk;
 			for (; i > 0; i--)
 			{
@@ -271,12 +271,12 @@ ds_ERASE_8b(struct fill16x_api *f)
 }
 
 void
-spans_16x_8b(RASTER *r, COLINF *c, O_Pos *spans, O_Int n, PatAttr *ptrn)
+spans_16x_8b(RASTER *r, COLINF *c, short *spans, short n, PatAttr *ptrn)
 {
 	int y, wrmode;
 	struct fill16x_api f;
-	O_u32 fill[4];
-	O_u32 mask[4];
+	unsigned long fill[4];
+	unsigned long mask[4];
 
 	/*
 	 * check if pattern is expanded and do expand it if it isnt
@@ -285,9 +285,9 @@ spans_16x_8b(RASTER *r, COLINF *c, O_Pos *spans, O_Int n, PatAttr *ptrn)
 	if (ptrn->expanded != 8 && ptrn->interior > FIS_SOLID)
 	{
 		int height;
-		O_u16 data;
-		O_u32 *s, *d, *m;
-		O_u32 lp0, lp1, lp2;
+		unsigned short data;
+		unsigned long *s, *d, *m;
+		unsigned long lp0, lp1, lp2;
 
 		/*
 		 * If there is no pointer to expanded data buffer,
@@ -308,17 +308,17 @@ spans_16x_8b(RASTER *r, COLINF *c, O_Pos *spans, O_Int n, PatAttr *ptrn)
 		else
 			ptrn->expanded = 8;
 
-		s = (O_u32 *)ptrn->data;
-		d = (O_u32 *)ptrn->exp_data;
-		m = (O_u32 *)ptrn->mask;
-		lp0 = (O_u32)ptrn->color[wrmode];
+		s = (unsigned long *)ptrn->data;
+		d = (unsigned long *)ptrn->exp_data;
+		m = (unsigned long *)ptrn->mask;
+		lp0 = (unsigned long)ptrn->color[wrmode];
 		lp0 = (lp0 << 24) | (lp0 << 16) | (lp0 << 8) | lp0;
-		lp1 = (O_u32)ptrn->bgcol[wrmode];
+		lp1 = (unsigned long)ptrn->bgcol[wrmode];
 		lp1 = (lp1 << 24) | (lp1 << 16) | (lp1 << 8) | lp1;
 		
 		for (height = ptrn->height; height > 0; height--)
 		{
-			data = *(O_u16 *)((short *)s)++;
+			data = *(unsigned short *)((short *)s)++;
 
 			lp2 = nib2long[data & 0xf];
 			d[3] = (lp0 & lp2) | (lp1 & ~lp2);
@@ -389,7 +389,7 @@ spans_16x_8b(RASTER *r, COLINF *c, O_Pos *spans, O_Int n, PatAttr *ptrn)
 
 	for (; n > 0; n--)
 	{
-		register O_Pos y1,x1,x2;
+		register short y1,x1,x2;
 		register int sb;
 
 		y1 = *spans++;
@@ -403,8 +403,8 @@ spans_16x_8b(RASTER *r, COLINF *c, O_Pos *spans, O_Int n, PatAttr *ptrn)
 		f.d = (char *)r->base + (long)((x1 >> 4) << 4) + ((long)y1 * f.dbpl);
 		if (f.sm) f.words--;
 		if (f.em) f.words--;
-		f.s = (O_u32 *)ptrn->exp_data + ((long)y << 2);
-		f.m = (O_u32 *)ptrn->mask + ((long)y << 2);
+		f.s = (unsigned long *)ptrn->exp_data + ((long)y << 2);
+		f.m = (unsigned long *)ptrn->mask + ((long)y << 2);
 		(*f.drawspan)(&f);
 	}
 	goto done;
@@ -423,7 +423,7 @@ singleline:
 
 	for (;n > 0; n--)
 	{
-		register O_Pos y1, x1, x2;
+		register short y1, x1, x2;
 		register int sb;
 
 		y1 = *spans++;

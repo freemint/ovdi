@@ -20,7 +20,7 @@ long col2long1b[] =
 	0xffffffff,0xffffffff
 };
 
-O_u16 shifts1b[] = 
+unsigned short shifts1b[] = 
 {
 	0xffff,
 	0xffff >> 1,
@@ -41,5 +41,5 @@ O_u16 shifts1b[] =
 	0
 };
 
-O_u16 fillbuff1b[4*16];
-O_u16 maskbuff1b[16];
+unsigned short fillbuff1b[4*16];
+unsigned short maskbuff1b[16];

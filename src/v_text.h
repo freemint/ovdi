@@ -24,16 +24,16 @@ void	vqt_xfntinfo	( VDIPB *pb, VIRTUAL *v );
 void	vst_name	( VDIPB *pb, VIRTUAL *v );
 void	vst_width	( VDIPB *pb, VIRTUAL *v );
 
-O_Int	lvst_load_fonts	( VIRTUAL *v );
-void	lvst_alignment	( VIRTUAL *v, O_Int halign, O_Int valign );
-void	lvst_color	( VIRTUAL *v, O_Int color );
-void	lvst_effects	( VIRTUAL *v, O_Int style);
-O_Int	lvst_font	( VIRTUAL *v, O_Int id );
-O_Int	lvst_point	( VIRTUAL *v, O_Int point );
-O_Int	lvst_height	( VIRTUAL *v, O_Int height );
-O_Int	lvst_width	( VIRTUAL *v, O_Int width );
-void	lvst_rotation	( VIRTUAL *v, O_Int angle );
-void	lvst_wrmode	( VIRTUAL *v, O_Int wrmode );
+short	lvst_load_fonts	( VIRTUAL *v );
+void	lvst_alignment	( VIRTUAL *v, short halign, short valign );
+void	lvst_color	( VIRTUAL *v, short color );
+void	lvst_effects	( VIRTUAL *v, short style);
+short	lvst_font	( VIRTUAL *v, short id );
+short	lvst_point	( VIRTUAL *v, short point );
+short	lvst_height	( VIRTUAL *v, short height );
+short	lvst_width	( VIRTUAL *v, short width );
+void	lvst_rotation	( VIRTUAL *v, short angle );
+void	lvst_wrmode	( VIRTUAL *v, short wrmode );
 void	lvst_exit	( VIRTUAL *v);
 
 #endif /* _V_TEXT_H */

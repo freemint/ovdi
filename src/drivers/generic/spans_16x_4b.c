@@ -7,18 +7,18 @@
 
 /* data tables needed - in 4b_data.c */
 extern long col2long4b[];
-extern O_u16 fillbuff4b[];
-extern O_u16 maskbuff4b[];
-extern O_u16 shifts4b[];
+extern unsigned short fillbuff4b[];
+extern unsigned short maskbuff4b[];
+extern unsigned short shifts4b[];
 
 void
-spans_16x_4b(RASTER *r, COLINF *c, O_Pos *spans, O_Int n, PatAttr *ptrn)
+spans_16x_4b(RASTER *r, COLINF *c, short *spans, short n, PatAttr *ptrn)
 {
-	O_16 y;
+	short y;
 	int wrmode;
 	struct fill16x_api f;
-	O_u32 slp[2];
-	O_u16 slm;
+	unsigned long slp[2];
+	unsigned short slm;
 	/*
 	 * check if pattern is expanded and do expand it if it isnt
 	*/
@@ -26,8 +26,8 @@ spans_16x_4b(RASTER *r, COLINF *c, O_Pos *spans, O_Int n, PatAttr *ptrn)
 	if (ptrn->expanded != 4 && ptrn->interior > FIS_SOLID)
 	{
 		//short color;
-		//O_u16 data, p0, p1, p2, p3;
-		O_16 col[2];
+		//unsigned short data, p0, p1, p2, p3;
+		short col[2];
 
 		/*
 		 * If there is no pointer to expanded data buffer,
@@ -52,10 +52,10 @@ spans_16x_4b(RASTER *r, COLINF *c, O_Pos *spans, O_Int n, PatAttr *ptrn)
 
 		expand( ptrn->width, ptrn->height,
 			ptrn->planes, PF_ATARI, ptrn->data,
-			4, PF_ATARI, ptrn->exp_data, (O_16 *)&col, ptrn->mask);
+			4, PF_ATARI, ptrn->exp_data, (short *)&col, ptrn->mask);
 #else
-		s = (O_u32 *)ptrn->data;
-		d = (O_u32 *)ptrn->exp_data;
+		s = (unsigned long *)ptrn->data;
+		d = (unsigned long *)ptrn->exp_data;
 		m = ptrn->mask;
 		height = ptrn->height;
 
@@ -76,7 +76,7 @@ spans_16x_4b(RASTER *r, COLINF *c, O_Pos *spans, O_Int n, PatAttr *ptrn)
 		for (; height > 0; height--)
 		{
 			p0 = p1 = p2 = p3 = 0;
-			data = *(O_u16 *)((O_u16 *)s)++;
+			data = *(unsigned short *)((unsigned short *)s)++;
 			*m++ = data;
 			for (i = 0; i < 16; i++)
 			{
@@ -102,7 +102,7 @@ spans_16x_4b(RASTER *r, COLINF *c, O_Pos *spans, O_Int n, PatAttr *ptrn)
 		if (ptrn->interior == FIS_HOLLOW)
 			slp[0] = slp[1] = slm = wrmode = 0;
 		else {
-			O_16 fc = ptrn->color[wrmode] << 1;
+			short fc = ptrn->color[wrmode] << 1;
 			slp[0] = col2long4b[fc++];
 			slp[1] = col2long4b[fc];
 			slm	= 0xffff;
@@ -129,7 +129,7 @@ spans_16x_4b(RASTER *r, COLINF *c, O_Pos *spans, O_Int n, PatAttr *ptrn)
 
 	for (;n > 0; n--)
 	{
-		register O_Pos y1, x1, x2;
+		register short y1, x1, x2;
 		register int sb;
 
 		y1 = *spans++;
@@ -165,7 +165,7 @@ singleline:
 
 	for (;n > 0; n--)
 	{
-		register O_Pos y1, x1, x2;
+		register short y1, x1, x2;
 		register int sb;
 
 		y1 = *spans++;
@@ -293,11 +293,11 @@ void
 ds_TRANS_4b(struct fill16x_api *f)
 {
 	int i;
-	register O_u32 lsm = f->sm, lem = f->em, lp0, lp1, tmp, lmask;
+	register unsigned long lsm = f->sm, lem = f->em, lp0, lp1, tmp, lmask;
 	register long *d = f->d;
 	long *s = f->s;
 
-	lp0 = *(O_u16 *)f->m;
+	lp0 = *(unsigned short *)f->m;
 	lmask = lp0;
 	lmask |= lp0 << 16;
 	lp0 = *s++;

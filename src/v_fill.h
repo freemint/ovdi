@@ -14,15 +14,15 @@ void	vr_recfl	( VDIPB *pb, VIRTUAL *v );
 
 void	vqf_attributes	( VDIPB *pb, VIRTUAL *v );
 
-void	lvsf_color	( VIRTUAL *v, O_Int color );
-void	lvsf_interior	( VIRTUAL *v, O_Int interior );
-void	lvsf_bgcolor	( VIRTUAL *v, O_Int color );
-void	lvsf_perimeter	( VIRTUAL *v, O_Int flag );
+void	lvsf_color	( VIRTUAL *v, short color );
+void	lvsf_interior	( VIRTUAL *v, short interior );
+void	lvsf_bgcolor	( VIRTUAL *v, short color );
+void	lvsf_perimeter	( VIRTUAL *v, short flag );
 
-void	lvsf_wrmode	( VIRTUAL *v, O_Int wrmode );
-void	lvsudf_wrmode	( VIRTUAL *v, O_Int wrmode );
+void	lvsf_wrmode	( VIRTUAL *v, short wrmode );
+void	lvsudf_wrmode	( VIRTUAL *v, short wrmode );
 
-void	set_fill_params	( O_Int interior, O_Int style, PatAttr *ptrn, O_16 *iout, O_16 *sout );
-void	set_udfill	( VIRTUAL *v, O_Int planes, O_u16 *ud, O_Int width, O_Int height );
+void	set_fill_params	( short interior, short style, PatAttr *ptrn, short *iout, short *sout );
+void	set_udfill	( VIRTUAL *v, short planes, unsigned short *ud, short width, short height );
 
 #endif 	/* _V_FILL_H */

@@ -19,7 +19,7 @@ rectfill( RASTER *r, COLINF *c, VDIRECT *corners, VDIRECT *clip, PatAttr *ptrn)
 
 	
 	if (ptrn->width == 16 && FILL_16X_PTR(r) )
-		FILL_16X(r, c, (O_Pos *)&clipped, ptrn);
+		FILL_16X(r, c, (short *)&clipped, ptrn);
 	else
 		DRAW_MSPANS( r, c, clipped.x1, clipped.x2, clipped.y1, clipped.y2, ptrn);
 
@@ -66,9 +66,9 @@ slowashell:	DRAW_MSPANS( r, c, clipped.x1, clipped.x2, clipped.y1, clipped.y2, p
 }
 
 void
-sortcpy_corners( O_16 *source, O_Pos *dest )
+sortcpy_corners( short *source, short *dest )
 {
-	O_Pos x1, y1, x2, y2, tmp;
+	short x1, y1, x2, y2, tmp;
 
 	x1 = *source++;
 	y1 = *source++;
@@ -96,11 +96,11 @@ sortcpy_corners( O_16 *source, O_Pos *dest )
 	return;
 }
 
-O_Int
+short
 clipbox( VDIRECT *corners, VDIRECT *clip)
 {
-	O_Pos x1, y1, x2, y2, tmp;
-	O_Pos *co;
+	short x1, y1, x2, y2, tmp;
+	short *co;
 
 	x1 = corners->x1;
 	x2 = corners->x2;
@@ -151,7 +151,7 @@ clipbox( VDIRECT *corners, VDIRECT *clip)
 		y2 = tmp;
 	}
 
-	co = (O_Pos *)corners;
+	co = (short *)corners;
 	*co++ = x1;
 	*co++ = y1;
 	*co++ = x2;
@@ -161,10 +161,10 @@ clipbox( VDIRECT *corners, VDIRECT *clip)
 }
 
 void
-draw_arc(VIRTUAL *v, O_Pos xc, O_Pos yc, O_Pos xrad, O_Int beg_ang, O_Int end_ang, O_Pos *points, PatAttr *ptrn)
+draw_arc(VIRTUAL *v, short xc, short yc, short xrad, short beg_ang, short end_ang, short *points, PatAttr *ptrn)
 {
-	O_Int del_ang, n_steps;
-	O_Pos yrad;
+	short del_ang, n_steps;
+	short yrad;
 	RASTER *r = v->raster;
 
 	del_ang = end_ang - beg_ang;
@@ -182,10 +182,10 @@ draw_arc(VIRTUAL *v, O_Pos xc, O_Pos yc, O_Pos xrad, O_Int beg_ang, O_Int end_an
 }
 
 void
-draw_pieslice( VIRTUAL *v, O_Pos xc, O_Pos yc, O_Pos xrad, O_Int beg_ang, O_Int end_ang, O_Pos *points, PatAttr *ptrn)
+draw_pieslice( VIRTUAL *v, short xc, short yc, short xrad, short beg_ang, short end_ang, short *points, PatAttr *ptrn)
 {
-	O_Int del_ang, n_steps;
-	O_Pos yrad;
+	short del_ang, n_steps;
+	short yrad;
 	RASTER *r = v->raster;
 
 	del_ang = end_ang - beg_ang;
@@ -205,10 +205,10 @@ draw_pieslice( VIRTUAL *v, O_Pos xc, O_Pos yc, O_Pos xrad, O_Int beg_ang, O_Int 
 
 #if 0
 void
-draw_circle( VIRTUAL *v, O_Pos xc, O_Pos yc, O_Pos xrad, O_Pos *points, PatAttr *ptrn)
+draw_circle( VIRTUAL *v, short xc, short yc, short xrad, short *points, PatAttr *ptrn)
 {
-	O_Pos yrad;
-	O_Int n_steps;
+	short yrad;
+	short n_steps;
 	RASTER *r = v->raster;
 
 	yrad = SMUL_DIV(xrad, r->wpixel, r->hpixel);
@@ -219,20 +219,20 @@ draw_circle( VIRTUAL *v, O_Pos xc, O_Pos yc, O_Pos xrad, O_Pos *points, PatAttr 
 #else
 //bcircle(RASTER *r, COLINF *c, int sx, int sy, int r, VDIRECT *clip, int *spanbuff, long spanbuffsiz, PatAttr *ptrn)
 void
-draw_circle( VIRTUAL *v, O_Pos xc, O_Pos yc, O_Pos xrad, O_Pos *points, PatAttr *ptrn)
+draw_circle( VIRTUAL *v, short xc, short yc, short xrad, short *points, PatAttr *ptrn)
 {
 	VDIRECT *clip;
 	RASTER *r = v->raster;
 
 	clip = v->clip.flag ? (VDIRECT *)&v->clip.x1 : (VDIRECT *)&r->x1;
-	brescircle(v->raster, v->colinf, xc, yc, xrad, clip, (O_Pos *)&v->spanbuff, v->spanbuffsiz, v->currfill);
+	brescircle(v->raster, v->colinf, xc, yc, xrad, clip, (short *)&v->spanbuff, v->spanbuffsiz, v->currfill);
 }
 #endif
 
 void
-draw_ellipse( VIRTUAL *v, O_Pos xc, O_Pos yc, O_Pos xrad, O_Pos yrad, O_Pos *points, PatAttr *ptrn)
+draw_ellipse( VIRTUAL *v, short xc, short yc, short xrad, short yrad, short *points, PatAttr *ptrn)
 {
-	O_Int n_steps;
+	short n_steps;
 
 	n_steps = clc_nsteps(xrad, yrad);
 
@@ -241,9 +241,9 @@ draw_ellipse( VIRTUAL *v, O_Pos xc, O_Pos yc, O_Pos xrad, O_Pos yrad, O_Pos *poi
 
 }
 void
-draw_ellipsearc( VIRTUAL *v, O_Pos xc, O_Pos yc, O_Pos xrad, O_Pos yrad, O_Int beg_ang, O_Int end_ang, O_Pos *points, PatAttr *ptrn)
+draw_ellipsearc( VIRTUAL *v, short xc, short yc, short xrad, short yrad, short beg_ang, short end_ang, short *points, PatAttr *ptrn)
 {
-	O_Int del_ang, n_steps;
+	short del_ang, n_steps;
 
 	del_ang = end_ang - beg_ang;
 	if (del_ang < 0)
@@ -259,10 +259,10 @@ draw_ellipsearc( VIRTUAL *v, O_Pos xc, O_Pos yc, O_Pos xrad, O_Pos yrad, O_Int b
 }
 
 void
-draw_ellipsepie( VIRTUAL *v, O_Pos xc, O_Pos yc, O_Pos xrad, O_Pos yrad, O_Int beg_ang, O_Int end_ang, O_Pos *points, PatAttr *ptrn)
+draw_ellipsepie( VIRTUAL *v, short xc, short yc, short xrad, short yrad, short beg_ang, short end_ang, short *points, PatAttr *ptrn)
 {
 
-	O_Int del_ang, n_steps;
+	short del_ang, n_steps;
 
 	del_ang = end_ang - beg_ang;
 	if (del_ang < 0)
@@ -280,14 +280,14 @@ draw_ellipsepie( VIRTUAL *v, O_Pos xc, O_Pos yc, O_Pos xrad, O_Pos yrad, O_Int b
  * clc_nsteps - calculates
  */
 extern long arc_split;
-extern O_Int arc_max;
-extern O_Int arc_min;
+extern short arc_max;
+extern short arc_min;
 
-O_Int
-clc_nsteps( O_Pos xrad, O_Pos yrad)
+short
+clc_nsteps( short xrad, short yrad)
 {
 
-	O_Int n_steps;
+	short n_steps;
 
 	if (xrad > yrad)
 		n_steps = xrad;
@@ -313,8 +313,8 @@ clc_nsteps( O_Pos xrad, O_Pos yrad)
 	return n_steps;
 }
 
-static O_Int
-clipspan(O_Pos y, O_Pos x1, O_Pos x2, O_Pos *spans, VDIRECT *clip)
+static short
+clipspan(short y, short x1, short x2, short *spans, VDIRECT *clip)
 {
 	if (y < clip->y1)
 		return 0;
@@ -336,10 +336,10 @@ clipspan(O_Pos y, O_Pos x1, O_Pos x2, O_Pos *spans, VDIRECT *clip)
 	return 1;
 }	
 void
-brescircle( RASTER *r, COLINF *c, O_Pos sx, O_Pos sy, O_Pos rad, VDIRECT *clip, O_Pos *spanbuff, long spanbuffsiz, PatAttr *ptrn)
+brescircle( RASTER *r, COLINF *c, short sx, short sy, short rad, VDIRECT *clip, short *spanbuff, long spanbuffsiz, PatAttr *ptrn)
 {
-	O_Pos *spans;
-	O_Int n_spans, max_spans;
+	short *spans;
+	short n_spans, max_spans;
 	register long x = 0, y = rad, d = 2L * (1 - rad);
 	register long pw = r->wpixel, ph = r->hpixel;
 
@@ -399,15 +399,15 @@ brescircle( RASTER *r, COLINF *c, O_Pos sx, O_Pos sy, O_Pos rad, VDIRECT *clip, 
 }
 
 void
-clc_arc(VIRTUAL *v, O_Int gdp_code, O_Pos xc, O_Pos yc, O_Pos xrad, O_Pos yrad, O_Int beg_ang, O_Int end_ang,
-	O_Int del_ang, O_Int n_steps, O_Pos *points, PatAttr *ptrn)
+clc_arc(VIRTUAL *v, short gdp_code, short xc, short yc, short xrad, short yrad, short beg_ang, short end_ang,
+	short del_ang, short n_steps, short *points, PatAttr *ptrn)
 {
 	RASTER *r;
 	COLINF *c;
 	VDIRECT *clip;
 	int i, j;
-	O_Int start, angle;
-	register O_Pos *pts;
+	short start, angle;
+	register short *pts;
 
 	r = v->raster;
 	c = v->colinf;
@@ -448,29 +448,29 @@ clc_arc(VIRTUAL *v, O_Int gdp_code, O_Pos xc, O_Pos yc, O_Pos xrad, O_Pos yrad, 
 	}
 
 	if ((gdp_code == 2) || (gdp_code == 6))	/* Open arc */
-		DRAW_PLINE( r, c, points, n_steps + 1, clip, (O_Pos *)&v->spanbuff, v->spanbuffsiz, ptrn);
+		DRAW_PLINE( r, c, points, n_steps + 1, clip, (short *)&v->spanbuff, v->spanbuffsiz, ptrn);
 	else
 	{
-		DRAW_FILLEDPOLY( r, c, points, n_steps + 1, clip, (O_Pos *)&v->spanbuff, v->spanbuffsiz, ptrn);
+		DRAW_FILLEDPOLY( r, c, points, n_steps + 1, clip, (short *)&v->spanbuff, v->spanbuffsiz, ptrn);
 
 		if (ptrn->t.f.perimeter)
-			DRAW_PLINE( r, c, points, n_steps +1, clip, (O_Pos *)&v->spanbuff, v->spanbuffsiz, ptrn->t.f.perimeter);
+			DRAW_PLINE( r, c, points, n_steps +1, clip, (short *)&v->spanbuff, v->spanbuffsiz, ptrn->t.f.perimeter);
 	}
 }
 
 
 /* Assumes coordinates have been sorted */
 void
-draw_rbox(VIRTUAL *v, O_Int gdp_code, VDIRECT *corners, PatAttr *ptrn)
+draw_rbox(VIRTUAL *v, short gdp_code, VDIRECT *corners, PatAttr *ptrn)
 {
 	RASTER *r;
 	COLINF *c;
 	VDIRECT *clip;
 	int i, j;
-	O_Pos rdeltax, rdeltay;
-	O_Pos xc, yc, xrad, yrad;
-	O_Int n_steps;
-	O_Pos points[42];
+	short rdeltax, rdeltay;
+	short xc, yc, xrad, yrad;
+	short n_steps;
+	short points[42];
 
 	r = v->raster;
 	c = v->colinf;
@@ -543,12 +543,12 @@ draw_rbox(VIRTUAL *v, O_Int gdp_code, VDIRECT *corners, PatAttr *ptrn)
 
 	if (gdp_code == 8)
 	{
-		DRAW_PLINE( r, c, (O_Pos *)&points, 21, clip, (O_Pos *)&v->spanbuff, v->spanbuffsiz, ptrn);
+		DRAW_PLINE( r, c, (short *)&points, 21, clip, (short *)&v->spanbuff, v->spanbuffsiz, ptrn);
 	}
 	else
 	{
-		DRAW_FILLEDPOLY( r, c, (O_Pos *)&points, 21, clip, (O_Pos *)&v->spanbuff, v->spanbuffsiz, ptrn);
+		DRAW_FILLEDPOLY( r, c, (short *)&points, 21, clip, (short *)&v->spanbuff, v->spanbuffsiz, ptrn);
 		if (ptrn->t.f.perimeter)
-			DRAW_PLINE( r, c, (O_Pos *)&points, 21, clip, (O_Pos *)&v->spanbuff, v->spanbuffsiz, ptrn->t.f.perimeter);
+			DRAW_PLINE( r, c, (short *)&points, 21, clip, (short *)&v->spanbuff, v->spanbuffsiz, ptrn->t.f.perimeter);
 	}
 }

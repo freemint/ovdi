@@ -6,7 +6,7 @@
  * Set foreground color
 */
 void
-set_pa_fgcolor(PatAttr *p, COLINF *c, O_Int color)
+set_pa_fgcolor(PatAttr *p, COLINF *c, short color)
 {
 	int maxcolor;
 
@@ -30,7 +30,7 @@ set_pa_fgcolor(PatAttr *p, COLINF *c, O_Int color)
  * Set background color
 */
 void
-set_pa_bgcolor(PatAttr *p, COLINF *c, O_Int color)
+set_pa_bgcolor(PatAttr *p, COLINF *c, short color)
 {
 	int maxcolor;
 
@@ -54,11 +54,11 @@ set_pa_bgcolor(PatAttr *p, COLINF *c, O_Int color)
  * Set VDI drawing mode
 */
 void
-set_pa_writemode(PatAttr *p, O_Int wrm)
+set_pa_writemode(PatAttr *p, short wrm)
 {
 	int w;
 
-	set_writingmode(wrm, (O_16 *)&w);
+	set_writingmode(wrm, (short *)&w);
 
 	if (p->wrmode != w)
 	{
@@ -74,7 +74,7 @@ set_pa_writemode(PatAttr *p, O_Int wrm)
  * Set line ends for lines
 */
 void
-set_pa_lineends(PatAttr *p, O_Int beg, O_Int end)
+set_pa_lineends(PatAttr *p, short beg, short end)
 {
 	p->t.l.beg = beg <= MAX_LN_ENDS ? beg : MAX_LN_ENDS;
 	p->t.l.end = end <= MAX_LN_ENDS ? end : MAX_LN_ENDS;
@@ -83,7 +83,7 @@ set_pa_lineends(PatAttr *p, O_Int beg, O_Int end)
  * Set line index for lines
 */
 void
-set_pa_lineindex(PatAttr *p, O_Int index)
+set_pa_lineindex(PatAttr *p, short index)
 {
 	if (index < 1)
 		index = 1;
@@ -100,7 +100,7 @@ set_pa_lineindex(PatAttr *p, O_Int index)
 		}
 		else
 		{
-			p->data = (O_u16 *)&LINE_STYLE[index];
+			p->data = (unsigned short *)&LINE_STYLE[index];
 			if (!index)
 				p->interior = FIS_SOLID;
 			else
@@ -114,7 +114,7 @@ set_pa_lineindex(PatAttr *p, O_Int index)
  * Set user defined line-style for lines
 */
 void
-set_pa_udline(PatAttr *p, O_u16 udline)
+set_pa_udline(PatAttr *p, unsigned short udline)
 {
 	p->ud = udline;
 	if (p->t.l.index == LI_USER-1)
@@ -124,7 +124,7 @@ set_pa_udline(PatAttr *p, O_u16 udline)
  * Set linewidth for lines
 */
 void
-set_pa_linewidth(PatAttr *p, O_Int width)
+set_pa_linewidth(PatAttr *p, short width)
 {
 	if (width < 1)
 		p->t.l.width = 1;
@@ -141,7 +141,7 @@ set_pa_linewidth(PatAttr *p, O_Int width)
  * Set line index for polymarkers
 */
 void
-set_pa_pmrk_lineindex(PatAttr *p, O_Int index)
+set_pa_pmrk_lineindex(PatAttr *p, short index)
 {
 	if (index < 1 || index > MAX_LN_STYLE)
 		index = 1;
@@ -156,7 +156,7 @@ set_pa_pmrk_lineindex(PatAttr *p, O_Int index)
 		}
 		else
 		{
-			p->data = (O_u16 *)&LINE_STYLE[index];
+			p->data = (unsigned short *)&LINE_STYLE[index];
 			if (!index)
 				p->interior = FIS_SOLID;
 			else
@@ -170,7 +170,7 @@ set_pa_pmrk_lineindex(PatAttr *p, O_Int index)
  * Set polymarker width, height
 */
 void
-set_pa_pmrk_size(PatAttr *p, O_Int width, O_Int height)
+set_pa_pmrk_size(PatAttr *p, short width, short height)
 {
 	p->t.p.height = height;
 	if (width)
@@ -182,7 +182,7 @@ set_pa_pmrk_size(PatAttr *p, O_Int width, O_Int height)
  * Set polymarker type
 */
 void
-set_pa_pmrk_type(PatAttr *p, O_Int type)
+set_pa_pmrk_type(PatAttr *p, short type)
 {
 	if (type < MIN_PMARKERTYPE)
 		type = MIN_PMARKERTYPE;

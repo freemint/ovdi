@@ -55,6 +55,7 @@ static void loadparse_ovdi_cnf(void);
 void v_nosys( VDIPB *, VIRTUAL *);
 
 long stackptr;
+
 /*
  * This array of functions is passed to each module/driver's
  * init code. 
@@ -82,16 +83,16 @@ static OVDI_LIB ovdilib =
 	oSupexec,
 };
 
-O_16	MiNT = 0;
-O_16	using_trap;
+short	MiNT = 0;
+short	using_trap;
 char	bootdev;
 
-O_16	scrsizmm_x = 0;
-O_16	scrsizmm_y = 0;
+short	scrsizmm_x = 0;
+short	scrsizmm_y = 0;
 
-O_32	arc_split = 16384;
-O_16	arc_min = 16;
-O_16	arc_max = MAX_ARC_CT;
+long	arc_split = 16384;
+short	arc_min = 16;
+short	arc_max = MAX_ARC_CT;
 
 LINEA_VARTAB	*linea_vars;
 OVDI_HWAPI	hw_api;
@@ -111,14 +112,14 @@ struct pattern_data BRdata;
  * Keep a 'root' color info structure
 */
 static COLINF colinf;
-static O_16 vdi2hw[256];
-static O_16 hw2vdi[256];
+static short vdi2hw[256];
+static short hw2vdi[256];
 static RGB_LIST request_rgb[256];
 static RGB_LIST actual_rgb[256];
-static O_u32 pixelvalues[256];
+static unsigned long pixelvalues[256];
 
 extern BASEPAGE *_base;
-char *vdi_fontlist = 0;
+char *vdi_fontlist = NULL;
 struct gdf_membuff loaded_vdi_gdfs = { 0, 0, 0 };
 
 static char ovdi_cnf_file[]	= { "c:\\ovdi.cnf" };
@@ -402,9 +403,9 @@ ovdi_init(void)
 		 * setup the root colinf structure for this raster.
 		 * ALLOC MEM FOR THIS INSTEAD!
 		*/
-		c->color_vdi2hw = (O_16 *)&vdi2hw;
-		c->color_hw2vdi = (O_16 *)&hw2vdi;
-		c->pixelvalues = (O_u32 *)&pixelvalues;
+		c->color_vdi2hw = (short *)&vdi2hw;
+		c->color_hw2vdi = (short *)&hw2vdi;
+		c->pixelvalues = (unsigned long *)&pixelvalues;
 		c->request_rgb = (RGB_LIST *)&request_rgb;
 		c->actual_rgb = (RGB_LIST *)&actual_rgb;
 
@@ -447,7 +448,7 @@ ovdi_init(void)
 		 * Install console-drivers 'blink-cursor' VBI function - no blinking without it ;-)
 		 * Then enable VBI driver...
 		*/
-		(*hw->vbi->add_func)((O_u32)hw->console->textcursor_blink, 25);
+		(*hw->vbi->add_func)((unsigned long)hw->console->textcursor_blink, 25);
 		(*hw->vbi->enable)();
 
 		if (usp)
@@ -886,11 +887,11 @@ oVDI( VDIPB *pb )
 }
 
 
-O_Int _cdecl
-get_cookie(O_32 tag, O_32 *ret)
+short _cdecl
+get_cookie(long tag, long *ret)
 {
 	COOKIE *jar;
-	O_Int r = 0;
+	short r = 0;
 	long usp;
 
 	usp = Super(1);
@@ -922,13 +923,13 @@ get_cookie(O_32 tag, O_32 *ret)
 	return r;
 }
 
-O_Int _cdecl
-install_cookie(O_32 tag, O_32 value)
+short _cdecl
+install_cookie(long tag, long value)
 {
 	COOKIE *jar;
-	O_Int ret = 0;
-	O_32 usp;
-	O_32 slot = 0;
+	short ret = 0;
+	long usp;
+	long slot = 0;
 
 	usp = Super(1);
 	if (!usp)

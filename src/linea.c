@@ -326,7 +326,7 @@ linea_filled_poly(void)
 	PatAttr ptrn;
 	int color = 0;
 	short *pdata;
-	O_Pos spanbuff[100];
+	short spanbuff[100];
 
 	if (la->colbit0)
 		color |= 1;
@@ -348,7 +348,7 @@ linea_filled_poly(void)
 	ptrn.data = &pdata[la->patmsk];
 
 	clip = la->clip ? (VDIRECT *)&la->xmincl : (VDIRECT *)&r->x1;
-	filled_poly(r, v->colinf, (O_16 *)&la->ptsin[0], la->contrl[1], clip, (O_Pos *)&spanbuff, sizeof(spanbuff), &ptrn);
+	filled_poly(r, v->colinf, (short *)&la->ptsin[0], la->contrl[1], clip, (short *)&spanbuff, sizeof(spanbuff), &ptrn);
 
 	return;
 }

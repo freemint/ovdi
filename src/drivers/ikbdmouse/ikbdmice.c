@@ -16,7 +16,7 @@ static char lname[] = "Atari IKBD Mouse pointing device driver for oVDI\0";
 static char fpath[128] = { "0" };
 static char fname[64] = { "0" };
 
-static O_Int install(MDRV_CB *, PDVINFO *);
+static short install(MDRV_CB *, PDVINFO *);
 
 static void exit(void);
 
@@ -42,9 +42,9 @@ static PDVAPI pdvapi =
 	end_reporting,
 };
 
-static O_16 flags = 0;
+static short flags = 0;
 
-static O_u8 mparams[] =
+static unsigned char mparams[] =
 {
 	0,	/* topmode	*/
 	0,	/* buttons	*/
@@ -72,7 +72,7 @@ init(OVDI_LIB *l, struct module_desc *ret, char *path, char *file)
 
 }
 
-static O_Int
+static short
 install(MDRV_CB *cb, PDVINFO *pdi)
 {
 	CB = cb;
@@ -111,8 +111,8 @@ end_reporting()
 void
 IKBD_Mouse(char *pkt)
 {
-	register O_uInt buts;
-	register O_Int x, y;
+	register unsigned short buts;
+	register short x, y;
 	char head;
 
 	if (flags & ON)
@@ -121,7 +121,7 @@ IKBD_Mouse(char *pkt)
 
 		if ((head & 0xf8) == 0xf8)
 		{
-			buts = (O_uInt)head & 3;
+			buts = (unsigned short)head & 3;
 			if (buts & 1)
 				buts = (buts >> 1) | 2;
 			else

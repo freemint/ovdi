@@ -7,18 +7,18 @@
 struct timeapi
 {
 	struct timeapi	*nxtapi;
-	O_32		version;
+	long		version;
 	char		*sname;
 	char		*lname;
 	char		*pathname;
 	char		*filename;
 
-	O_Int		(*install)(LINEA_VARTAB *la);
-	O_Int		(*get_tps)(void);
-	O_Int		(*add_timeint)(O_u32 function, O_u32 tics);
-	void		(*del_timeint)(O_u32 function);
-	O_u32		(*set_user_tim)(O_u32 func);
-	O_u32		(*set_next_tim)(O_u32 func);
+	short		(*install)(LINEA_VARTAB *la);
+	short		(*get_tps)(void);
+	short		(*add_timeint)(unsigned long function, unsigned long tics);
+	void		(*del_timeint)(unsigned long function);
+	unsigned long		(*set_user_tim)(unsigned long func);
+	unsigned long		(*set_next_tim)(unsigned long func);
 	void		(*reset_user_tim)(void);
 	void		(*reset_next_tim)(void);
 	void		(*reset)(void);

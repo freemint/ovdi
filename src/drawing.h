@@ -9,9 +9,9 @@ struct fill16x_api
 	void		*d;
 	void		*s;
 	void		*m;
-	O_16		sbpl;
-	O_16		dbpl;
-	O_16		words;
+	short		sbpl;
+	short		dbpl;
+	short		words;
 };
 	
 #endif	/* _OVDI_FILLAPI_H */

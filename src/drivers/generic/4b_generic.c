@@ -25,21 +25,21 @@ static void NOTS_OR_D	(unsigned char *addr, long data);
 static void NOT_SANDD	(unsigned char *addr, long data);
 static void ALL_BLACK	(unsigned char *addr, long data);
 
-static O_u16 pm[] =
+static unsigned short pm[] =
 { 0x8000, 0x4000, 0x2000, 0x1000, 0x0800, 0x0400, 0x0200, 0x0100,
   0x0080, 0x0040, 0x0020, 0x0010, 0x0008, 0x0004, 0x0002, 0x0001 };
 
-O_u32
-get_pixel_4b(unsigned char *_sb, O_Int bpl, O_Pos x, O_Pos y)
+unsigned long
+get_pixel_4b(unsigned char *_sb, short bpl, short x, short y)
 {
-	O_u16 *sb;
-	O_u16 pixel = 0;
+	unsigned short *sb;
+	unsigned short pixel = 0;
 	int mask, shift;
 
 	shift	= x & 0xf;
 	mask	= pm[shift];
 	shift	= 15 - shift;
-	sb	= (O_u16 *)(_sb + (long)(8 + ((x >> 4) << 3) + (long)y * bpl));
+	sb	= (unsigned short *)(_sb + (long)(8 + ((x >> 4) << 3) + (long)y * bpl));
 
 
 	pixel	|= (*--sb >> shift) & 1;
@@ -50,19 +50,19 @@ get_pixel_4b(unsigned char *_sb, O_Int bpl, O_Pos x, O_Pos y)
 	pixel	<<= 1;
 	pixel	|= (*--sb >> shift) & 1;
 
-	return (O_u32)pixel;
+	return (unsigned long)pixel;
 }
 
 void
-put_pixel_4b(unsigned char *_sb, O_Int bpl, O_Pos x, O_Pos y, O_u32 pixel)
+put_pixel_4b(unsigned char *_sb, short bpl, short x, short y, unsigned long pixel)
 {
-	O_u16 *sb;
-	O_uInt mask, shift;
+	unsigned short *sb;
+	unsigned short mask, shift;
 
 	shift	= x & 0xf;
 	mask	= pm[shift];
 	shift	= 15 - shift;
-	sb	= (O_u16 *)(_sb + (long)(((x >> 4) << 3) + (long)y * bpl));
+	sb	= (unsigned short *)(_sb + (long)(((x >> 4) << 3) + (long)y * bpl));
 
 	*sb++ = (*sb & ~mask) | ((pixel << shift) & mask);
 	pixel >>= 1;
@@ -116,8 +116,8 @@ pixel_blit rt_ops_4b[] =
 static void
 ALL_WHITE(unsigned char *_addr, long data)
 {
-	O_u16 *addr = (O_u16 *)_addr;
-	O_u16 mask = ~(pm[data >> 16]);
+	unsigned short *addr = (unsigned short *)_addr;
+	unsigned short mask = ~(pm[data >> 16]);
 
 	*addr++	&= mask;
 	*addr++	&= mask;
@@ -128,10 +128,10 @@ ALL_WHITE(unsigned char *_addr, long data)
 static void
 S_AND_D(unsigned char *_addr, long _data)
 {
-	O_u16 *addr = (O_u16 *)_addr;
-	O_16 shift = _data >> 16;
-	O_u16 data = (O_u16)_data;
-	O_u16 mask = pm[shift];
+	unsigned short *addr = (unsigned short *)_addr;
+	short shift = _data >> 16;
+	unsigned short data = (unsigned short)_data;
+	unsigned short mask = pm[shift];
 
 	shift = 15 - shift;
 
@@ -146,10 +146,10 @@ S_AND_D(unsigned char *_addr, long _data)
 static void
 S_AND_NOTD(unsigned char *_addr, long _data)
 {
-	O_u16 *addr = (O_u16 *)_addr;
-	O_16 shift = _data >> 16;
-	O_u16 data = (O_u16)_data;
-	O_u16 mask = pm[shift];
+	unsigned short *addr = (unsigned short *)_addr;
+	short shift = _data >> 16;
+	unsigned short data = (unsigned short)_data;
+	unsigned short mask = pm[shift];
 
 	shift = 15 - shift;
 
@@ -164,10 +164,10 @@ S_AND_NOTD(unsigned char *_addr, long _data)
 static void
 S_ONLY(unsigned char *_addr, long _data)
 {
-	O_u16 *addr = (O_u16 *)_addr;
-	O_16 shift = _data >> 16;
-	O_u16 data = (O_u16)_data;
-	O_u16 mask = pm[shift];
+	unsigned short *addr = (unsigned short *)_addr;
+	short shift = _data >> 16;
+	unsigned short data = (unsigned short)_data;
+	unsigned short mask = pm[shift];
 
 	shift = 15 - shift;
 
@@ -182,10 +182,10 @@ S_ONLY(unsigned char *_addr, long _data)
 static void
 NOTS_AND_D(unsigned char *_addr, long _data)
 {
-	O_u16 *addr = (O_u16 *)_addr;
-	O_16 shift = _data >> 16;
-	O_u16 data = ~(O_u16)_data;
-	O_u16 mask = pm[shift];
+	unsigned short *addr = (unsigned short *)_addr;
+	short shift = _data >> 16;
+	unsigned short data = ~(unsigned short)_data;
+	unsigned short mask = pm[shift];
 
 	shift = 15 - shift;
 
@@ -205,10 +205,10 @@ D_ONLY(unsigned char *addr, long data)
 static void
 S_XOR_D(unsigned char *_addr, long _data)
 {
-	O_u16 *addr = (O_u16 *)_addr;
-	O_16 shift = _data >> 16;
-	O_u16 data = (O_u16)_data;
-	O_u16 mask = pm[shift];
+	unsigned short *addr = (unsigned short *)_addr;
+	short shift = _data >> 16;
+	unsigned short data = (unsigned short)_data;
+	unsigned short mask = pm[shift];
 
 	shift = 15 - shift;
 
@@ -223,10 +223,10 @@ S_XOR_D(unsigned char *_addr, long _data)
 static void
 S_OR_D(unsigned char *_addr, long _data)
 {
-	O_u16 *addr = (O_u16 *)_addr;
-	O_16 shift = _data >> 16;
-	O_u16 data = (O_u16)_data;
-	O_u16 mask = pm[shift];
+	unsigned short *addr = (unsigned short *)_addr;
+	short shift = _data >> 16;
+	unsigned short data = (unsigned short)_data;
+	unsigned short mask = pm[shift];
 
 	shift = 15 - shift;
 
@@ -241,10 +241,10 @@ S_OR_D(unsigned char *_addr, long _data)
 static void
 NOT_SORD(unsigned char *_addr, long _data)
 {
-	O_u16 *addr = (O_u16 *)_addr;
-	O_16 shift = _data >> 16;
-	O_u16 data = (O_u16)_data;
-	O_u16 mask = pm[shift];
+	unsigned short *addr = (unsigned short *)_addr;
+	short shift = _data >> 16;
+	unsigned short data = (unsigned short)_data;
+	unsigned short mask = pm[shift];
 
 	shift = 15 - shift;
 
@@ -259,10 +259,10 @@ NOT_SORD(unsigned char *_addr, long _data)
 static void
 NOT_SXORD(unsigned char *_addr, long _data)
 {
-	O_u16 *addr = (O_u16 *)_addr;
-	O_16 shift = _data >> 16;
-	O_u16 data = (O_u16)_data;
-	O_u16 mask = pm[shift];
+	unsigned short *addr = (unsigned short *)_addr;
+	short shift = _data >> 16;
+	unsigned short data = (unsigned short)_data;
+	unsigned short mask = pm[shift];
 
 	shift = 15 - shift;
 
@@ -277,10 +277,10 @@ NOT_SXORD(unsigned char *_addr, long _data)
 static void
 NOT_D(unsigned char *_addr, long _data)
 {
-	O_u16 *addr = (O_u16 *)_addr;
-	O_16 shift = _data >> 16;
-	O_u16 data = (O_u16)_data;
-	O_u16 mask = pm[shift];
+	unsigned short *addr = (unsigned short *)_addr;
+	short shift = _data >> 16;
+	unsigned short data = (unsigned short)_data;
+	unsigned short mask = pm[shift];
 
 	shift = 15 - shift;
 
@@ -295,10 +295,10 @@ NOT_D(unsigned char *_addr, long _data)
 static void
 S_OR_NOTD(unsigned char *_addr, long _data)
 {
-	O_u16 *addr = (O_u16 *)_addr;
-	O_16 shift = _data >> 16;
-	O_u16 data = (O_u16)_data;
-	O_u16 mask = pm[shift];
+	unsigned short *addr = (unsigned short *)_addr;
+	short shift = _data >> 16;
+	unsigned short data = (unsigned short)_data;
+	unsigned short mask = pm[shift];
 
 	shift = 15 - shift;
 
@@ -313,10 +313,10 @@ S_OR_NOTD(unsigned char *_addr, long _data)
 static void
 NOT_S(unsigned char *_addr, long _data)
 {
-	O_u16 *addr = (O_u16 *)_addr;
-	O_16 shift = _data >> 16;
-	O_u16 data = ~(O_u16)_data;
-	O_u16 mask = pm[shift];
+	unsigned short *addr = (unsigned short *)_addr;
+	short shift = _data >> 16;
+	unsigned short data = ~(unsigned short)_data;
+	unsigned short mask = pm[shift];
 
 	shift = 15 - shift;
 
@@ -331,10 +331,10 @@ NOT_S(unsigned char *_addr, long _data)
 static void
 NOTS_OR_D(unsigned char *_addr, long _data)
 {
-	O_u16 *addr = (O_u16 *)_addr;
-	O_16 shift = _data >> 16;
-	O_u16 data = ~(O_u16)_data;
-	O_u16 mask = pm[shift];
+	unsigned short *addr = (unsigned short *)_addr;
+	short shift = _data >> 16;
+	unsigned short data = ~(unsigned short)_data;
+	unsigned short mask = pm[shift];
 
 	shift = 15 - shift;
 
@@ -349,10 +349,10 @@ NOTS_OR_D(unsigned char *_addr, long _data)
 static void
 NOT_SANDD(unsigned char *_addr, long _data)
 {
-	O_u16 *addr = (O_u16 *)_addr;
-	O_16 shift = _data >> 16;
-	O_u16 data = (O_u16)_data;
-	O_u16 mask = pm[shift];
+	unsigned short *addr = (unsigned short *)_addr;
+	short shift = _data >> 16;
+	unsigned short data = (unsigned short)_data;
+	unsigned short mask = pm[shift];
 
 	shift = 15 - shift;
 
@@ -367,8 +367,8 @@ NOT_SANDD(unsigned char *_addr, long _data)
 static void
 ALL_BLACK(unsigned char *_addr, long data)
 {
-	O_u16 *addr = (O_u16 *)_addr;
-	O_u16 mask = pm[data >> 16];
+	unsigned short *addr = (unsigned short *)_addr;
+	unsigned short mask = pm[data >> 16];
 
 	*addr++	|= mask;
 	*addr++	|= mask;
@@ -487,12 +487,12 @@ draw_mousecurs_4b(register XMFORM *mf, register short x, register short y)
 	dbpl	= bypl - (w << 2);
 
 	{
-		register O_u16 *src, *dst;
+		register unsigned short *src, *dst;
 		register int i, j;
 
 
-		dst		= (O_u16 *)ms->save;
-		src		= (O_u16 *)mf->scr_base + (long)(((long)y * bypl) + ((x >> 4) << 2));
+		dst		= (unsigned short *)ms->save;
+		src		= (unsigned short *)mf->scr_base + (long)(((long)y * bypl) + ((x >> 4) << 2));
 
 		ms->width	= w;		// Number of groups
 		ms->height	= height;
@@ -518,14 +518,14 @@ draw_mousecurs_4b(register XMFORM *mf, register short x, register short y)
 	if (mf->planes == 1)
 	{
 		register int i, hbits, ebits, groups, sbpl, spans;
-		register O_u32 fgc, bgc;
-		register O_u16 data, shift, begmask, endmask, mask;
-		register O_u16 *s;
-		register O_u16 *d;
+		register unsigned long fgc, bgc;
+		register unsigned short data, shift, begmask, endmask, mask;
+		register unsigned short *s;
+		register unsigned short *d;
 
 
-		d = (O_u16 *)mf->scr_base + (long)(((long)y * bypl) + ((x >> 4) << 2));
-		s = (O_u16 *)mf->data + (long)(yoff * mf->mfbypl) + (long)((xoff >> 4) << 1);
+		d = (unsigned short *)mf->scr_base + (long)(((long)y * bypl) + ((x >> 4) << 2));
+		s = (unsigned short *)mf->data + (long)(yoff * mf->mfbypl) + (long)((xoff >> 4) << 1);
 
 		sbpl = ((mf->width - (xoff + width)) >> 4) << 1;
 		fgc = mf->fg_pix;
@@ -593,7 +593,7 @@ draw_mousecurs_4b(register XMFORM *mf, register short x, register short y)
 				
 			if (groups)
 			{
-				register O_u16 md, mm;
+				register unsigned short md, mm;
 
 				for (i = groups; i > 0; i--)
 				{
@@ -639,12 +639,12 @@ void
 restore_msave_4b(XMSAVE *ms)
 {
 	register int width, w, height, nl;
-	register O_u16 *src, *dst;
+	register unsigned short *src, *dst;
 
 	if (ms->valid)
 	{
-		src	= (O_u16 *)ms->save;
-		dst	= (O_u16 *)ms->src;
+		src	= (unsigned short *)ms->save;
+		dst	= (unsigned short *)ms->src;
 		width	= ms->width;
 		nl	= ms->bypl - (width<<2);
 

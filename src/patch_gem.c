@@ -7,10 +7,7 @@ static short patched = 0;
 void
 patch_gem(short planes, short max_x)
 {
-	if (planes < 15)
-		return;
-
-	if (!patched)
+	if (!patched && planes >= 15)
 	{
 		short *ptr;
 		short offset;
@@ -31,12 +28,11 @@ patch_gem(short planes, short max_x)
 			{
 				*ptr = planes;
 				patched = 1;
-				return;
+				break;
 			}
 			ptr++;
 		}
 	}
-	return;
 }
 
 		

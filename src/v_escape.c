@@ -22,7 +22,7 @@ v_curtext( VDIPB *pb, VIRTUAL *v)
 {
 	CONSOLE *c;
 	int count = pb->contrl[N_INTIN];
-	O_16 *string = (O_16 *)&pb->intin[0];
+	short *string = (short *)&pb->intin[0];
 
 	c = v->con;
 	hide_text_cursor(c);

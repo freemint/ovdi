@@ -47,7 +47,7 @@ static void setup_virtual(VDIPB *, VIRTUAL *, VIRTUAL *);
 static void load_vdi_fonts(VIRTUAL *, SIZ_TAB *, DEV_TAB *);
 static void unload_vdi_fonts(VIRTUAL *v);
 
-extern O_16 using_trap;
+extern short using_trap;
 
 void
 v_opnwk(VDIPB *pb, VIRTUAL *wk, VIRTUAL *lawk, OVDI_HWAPI *hwapi) //struct ovdi_device *dev)
@@ -241,7 +241,7 @@ v_opnwk(VDIPB *pb, VIRTUAL *wk, VIRTUAL *lawk, OVDI_HWAPI *hwapi) //struct ovdi_
 		/*
 		 * Add the mousecursor rendering function to VBI
 		*/
-		(*wk->vbiapi->add_func)((O_u32)wk->mouseapi->housekeep, 0);
+		(*wk->vbiapi->add_func)((unsigned long)wk->mouseapi->housekeep, 0);
 
 		/*
 		 * Enable things ...
@@ -311,8 +311,8 @@ change_resolution(VIRTUAL *v)
 	ptrn->planes = 1;
 	ptrn->wrmode = 0;
 	ptrn->data = &SOLID;
-	ptrn->exp_data = ( O_u16 *)&WRdata.edata;
-	ptrn->mask = ( O_u16 *)&WRdata.mask;
+	ptrn->exp_data = ( unsigned short *)&WRdata.edata;
+	ptrn->mask = ( unsigned short *)&WRdata.mask;
 
 	/* BLACK rectangle */
 	ptrn = &BlackRect;
@@ -336,8 +336,8 @@ change_resolution(VIRTUAL *v)
 	ptrn->planes = 1;
 	ptrn->wrmode = 0;
 	ptrn->data = &SOLID;
-	ptrn->exp_data = ( O_u16 *)&BRdata.edata;
-	ptrn->mask = ( O_u16 *)&BRdata.mask;
+	ptrn->exp_data = ( unsigned short *)&BRdata.edata;
+	ptrn->mask = ( unsigned short *)&BRdata.mask;
 }
 
 static void
@@ -465,7 +465,7 @@ v_opnvwk(VDIPB *pb, VIRTUAL *v)
 
 			if (pb->contrl[SUBFUNCTION] == 1)
 			{
-				O_Pos x2, y2;
+				short x2, y2;
 				long colors;
 				RASTER *r = root->raster;
 				RASTER *nr;
@@ -666,9 +666,9 @@ v_clswk( VDIPB *pb, VIRTUAL *root)
 		(*root->timeapi->reset_user_tim)();
 		(*root->timeapi->reset_next_tim)();
 	/* remove consoles textcursor blinker from VBI */
-	//	(*root->vbiapi->del_func)((O_u32)root->con->textcursor_blink);
+	//	(*root->vbiapi->del_func)((unsigned long)root->con->textcursor_blink);
 	/* remove the mousecursor rendering function from VBI */
-		(*root->vbiapi->del_func)((O_u32)root->mouseapi->housekeep);
+		(*root->vbiapi->del_func)((unsigned long)root->mouseapi->housekeep);
 
 
 	lvst_exit(root);
@@ -784,8 +784,8 @@ static void
 prepare_scrninfreturn( VDIPB *pb, VIRTUAL *v)
 {
 	int i, pfmt, planes;
-	O_u32 palettesize;
-	O_16 *misc;
+	unsigned long palettesize;
+	short *misc;
 	RASTER *r;
 
 	r = v->raster;
@@ -811,11 +811,11 @@ prepare_scrninfreturn( VDIPB *pb, VIRTUAL *v)
 
 	if (planes > 8)
 	{
-		palettesize =	(O_u32)r->rgb_levels.red *
-				(O_u32)r->rgb_levels.green *
-				(O_u32)r->rgb_levels.blue;
-		pb->intout[3] = (O_u16)((O_u32)palettesize >> 16);
-		pb->intout[4] = (O_u16)((O_u32)palettesize & 0xffff);
+		palettesize =	(unsigned long)r->rgb_levels.red *
+				(unsigned long)r->rgb_levels.green *
+				(unsigned long)r->rgb_levels.blue;
+		pb->intout[3] = (unsigned short)((unsigned long)palettesize >> 16);
+		pb->intout[4] = (unsigned short)((unsigned long)palettesize & 0xffff);
 	}
 	else
 	{
@@ -825,8 +825,8 @@ prepare_scrninfreturn( VDIPB *pb, VIRTUAL *v)
 
 	pb->intout[5]	= r->bypl;
 
-	pb->intout[6]	= (O_u16)((O_u32)r->base >> 16);
-	pb->intout[7]	= (O_u16)((O_u32)r->base & 0xffff);
+	pb->intout[6]	= (unsigned short)((unsigned long)r->base >> 16);
+	pb->intout[7]	= (unsigned short)((unsigned long)r->base & 0xffff);
 	
 	pb->intout[8]	= r->rgb_bits.red;
 	pb->intout[9]	= r->rgb_bits.green;
@@ -876,7 +876,7 @@ prepare_scrninfreturn( VDIPB *pb, VIRTUAL *v)
 		}
 
 		pf = r->res.pixelformat;
-		misc = (O_16 *)&pb->intout[16];
+		misc = (short *)&pb->intout[16];
 		while (pf[0])
 		{
 			while ( pf[2] )
@@ -891,7 +891,7 @@ prepare_scrninfreturn( VDIPB *pb, VIRTUAL *v)
 			pf += 3;
 		}
 
-		misc = (O_16 *)&pb->intout[128];
+		misc = (short *)&pb->intout[128];
 		for (i = 128; i < 271; i++)
 			*misc++ = 0;
 		
@@ -905,7 +905,7 @@ prepare_scrninfreturn( VDIPB *pb, VIRTUAL *v)
 
 		pb->intout[13] = 0;
 		pb->intout[14] = 0;
-		misc = (O_16 *)&pb->intout[16];
+		misc = (short *)&pb->intout[16];
 		for (i = 0; i < ncols; i++)
 			*misc++ = v->colinf->color_vdi2hw[i];
 
@@ -1033,12 +1033,12 @@ setup_virtual(VDIPB *pb, VIRTUAL *v, VIRTUAL *root)
 
 /* **** Fill stuff ... */
 #if 0
-	v->fill.exp_data	= (O_u16 *)&v->filldata.edata;
-	v->fill.mask		= (O_u16 *)&v->filldata.mask;
+	v->fill.exp_data	= (unsigned short *)&v->filldata.edata;
+	v->fill.mask		= (unsigned short *)&v->filldata.mask;
 
-	v->udfill.data		= (O_u16 *)&v->udfilldata.data;
-	v->udfill.mask		= (O_u16 *)&v->udfilldata.mask;
-	v->udfill.exp_data	= (O_u16 *)&v->udfilldata.edata;
+	v->udfill.data		= (unsigned short *)&v->udfilldata.data;
+	v->udfill.mask		= (unsigned short *)&v->udfilldata.mask;
+	v->udfill.exp_data	= (unsigned short *)&v->udfilldata.edata;
 #endif
 /* **** Perimeter-line attribs ... */
 	lvsprm_initial( v );

@@ -6,18 +6,18 @@
 #include "1b_generic.h"
 
 /* data tables needed - in 4b_data.c */
-extern O_u16 fillbuff1b[];
-extern O_u16 maskbuff1b[];
-extern O_u16 shifts1b[];
+extern unsigned short fillbuff1b[];
+extern unsigned short maskbuff1b[];
+extern unsigned short shifts1b[];
 
 void
-fill_16x_1b(RASTER *r, COLINF *c, O_Pos *corners, PatAttr *ptrn)
+fill_16x_1b(RASTER *r, COLINF *c, short *corners, PatAttr *ptrn)
 {
-	O_16 y;
+	short y;
 	int height, wrmode;
 	struct fill16x_api f;
-	O_u16 slp;
-	O_u16 slm;
+	unsigned short slp;
+	unsigned short slm;
 	/*
 	 * check if pattern is expanded and do expand it if it isnt
 	*/
@@ -26,8 +26,8 @@ fill_16x_1b(RASTER *r, COLINF *c, O_Pos *corners, PatAttr *ptrn)
 	if (ptrn->expanded != 1 && ptrn->interior > FIS_SOLID)
 	{
 		int i;
-		O_u16 data, p0;
-		O_u16 *m, *s, *d;
+		unsigned short data, p0;
+		unsigned short *m, *s, *d;
 		short fc, bc;
 
 		/*
@@ -48,9 +48,9 @@ fill_16x_1b(RASTER *r, COLINF *c, O_Pos *corners, PatAttr *ptrn)
 		else
 			ptrn->expanded = r->res.planes;
 			
-		s = (O_u16 *)ptrn->data;
-		m = (O_u16 *)ptrn->mask;
-		d = (O_u16 *)ptrn->exp_data;
+		s = (unsigned short *)ptrn->data;
+		m = (unsigned short *)ptrn->mask;
+		d = (unsigned short *)ptrn->exp_data;
 
 		fc = ptrn->color[wrmode] & 1;
 		bc = ptrn->bgcol[wrmode] & 1;
@@ -103,7 +103,7 @@ fill_16x_1b(RASTER *r, COLINF *c, O_Pos *corners, PatAttr *ptrn)
 		default: return;
 	}
 	{
-		register O_Pos y1, x1, x2;
+		register short y1, x1, x2;
 		register int sb;
 
 		x1	= *corners++;
@@ -155,7 +155,7 @@ singleline:
 		default: return;
 	}
 	{
-		register O_Pos y1, x1, x2;
+		register short y1, x1, x2;
 		register int sb;
 
 		x1	= *corners++;

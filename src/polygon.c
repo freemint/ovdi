@@ -9,22 +9,22 @@ extern long stackptr;
 extern long getstack(void);
 
 void
-filled_poly(RASTER *r, COLINF *c, O_Pos *pts, O_Int n, VDIRECT *clip, O_Pos *points, long pointasize, PatAttr *ptrn)
+filled_poly(RASTER *r, COLINF *c, short *pts, short n, VDIRECT *clip, short *points, long pointasize, PatAttr *ptrn)
 {
 	int i, j;
-	O_Pos tmp, y;
-	O_Pos miny, maxy;
-	O_Pos x1, y1;
-	O_Pos x2, y2;
+	short tmp, y;
+	short miny, maxy;
+	short x1, y1;
+	short x2, y2;
 	int ints;
 	long spans;
 	long max_spans;
-	O_Pos *coords;
+	short *coords;
 
 	if (!n)
 		return;
 
-	max_spans = (((pointasize - (n * sizeof(O_Pos))) / 3) >> 1) -  1;
+	max_spans = (((pointasize - (n * sizeof(short))) / 3) >> 1) -  1;
 
 	if ((pts[0] == pts[(n << 1) - 2]) && (pts[1] == pts[(n << 1) - 1]))
 		n--;
@@ -58,7 +58,7 @@ filled_poly(RASTER *r, COLINF *c, O_Pos *pts, O_Int n, VDIRECT *clip, O_Pos *poi
 
 	for(y = miny; y <= maxy; y++)
 	{
-		register O_Pos *p = pts;
+		register short *p = pts;
 
 		ints = 0;
 		x1 = pts[(n << 1) - 2];
@@ -105,7 +105,7 @@ filled_poly(RASTER *r, COLINF *c, O_Pos *pts, O_Int n, VDIRECT *clip, O_Pos *poi
 
 		for(i = 0; i < ints - 1; i += 2)
 		{
-			register O_Pos x_1, x_2;
+			register short x_1, x_2;
 
 			x_1 = points[i];
 			x_2 = points[i + 1];
@@ -124,7 +124,7 @@ filled_poly(RASTER *r, COLINF *c, O_Pos *pts, O_Int n, VDIRECT *clip, O_Pos *poi
 				if (spans > max_spans)
 				{
 					if (SPANS_16X_PTR(r))
-						SPANS_16X(r, c, (O_Pos *)&points[n], spans, ptrn);
+						SPANS_16X(r, c, (short *)&points[n], spans, ptrn);
 					spans = 0;
 					coords = &points[n];
 				}
@@ -135,7 +135,7 @@ filled_poly(RASTER *r, COLINF *c, O_Pos *pts, O_Int n, VDIRECT *clip, O_Pos *poi
 	if (spans)
 	{
 		if (SPANS_16X_PTR(r))
-			SPANS_16X(r, c, (O_Pos *)&points[n], spans, ptrn);
+			SPANS_16X(r, c, (short *)&points[n], spans, ptrn);
 #if 0
 		//else
 		//{

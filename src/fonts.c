@@ -254,7 +254,7 @@ find_fontbypoint ( FONT_HEAD *start, short id, short point, long *ret )
 	while ( (f = f->next) );
 
 	if (cu && cd)
-		closest = dd < du ? cd : cu;
+		closest = cu; //dd < du ? cd : cu;
 	else if (cu)
 		closest = cu;
 	else if (cd)
@@ -317,7 +317,7 @@ find_fontbyheight ( FONT_HEAD *start, short id, short height, long *ret )
 	while ( (f = f->next) );
 
 	if (cu && cd)
-		closest = dd < du ? cd : cu;
+		closest = cu; //dd < du ? cd : cu;
 	else if (cu)
 		closest = cu;
 	else if (cd)

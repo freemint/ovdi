@@ -202,6 +202,9 @@ add_time_interrupt(unsigned long function, unsigned long tics)
 			spl(sr);
 			return i;
 		}
+		else if (tints[2] == function)
+			return i;
+
 		tints += 3;
 	}
 	return -1;

@@ -1,3 +1,4 @@
+#include <osbind.h>
 #include <mintbind.h>
 
 #include "display.h"
@@ -15,31 +16,31 @@ extern short logit;
 extern void	new_xbioswr(void);
 extern unsigned long old_trap14;
 
-long new_xbios	(short *p);
+long new_xbios		(short *p);
 
-long oPhysbase		(VIRTUAL *v, short *p);
-long oLogbase		(VIRTUAL *v, short *p);
-long oGetrez		(VIRTUAL *v, short *p);
-long oSetscreen		(VIRTUAL *v, short *p);
-long oSetcolor		(VIRTUAL *v, short *p);
-long oSetpalette	(VIRTUAL *v, short *p);
-long oVsync		(VIRTUAL *v, short *p);
-long oCursconf		(VIRTUAL *v, short *p);
+static long oPhysbase		(VIRTUAL *v, short *p);
+static long oLogbase		(VIRTUAL *v, short *p);
+static long oGetrez		(VIRTUAL *v, short *p);
+static long oSetscreen		(VIRTUAL *v, short *p);
+static long oSetcolor		(VIRTUAL *v, short *p);
+static long oSetpalette	(VIRTUAL *v, short *p);
+static long oVsync		(VIRTUAL *v, short *p);
+static long oCursconf		(VIRTUAL *v, short *p);
 
-long oEsetcolor		(VIRTUAL *v, short *p);
-long oEsetpalette	(VIRTUAL *v, short *p);
-long oEgetpalette	(VIRTUAL *v, short *p);
+static long oEsetcolor		(VIRTUAL *v, short *p);
+static long oEsetpalette	(VIRTUAL *v, short *p);
+static long oEgetpalette	(VIRTUAL *v, short *p);
 
-short rel_16col_tab[] =
+static short rel_16col_tab[] =
 {
 	0, 133, 267, 400, 533, 667, 800, 933,
 	67, 200, 333, 467, 600, 733, 867, 1000
 };
 
 
-VIRTUAL *V = 0;
+static VIRTUAL *V = 0;
 
-void *xbios_2thru7[] = 
+static void *xbios_2thru7[] = 
 {
 	oPhysbase,
 	oLogbase,
@@ -49,7 +50,7 @@ void *xbios_2thru7[] =
 	oSetcolor
 };
 
-void *xbios_53thru55[] =
+static void *xbios_53thru55[] =
 {
 	oEsetcolor,
 	oEsetpalette,
@@ -57,31 +58,46 @@ void *xbios_53thru55[] =
 };
 
 void
-install_xbios(VIRTUAL *v)
+install_xbios(void)
 {
-	short sr;
-
-	V = v;
-
 	if (!old_trap14)
 	{
-		sr = spl7();
-		old_trap14 = *(long *)vec_trap14;
-		*(unsigned long *)vec_trap14 = (unsigned long)&new_xbioswr;
-		spl(sr);
+		old_trap14 = (long)Setexc(0x2e, new_xbioswr);
+	//	sr = spl7();
+	//	old_trap14 = *(long *)vec_trap14;
+	//	*(unsigned long *)vec_trap14 = (unsigned long)&new_xbioswr;
+	//	spl(sr);
 	}
+	return;
+}
+
+void
+enable_xbios(VIRTUAL *v)
+{
+	V = v;
+	return;
+}
+void
+disable_xbios(void)
+{
+	V = 0;
 	return;
 }
 
 void
 uninstall_xbios(void)
 {
-	short sr;
+	//short sr;
 
-	sr = spl7();
-	*(unsigned long *)vec_trap14 = old_trap14;
-	old_trap14 = 0;
-	spl(sr);
+	if (old_trap14)
+	{
+		old_trap14 = (long)Setexc(0x2e, (long)old_trap14);
+		old_trap14 = 0;
+	//	sr = spl7();
+	//	*(unsigned long *)vec_trap14 = old_trap14;
+	//	old_trap14 = 0;
+	//	spl(sr);
+	}
 	return;
 }
 
@@ -95,41 +111,44 @@ new_xbios(short *p)
 
 	ret = 0xfacedaceL;
 
-//	pid = Pgetpid();
-//	log("XBIOS: pid %d ", pid);
+	if (V)
+	{
+//		pid = Pgetpid();
+//		log("XBIOS: pid %d ", pid);
 	
-	oc = *p++;
+		oc = *p++;
 
-	if (oc == 0x15)
-		ret = oCursconf(V, p);
+		if (oc == 0x15)
+			ret = oCursconf(V, p);
 
-	if (oc == 0x25)
-		ret = oVsync(V, p);
+		if (oc == 0x25)
+			ret = oVsync(V, p);
 
-	if (oc >= 0x02 && oc <= 0x07)
-	{
-		f = xbios_2thru7[oc - 0x2];
-		ret = (*f)(V, p);
-	}
-	if (oc >= 0x53 && oc <= 0x55)
-	{
-		f = xbios_53thru55[oc - 0x53];
-		ret = (*f)(V, p);
-	}
+		if (oc >= 0x02 && oc <= 0x07)
+		{
+			f = xbios_2thru7[oc - 0x2];
+			ret = (*f)(V, p);
+		}
+		if (oc >= 0x53 && oc <= 0x55)
+		{
+			f = xbios_53thru55[oc - 0x53];
+			ret = (*f)(V, p);
+		}
 
 #if 1
-	if (ret != 0xfacedaceL && logit)
-	{
-		pid = Pgetpid();
-		p--;
-		log("XBIOS: (%d) - fc %x, p1 %x, p2 %x, p3 %x, p4 %x .. return %lx\n", pid, p[0], p[1], p[2], p[3], p[4], ret);
-	}
+		if (ret != 0xfacedaceL && logit)
+		{
+			pid = Pgetpid();
+			p--;
+			log("XBIOS: (%d) - fc %x, p1 %x, p2 %x, p3 %x, p4 %x .. return %lx\n", pid, p[0], p[1], p[2], p[3], p[4], ret);
+		}
 #endif
+	}
 		
 	return ret;
 }
 
-long
+static long
 oCursconf(VIRTUAL *v, short *p)
 {
 	short mode;
@@ -174,32 +193,32 @@ oCursconf(VIRTUAL *v, short *p)
 	return ret;
 }
 
-long
+static long
 oVsync(VIRTUAL *v, short *p)
 {
 	(*v->driver->dev->vsync)(v->driver);
 	return 0L;
 }
 	
-long
+static long
 oPhysbase(VIRTUAL *v, short *p)
 {
 	return (long)v->driver->r.base;
 }
 
-long
+static long
 oLogbase(VIRTUAL *v, short *p)
 {
 	return (long)v->driver->log_base;
 }
 
-long
+static long
 oGetrez(VIRTUAL *v, short *p)
 {
 	return 2L;
 }
 
-long
+static long
 oSetscreen(VIRTUAL *v, short *p)
 {
 	short mode;
@@ -224,7 +243,7 @@ oSetscreen(VIRTUAL *v, short *p)
 	return 0;
 }
 
-long
+static long
 oSetpalette(VIRTUAL *v, short *p)
 {
 	short *pal;
@@ -284,7 +303,7 @@ oSetcolor(VIRTUAL *v, short *p)
 	return 0L;
 }
 
-long
+static long
 oEsetcolor(VIRTUAL *v, short *p)
 {
 	short red, green, blue, col, idx, old;
@@ -315,7 +334,7 @@ oEsetcolor(VIRTUAL *v, short *p)
 	return (long)old;
 }
 
-long
+static long
 oEsetpalette(VIRTUAL *v, short *p)
 {
 	short *pal;
@@ -354,7 +373,7 @@ oEsetpalette(VIRTUAL *v, short *p)
 	return 0L;
 }
 
-long
+static long
 oEgetpalette(VIRTUAL *v, short *p)
 {
 	short red, green, blue, i, idx, cnt, old;

@@ -5,6 +5,7 @@
 	.globl _linea_vars
 	.globl _linea_functab
 	
+	.globl _old_LineA_Handler
 	.globl _LineA_Handler
 
 | Function wrappers located in this file
@@ -45,6 +46,10 @@
 	
 	.text
 
+	dc.l	0x58425241	|"XBRA"
+	dc.l	0x6f564449
+_old_LineA_Handler:
+	dc.l	0
 _LineA_Handler:
 	movea.l	2(sp),a1
 	move.w	(a1)+,d2

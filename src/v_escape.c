@@ -23,10 +23,11 @@ v_exit_cur( VDIPB *pb, VIRTUAL *v)
 void
 v_curtext( VDIPB *pb, VIRTUAL *v)
 {
-	register CONSOLE *c = v->con;
+	register CONSOLE *c;
 	register short count = pb->contrl[N_INTIN];
 	register short *string = (short *)&pb->intin[0];
 
+	c = v->con;
 	hide_text_cursor(c);
 
 	while(count)

@@ -13,7 +13,7 @@ typedef struct linea_vartab LINEA_VARTAB;
 #define	V_INVERSED	(1 << 4)
 #define V_LINEWRAP	(1 << 3)
 #define V_CURSDRAWN	1
-
+#define V_CURSON	(1 << 7)
 struct linea_vartab
 {
 	long		reservd0;

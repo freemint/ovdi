@@ -1,7 +1,12 @@
 		.globl	_cs_output_character
+
 		.globl	_do_con_state
+		.globl	_old_con_state
 		.globl	_do_xconout_console
+		.globl	_old_xconout_console
 		.globl	_do_xconout_raw
+		.globl	_old_xconout_raw
+
 		.globl	_do_txtcurs_blnk
 		
 		.globl	_set_constate
@@ -27,6 +32,9 @@ _cs_output_character:
 	| This is installed at the con_state vector (0x4a8), and
 	| calls the function 'currconstate', with argument
 	| 'currconsole'.
+		dc.l	0x58425241	|"XBRA"
+		dc.l	0x6f564449	|oVDI
+_old_con_state:	dc.l	0
 _do_con_state:	movem.l	d0-a6,-(sp)
 		move.w	d0,-(sp)
 		move.l	currconsole,-(sp)
@@ -38,12 +46,20 @@ _do_con_state:	movem.l	d0-a6,-(sp)
 
 	| This is installed at the xconout_console vector (0x586)
 	| can just calls the do_con_state function.
+		dc.l	0x58425241	|"XBRA"
+		dc.l	0x6f564449	|oVDI
+_old_xconout_console:
+		dc.l	0
 _do_xconout_console:
 		move.w	6(sp),d0
 		bra.s	_do_con_state
 
 	| This is installed at the xconout_raw vector (0x592)
 	| and calls the function pointed to by 'currxconraw'.
+		dc.l	0x58425241	|"XBRA"
+		dc.l	0x6f564449
+_old_xconout_raw:
+		dc.l	0
 _do_xconout_raw:
 		movem.l	d0-a6,-(sp)
 		move.w	((8+7+1)*4)+2(sp),-(sp)

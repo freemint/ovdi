@@ -99,6 +99,9 @@ static unsigned short consfill = 0xffff;
 
 CONSOLE console;
 
+/* init console structure. All console functions will reference the
+ * VIRTUAL structure passed here.
+*/
 void
 init_console(VIRTUAL *v, LINEA_VARTAB *la)
 {
@@ -188,8 +191,13 @@ install_console_handlers(CONSOLE *c)
 	set_xconout_raw(c, (long)&rawcon_output);
 
 	sr = spl7();
+	old_con_state	= con_state;
 	con_state = (long)&do_con_state;
+
+	old_xconout_console = xconout_console;
 	xconout_console = (long)&do_xconout_console;
+
+	old_xconout_raw = xconout_raw;
 	xconout_raw = (long)&do_xconout_raw;
 	spl(sr);
 	return;
@@ -200,14 +208,14 @@ enter_console(CONSOLE *c)
 {
 	(*c->enter_console)(c);
 	Esc_E(c);
-	reset_text_cursor(c);
+	text_cursor_on(c);
 	return;
 };
 
 void
 exit_console(CONSOLE *c)
 {
-	hide_text_cursor(c);
+	text_cursor_off(c);
 	Esc_E(c);
 	(*c->exit_console)(c);
 	return;
@@ -240,7 +248,7 @@ textcursor_blink(CONSOLE *c)
 	if (!c)
 		return;
 
-	if (!c->curs_hide_ct && c->tc_flags & BLINK_ON)
+	if (!c->curs_hide_ct && (c->la->v_cur_flag & V_CURSON)) // && c->tc_flags & BLINK_ON)
 	{
 		if (c->la->v_cur_flag & V_CURSDRAWN)
 		{
@@ -482,8 +490,8 @@ void
 Esc_E(CONSOLE *c)
 {
 	hide_text_cursor(c);
-	Esc_H(c);
 	(*c->erase_lines)(c, 0, 0, c->la->v_cel_mx, c->la->v_cel_my);
+	Esc_H(c);
 	show_text_cursor(c);
 	return;
 }
@@ -661,8 +669,7 @@ Esc_d(CONSOLE *c)
 void
 Esc_e(CONSOLE *c)
 {
-
-	show_text_cursor(c);
+	text_cursor_on(c);
 	return;
 }
 
@@ -672,7 +679,7 @@ Esc_e(CONSOLE *c)
 void
 Esc_f(CONSOLE *c)
 {
-	hide_text_cursor(c);
+	text_cursor_off(c);
 	return;
 }
 
@@ -799,6 +806,21 @@ move_text_cursor(CONSOLE *c, short x, short y)
 }
 
 void
+text_cursor_off( CONSOLE *c)
+{
+	hide_text_cursor(c);
+	c->la->v_cur_flag &= ~V_CURSON;
+	return;
+}
+void
+text_cursor_on( CONSOLE *c)
+{
+	c->la->v_cur_flag |= V_CURSON;
+	reset_text_cursor(c);
+	return;
+}
+
+void
 show_text_cursor( CONSOLE *c)
 {
 
@@ -807,7 +829,7 @@ show_text_cursor( CONSOLE *c)
 	if (c->curs_hide_ct < 0)
 		c->curs_hide_ct = 0;
 
-	if (!c->curs_hide_ct && !(c->la->v_cur_flag & V_CURSDRAWN))
+	if (!c->curs_hide_ct && (c->la->v_cur_flag & (V_CURSDRAWN|V_CURSON)) == V_CURSON)
 	{
 		(*c->draw_text_cursor)(c);
 		c->la->v_cur_flag |= V_CURSDRAWN;
@@ -821,7 +843,7 @@ hide_text_cursor( CONSOLE *c)
 
 	c->curs_hide_ct++;
 
-	if (c->la->v_cur_flag & V_CURSDRAWN)
+	if ((c->la->v_cur_flag & (V_CURSDRAWN | V_CURSON)) == (V_CURSDRAWN | V_CURSON) )
 	{
 		(*c->undraw_text_cursor)(c);
 		c->la->v_cur_flag &= ~V_CURSDRAWN;

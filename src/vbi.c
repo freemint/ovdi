@@ -46,9 +46,10 @@ init_vbi(void)
 		nvbi = *(short *)nvbls;
 		VBI_entry = (unsigned long *) *(unsigned long *)_vblqueue;
 
+#if 0
 		*VBI_entry = (unsigned long)&new_vbi_wrapper;
 
-#if 0
+#else
 		for (i = 0; i < nvbi; i++)
 		{
 			if (*VBI_entry == 0)
@@ -145,6 +146,9 @@ add_vbi_function(unsigned long function, unsigned long tics)
 			spl(sr);
 			return 0;
 		}
+		else if (vints[2] == function)
+			return 0;
+
 		vints += 3;
 	}
 	return -1;

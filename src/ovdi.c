@@ -30,6 +30,8 @@
 #include "ovdi_dev.h"
 #include "line.h"
 
+#include "xbios.h"
+
 #ifdef PRG_TEST
 #endif
 
@@ -61,6 +63,17 @@ OVDI_DRAWERS drawers =
 	filled_poly,
 	rt_cpyfm,
 	ro_cpyfm,
+
+	0,	/* draw_pixel */
+	0,	/* read_pixel */
+	0,	/* put_pixel */
+	0,	/* get_pixel */
+
+	0,	/* Raster op */
+
+	0,	/* draw_mcurs */
+	0,	/* undraw_mcurs */
+
 };
 
 OVDI_UTILS utils =
@@ -116,6 +129,8 @@ ovdi_init(void)
 	bootdev = Dgetdrv() + 'a';
 
 	old_trap2_vec = (long) Setexc(0x22, New_Trap2);
+	install_xbios();
+
 	return;
 }
 
@@ -196,41 +211,47 @@ oVDI( VDIPB *pb )
 
 	if (logit)
 	{
-		//log("func %d..", func);
+
+		//log("%s, func %d..", func);
 
 		//log("func %d subfuc %d, %d, %d, %d, %d ..", func, pb->contrl[SUBFUNCTION],
 		//	pb->intin[0], pb->intin[1], pb->intin[2], pb->intin[3]);
 
 		log("%s (%d) - func %d, subfuc %d, ni %d, np %d\n",
 			v->procname, v->pid, func, pb->contrl[SUBFUNCTION], pb->contrl[N_INTIN], pb->contrl[N_PTSIN]);
-		log("  in %d, %d, %d, %d %d, %d, %d, %d - %d, %d, %d, %d\n",
+		log("  in %d, %d, %d, %d, %d, %d, %d, %d - %d, %d, %d, %d, %d, %d, %d, %d\n",
 			pb->intin[0], pb->intin[1], pb->intin[2], pb->intin[3],
+			pb->intin[4], pb->intin[5], pb->intin[6], pb->intin[7],
 			pb->ptsin[0], pb->ptsin[1], pb->ptsin[2], pb->ptsin[3],
 			pb->ptsin[4], pb->ptsin[5], pb->ptsin[6], pb->ptsin[7]);
 
-		log("     %d, %d, %d, %d, %d, %d, %d, %d - %d, %d, %d, %d\n",
+		log("     %d, %d, %d, %d, %d, %d, %d, %d - %d, %d, %d, %d, %d, %d, %d, %d\n",
 			pb->intout[0], pb->intout[1], pb->intout[2], pb->intout[3],
 			pb->intout[4], pb->intout[5], pb->intout[6], pb->intout[7],
-			pb->ptsout[0], pb->ptsout[1], pb->ptsout[2], pb->ptsout[3]);
+			pb->ptsout[0], pb->ptsout[1], pb->ptsout[2], pb->ptsout[3],
+			pb->ptsout[4], pb->ptsout[5], pb->ptsout[6], pb->ptsout[7]);
 	}
 
 	(*f)(pb, v);
 
 	if (logit)
 	{
-		log(" out %d, %d, %d, %d %d, %d, %d, %d - %d, %d, %d, %d\n",
+		log(" out %d, %d, %d, %d, %d, %d, %d, %d - %d, %d, %d, %d, %d, %d, %d, %d\n",
 			pb->intin[0], pb->intin[1], pb->intin[2], pb->intin[3],
+			pb->intin[4], pb->intin[5], pb->intin[6], pb->intin[7],
 			pb->ptsin[0], pb->ptsin[1], pb->ptsin[2], pb->ptsin[3],
 			pb->ptsin[4], pb->ptsin[5], pb->ptsin[6], pb->ptsin[7]);
 
-		log("     %d, %d, %d, %d, %d, %d, %d, %d - %d, %d, %d, %d\n",
+		log("     %d, %d, %d, %d, %d, %d, %d, %d - %d, %d, %d, %d, %d, %d, %d, %d\n",
 			pb->intout[0], pb->intout[1], pb->intout[2], pb->intout[3],
 			pb->intout[4], pb->intout[5], pb->intout[6], pb->intout[7],
-			pb->ptsout[0], pb->ptsout[1], pb->ptsout[2], pb->ptsout[3]);
+			pb->ptsout[0], pb->ptsout[1], pb->ptsout[2], pb->ptsout[3],
+			pb->ptsout[4], pb->ptsout[5], pb->ptsout[6], pb->ptsout[7]);
 
 		log(" nio %d, npo %d - leave\n\n", pb->contrl[N_INTOUT], pb->contrl[N_PTSOUT]);
 	//	log("leave\n\n");
 	}
+
 #else
 	(*f)(pb, v);
 #endif

@@ -18,7 +18,9 @@
 
 extern short logit;
 
-unsigned long	old_la_vect = 0;
+//unsigned long	old_la_vect = 0;
+
+extern long old_LineA_Handler;
 
 extern void LineA_Initialize(void);
 extern void LineA_PlotPixel(void);
@@ -110,7 +112,7 @@ init_linea_vartab(VIRTUAL *v, LINEA_VARTAB *la)
 
 	la->def_font = la->cur_font = sysfnt10p;
 	la->font_ring[0] = sysfnt08p;
-	la->font_ring[1] = 0;
+	la->font_ring[1] = sysfnt10p;
 	la->font_ring[2] = 0;
 	la->font_ring[3] = 0;
 	la->font_count = 3;
@@ -129,11 +131,11 @@ set_linea_vector(void)
 #ifndef PRG_TEST
 	short sr;
 
-	if (old_la_vect)
+	if (old_LineA_Handler)
 		return;
 
 	sr = spl7();
-	old_la_vect = *(long *)VEC_LINEA;
+	old_LineA_Handler = *(long *)VEC_LINEA;
 	*(long *)VEC_LINEA = (long)&LineA_Handler;
 	spl(sr);
 #endif

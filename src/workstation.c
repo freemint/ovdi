@@ -68,15 +68,6 @@ v_opnwk(VDIPB *pb, VIRTUAL *wk, VIRTUAL *lawk, struct ovdi_device *dev)
 		prepare_stdreturn(pb, wk);
 		goto error;
 	}
-#if 0
-	for ( i = 0 ; i < MAX_VIRTUALS ; i++ )
-	{
-		v_vtab[i].v	= 0;
-		v_vtab[i].pid	= -1;
-	}
-#endif
-
-	
 	
 	drv = (*dev->open)(dev, vdidev_id);
 
@@ -114,7 +105,6 @@ v_opnwk(VDIPB *pb, VIRTUAL *wk, VIRTUAL *lawk, struct ovdi_device *dev)
 			{
 				if (!drv->f.raster_operations)
 				{
-					//log("Using std_driver 8b raster ops!\n");
 					drv->f.raster_operations = rops_8b;
 				}
 				if (!drv->f.draw_mc)
@@ -133,7 +123,6 @@ v_opnwk(VDIPB *pb, VIRTUAL *wk, VIRTUAL *lawk, struct ovdi_device *dev)
 			{
 				if (!drv->f.raster_operations)
 				{
-					display("Using std_driver 16b raster ops!\n");
 					drv->f.raster_operations = rops_16b;
 				}
 				break;
@@ -142,7 +131,6 @@ v_opnwk(VDIPB *pb, VIRTUAL *wk, VIRTUAL *lawk, struct ovdi_device *dev)
 			{
 				if (!drv->f.raster_operations)
 				{
-					display("Using std_driver 16b raster ops!\n");
 					drv->f.raster_operations = rops_16b;
 				}
 				break;
@@ -163,7 +151,6 @@ v_opnwk(VDIPB *pb, VIRTUAL *wk, VIRTUAL *lawk, struct ovdi_device *dev)
 #endif
 			default:
 			{
-				display("Unknown color resolution!!\n");
 				goto error;
 			}
 		}
@@ -271,14 +258,20 @@ v_opnwk(VDIPB *pb, VIRTUAL *wk, VIRTUAL *lawk, struct ovdi_device *dev)
 
 		if (!wk->handle)
 		{
-		/* Init the console driver (VT-52) */
-			init_console(wk, linea_vars);		/* !! This depends on systemfonts being fixedup, done in setup_virtual() */
+		/* Make a copy of VIRTUAL for the linea and console (VT-52) to use */
+			*lawk = *wk;
+			wk->lawk = lawk;
+			lvs_clip(lawk, 0, 0);
+			init_console(wk->lawk, linea_vars);
+			wk->con = wk->lawk->con;
 
+		/* Init the console driver (VT-52) */
+			//init_console(wk->lawk, linea_vars);	/* !! This depends on systemfonts being fixedup, done in setup_virtual() */
 
 		/* Install some vectors */
 			set_linea_vector();
 			install_console_handlers(wk->con);
-			install_xbios(wk);
+			enable_xbios(wk);
 		}
 
 	/* Setup more LineA stuff */
@@ -377,11 +370,9 @@ get_MiNT_info(VIRTUAL *v)
 		if (fh >= 0)
 		{
 			fl = Fread(fh, 128L, (char *)&pnbuff);
-			if (fl < 0)
-				fl = 0;
 			pnbuff[fl] = 0;
 			Fclose(fh);
-			if (fl)
+			if (fl >= 0)
 			{
 				p = (char *)&pnbuff;
 				strt = end = 0;
@@ -429,7 +420,7 @@ v_opnvwk(VDIPB *pb, VIRTUAL *v)
 
 		entry = v_vtab;
 
-		for (i = 1; i < MAX_VIRTUALS; i++)
+		for (i = 2; i < MAX_VIRTUALS; i++)
 		{
 			if (!(entry[i].v))
 			{
@@ -441,7 +432,6 @@ v_opnvwk(VDIPB *pb, VIRTUAL *v)
 		if (handle)
 		{
 			bzero(new, sizeof(VIRTUAL));
-
 			get_MiNT_info(new);
 
 			entry[handle].v = new;
@@ -452,6 +442,7 @@ v_opnvwk(VDIPB *pb, VIRTUAL *v)
 			new->handle = handle;
 
 			new->root	= root;
+			new->lawk	= root->lawk;
 			new->con	= root->con;
 			new->driver	= root->driver;
 			new->physical	= root->physical;
@@ -496,6 +487,7 @@ v_clswk( VDIPB *pb, VIRTUAL *root)
 	if (root->root)
 	{
 		scrnlog("Cannot close physical with virtual handle!!!!\n");
+		log("Cannot close physical with virtual handle!!!!\n");
 		return;
 	}
 
@@ -596,13 +588,11 @@ vq_extnd( VDIPB *pb, VIRTUAL *v)
 			prepare_extreturn(pb, v);
 			break;
 		}
-#if 0
 		case 2:
 		{
 			prepare_scrninfreturn(pb, v);
 			break;
 		}
-#endif
 	}
 	return;
 }

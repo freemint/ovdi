@@ -129,6 +129,7 @@ struct virtual
 	short			choise;
 	short			string;
 	
+	VIRTUAL			*lawk;			/* Physical workstation used by the console */
 	VIRTUAL			*root;			/* Physical parent. NULL if this is parent */
 	short			wrmode;			/* Current writing mode			*/
 	short			xfm_mode;		/* Transformation mode requested	*/
@@ -187,7 +188,7 @@ struct ovdi_lib
 #if 1
 struct ovdi_drawers
 {
- /* color/hardware dependant functions */
+ /* color/hardware dependant functions.*/
 	void	(*draw_filledrect)	( VIRTUAL *v, VDIRECT *corners, PatAttr *ptrn);
 	void	(*draw_arc)		( VIRTUAL *v, short xc, short yc, short xrad, short beg_ang, short end_ang, short *points, PatAttr *ptrn);
 	void	(*draw_pieslice)	( VIRTUAL *v, short xc, short yc, short xrad, short beg_ang, short end_ang, short *points, PatAttr *ptrn);
@@ -204,6 +205,17 @@ struct ovdi_drawers
 
 	void	(*rt_cpyfm)		( VIRTUAL *v, MFDB *src, MFDB *dst, short *pnts, short fgcol, short bgcol, short wrmode);
 	void	(*ro_cpyfm)		( VIRTUAL *v, MFDB *src, MFDB *dst, short *pts, short wrmode);
+
+ /**/
+	void	(*draw_pixel)		( unsigned char *adr, long data);
+	void	(*read_pixel)		( unsigned char *adr, long data);
+	void	(*put_pixel)		( unsigned char *base, short bypl, short x, short y, long data);
+	void	(*get_pixel)		( unsigned char *base, short bypl, short x, short y);
+
+	void	(*raster_op)		(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
+
+	void	(*draw_mcurs)		(XMFORM *mf, short x, short y);
+	void	(*undraw_mcurs)		(XMSAVE *ms);
 };
 typedef struct ovdi_drawers OVDI_DRAWERS;
 

@@ -88,6 +88,8 @@ void CarrigeReturn	(CONSOLE *c);
 /* device driver routines */
 void console_enter	(CONSOLE *c);
 void console_exit	(CONSOLE *c);
+void text_cursor_on	(CONSOLE *c);
+void text_cursor_off	(CONSOLE *c);
 void reset_text_cursor	(CONSOLE *c);
 void move_text_cursor	(CONSOLE *c, short x, short y);
 void show_text_cursor	(CONSOLE *c);
@@ -102,6 +104,10 @@ void scroll_lines	(CONSOLE *c, short y, short nlines, short direction);
 void draw_character	(CONSOLE *c, short character);
 
 /* asm wrappers */
+extern long	old_con_state;
+extern long	old_xconout_console;
+extern long	old_xconout_raw;
+
 void	cs_output_character(short character);
 void	do_con_state(void);
 void	do_xconout_console(void);

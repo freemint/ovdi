@@ -516,6 +516,7 @@ static void
 reset_mouse_curs()
 {
 	enable_mouse_curs();
+	show_mouse_curs(0);
 	return;
 }
 
@@ -524,9 +525,10 @@ enable_mouse_curs()
 {
 	register MOUSEDRV *m = &md;
 
+	m->hide_ct = 1;
 	m->flags |= MC_ENABLED;
 	m->interrupt = 0;
-	show_mouse_curs(1);
+	//show_mouse_curs(1);
 	return;
 }
 

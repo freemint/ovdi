@@ -1,0 +1,40 @@
+
+ Brief installation notes for oVDI and necessary drivers:
+ 
+ As of yet, only color depths 1, 8 and 15/16 bpp is supported by oVDI. Also, 
+ the only graphics drivers as of yet needs emulator.prg from the Nova VDI 
+ package to drive the hardware. I plan to add the remaining 2, 4 colordepths 
+ and write drivers for TT and Falcon as soon as possible. So, at this time one 
+ needs emulator.prg to test oVDI. Then I'll add 24 and 32 bpp support, first 
+ real oVDI driver will be one for ET6000. The ET6K has untapped potential ;-)
+
+ installation for Nova users;
+
+  Put ovdi.prg into your autofolder. Maybe you need to rename ovdi.prg to 
+  sta_vdi.prg.
+
+  Disable sta_vdi.prg (original Nova VDI).
+
+  Create a folder on your boot partition called ovdisys (i.e. c:\ovdisys\) and 
+  put the following driver into it;
+   nova.vdi (Not et6knova.vdi unless you're using Hades and ET6k)
+   avbi.vdi
+   bioskbd.vdi
+   etv_time.vdi
+   ikbdmice.vdi
+
+  Copy ovdi.cnf to your bootpartition, and edit it to suit your needs.
+
+  Now its reboot time. oVDI should start, tell you if successfully loaded the 
+  modules and ask you for a key. As soon as you press the key, oVDI will take 
+  over the console, and you should see the console font you selected.
+
+ It should now work. Send reports to me or the MiNT mailing list.
+
+ Installation for non-Nova users;
+   Not yet, you dont!
+
+
+
+  Regards, Odd Skancke <ozk@atari.org>
+

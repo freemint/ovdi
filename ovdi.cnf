@@ -1,0 +1,39 @@
+# example oVDI configuration file - copy it to your bootpartition
+# if you wanna test oVDI. 
+
+# logfile - Suggest you set it to a valid value. All of the sudden
+# I want you to do some logging test for me ;-)
+logfile		= e:\ovdi.log
+
+# module_path - This is where oVDI looks for all its modules/drivers.
+# default is c:\ovdisys
+module_path	= c:\ovdisys
+
+# gdf_path - (GemDosFont path) This is where all fonts are searched for.
+gdf_path	= c:\gemsys
+
+# con_font - console use this font, must be a mono-spaced font.
+con_font	= edms09.fnt
+
+# sys_fonts - default system font, used by VDI (and AES)
+sys_fonts	{ edms08.fnt edms09.fnt edms10.fnt }
+
+# vdi_fonts - This is a list of fonts that is loaded by oVDI when the
+# AES opnes a physical workstation VDI. This is the same as assing.sys,
+# except it, at this time, is not possible to select different fonts based
+# on different screen driver ID's. Do we really need that?
+#vdi_fonts
+#{
+#	connect.fnt	connligh.fnt	dchenm05.fnt	dchenm07.fnt
+#	dchenm11.fnt	edms06.fnt	edms07.fnt	edms09.fnt
+#	edms10.fnt	edms12.fnt	edms15.fnt	gemini.fnt
+#	gene09.fnt	gene10.fnt	gene12.fnt	gene14.fnt
+#	gene18.fnt	gene20.fnt	gene24.fnt	helv09.fnt
+#	helv10.fnt	helv12.fnt	helv14.fnt	helv18.fnt
+#	helv24.fnt	losa12.fnt	losa24.fnt	math14.fnt
+#	time09.fnt	time10.fnt	time12.fnt	time14.fnt
+#	time18.fnt
+#}
+
+# gdf_cache - Size of GemDos Fonts cache.
+gdf_cache 320K

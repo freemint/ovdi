@@ -59,7 +59,7 @@
 #define COLOR_REQUESTED	0
 #define COLOR_ACTUAL	1
 
-#define v_bas_ad	*(long *)(0x43eL)
+#define v_bas_ad	*(long *)(0x44eL)
 
 #if 0
 short contrl[128];

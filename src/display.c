@@ -305,7 +305,6 @@ log(const char *t, ...)
 		Fwrite(fh, (long)l, (const char *)&line);
 		Fclose(fh);
 	}
-	return;
 }
 
 	

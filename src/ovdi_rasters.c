@@ -136,7 +136,10 @@ init_raster(OVDI_DRIVER *drv, RASTER *r)
 
 	if (!r->odrawers)
 	{
-		mem = (char *)omalloc( sizeof(other_drawers) + (sizeof(OVDI_DRAWERS) * 8) + sizeof(OVDI_UTILS), MX_PREFTTRAM | MX_PRIVATE );
+		mem = (char *)omalloc( sizeof(other_drawers) +
+					(sizeof(OVDI_DRAWERS) * 8) +
+					sizeof(OVDI_UTILS),
+					MX_PREFTTRAM | MX_PRIVATE );
 
 		if (mem)
 		{
@@ -373,9 +376,9 @@ setup_drawers_jumptable(OVDI_DRAWERS *src, OVDI_DRAWERS *dst, short planes)
 	for (i = 0; i < sizeof(VDIPRIMITIVES) >> 2; i++)
 	{
 		if (*srcp)
-			*dstp++ = *srcp++;
+			*dstp++ = *srcp++, defp++;
 		else
-			*dstp++ = *defp++; srcp++;
+			*dstp++ = *defp++, srcp++;
 	}
 				
 	switch (planes)

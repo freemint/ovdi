@@ -317,7 +317,6 @@ static void
 update_devtab(DEV_TAB *dt, VIRTUAL *v)
 {
 	dt->cheights	= 0;
-	return;
 }
 static void
 update_siztab(SIZ_TAB *st, VIRTUAL *v)
@@ -329,7 +328,6 @@ update_inqtab(INQ_TAB *it, VIRTUAL *v)
 {
 	it->textfx		= F_SUPPORTED;
 	it->mousebuttons	= v->mouseapi->buttons;
-	return;
 }
 
 /*

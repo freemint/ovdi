@@ -1,4 +1,5 @@
 #include "memory.h"
+#include "expand.h"
 #include "ovdi_defs.h"
 
 #include "4b_generic.h"
@@ -10,7 +11,7 @@ void
 fill_16x_4b(RASTER *r, COLINF *c, short *corners, short interior, PatAttr *ptrn)
 {
 	int i, words, bypl, height, y, wrmode;
-	unsigned long lp0, lp1, lsm, lem;
+	unsigned long lp0, lp1, lsm, lem, lmask;
 	unsigned short *m;
 	unsigned long *s, *d;
 
@@ -19,10 +20,11 @@ fill_16x_4b(RASTER *r, COLINF *c, short *corners, short interior, PatAttr *ptrn)
 	*/
 	wrmode = ptrn->wrmode;
 
-	if (!ptrn->expanded || ptrn->expanded != 4)
+	if (ptrn->expanded != 4 && interior > FIS_SOLID)
 	{
-		short bc, fc, col;
+		short color;
 		unsigned short data, p0, p1, p2, p3;
+		short col[2];
 
 		/*
 		 * If there is no pointer to expanded data buffer,
@@ -41,8 +43,21 @@ fill_16x_4b(RASTER *r, COLINF *c, short *corners, short interior, PatAttr *ptrn)
 		}
 		else
 			ptrn->expanded = r->planes;
-			
-		
+#if 0
+		if (interior == FIS_HOLLOW)
+		{
+			col[1] = ptrn->bgcol[wrmode] & 0xff; //0;
+			col[0] = col[1];
+		}
+		else
+		{
+			col[1] = ptrn->color[wrmode] & 0xff;
+			col[0] = ptrn->bgcol[wrmode] & 0xff;
+		}
+		expand( ptrn->width, ptrn->height,
+			ptrn->planes, PF_ATARI, ptrn->data,
+			4, PF_ATARI, ptrn->exp_data, (short *)&col, ptrn->mask);
+#else
 		s = (unsigned long *)ptrn->data;
 		d = (unsigned long *)ptrn->exp_data;
 		m = ptrn->mask;
@@ -50,13 +65,13 @@ fill_16x_4b(RASTER *r, COLINF *c, short *corners, short interior, PatAttr *ptrn)
 
 		if (interior == FIS_HOLLOW)
 		{
-			fc = 0;
-			bc = 0;
+			col[1] = 0;
+			col[0] = 0;
 		}
 		else
 		{
-			fc = ptrn->color[wrmode];
-			bc = ptrn->bgcol[wrmode];
+			col[1] = ptrn->color[wrmode];
+			col[0] = ptrn->bgcol[wrmode];
 		}
 
 		/*
@@ -70,17 +85,18 @@ fill_16x_4b(RASTER *r, COLINF *c, short *corners, short interior, PatAttr *ptrn)
 			for (i = 0; i < 16; i++)
 			{
 				if (data & 1)
-					col = fc;
+					color = col[1];
 				else
-					col = bc;
-				p0 <<= 1; p0 |= (col & 1); col >>= 1;
-				p1 <<= 1, p1 |= (col & 1), col >>= 1;
-				p2 <<= 1, p2 |= (col & 1), col >>= 1;
-				p3 <<= 1, p3 |= (col & 1);
+					color = col[0];
+				p0 <<= 1; p0 |= (color & 1), color >>= 1;
+				p1 <<= 1, p1 |= (color & 1), color >>= 1;
+				p2 <<= 1, p2 |= (color & 1), color >>= 1;
+				p3 <<= 1, p3 |= (color & 1);
 				data >>= 1;
 			}
 			*d++ = ((long)p0 << 16) | p1, *d++ = ((long)p2 << 16) | p3;
 		}
+#endif
 	}
 	bypl = r->bypl >> 2;
 	words = (((corners[0] & 0xf) + (corners[2] - corners[0]) + 16) >> 4) - 1;
@@ -94,18 +110,44 @@ fill_16x_4b(RASTER *r, COLINF *c, short *corners, short interior, PatAttr *ptrn)
 		lem = ((unsigned long)em << 16) | em;
 	}
 
+	d = (unsigned long *)r->base + (long)((corners[0] >> 4) << 1) + ((long)corners[1] * bypl);
+	bypl -= (words + 1) << 1;
+	
+	if (interior <= FIS_SOLID)
+	{
+		if (interior == FIS_HOLLOW)
+			lp0 = lp1 = lmask = wrmode = 0;
+		else {
+			short fc = ptrn->color[wrmode];
+			lp0 =	fc & 1 ? 0xffff0000L : 0L;
+			lp0 |=	fc & 2 ? 0xffff : 0;
+			lp1 =	fc & 4 ? 0xffff0000L : 0L;
+			lp1 |=	fc & 8 ? 0xffff : 0;
+			lmask = 0xffffffffL;
+			//(short)lmask = *ptrn->data;
+			//lmask = (lmask << 16) | lmask;
+		}
+		goto singleline;
+	}
+#if 0		
 	if (interior == FIS_HOLLOW)
 		wrmode = 0;
+#endif
 		
 	if (ptrn->height == 1)
-		y = 0;
+	{
+		lp0 = (long)((long *)ptrn->exp_data)[0];
+		lp1 = (long)((long *)ptrn->exp_data)[1];
+		(short)lmask = *ptrn->mask;
+		lmask = (lmask << 16) | lmask;
+		goto singleline;
+		//y = 0;
+	}
 	else
 		y = corners[1] % ptrn->height;
 
 	s = (unsigned long *)ptrn->exp_data + ((long)y << 1);
 	m = (unsigned short *)ptrn->mask + y;
-	d = (unsigned long *)r->base + (long)((corners[0] >> 4) << 1) + ((long)corners[1] * bypl);
-	bypl -= (words + 1) << 1; /* longs */
 
 	switch (wrmode)
 	{
@@ -436,11 +478,6 @@ fill_16x_4b(RASTER *r, COLINF *c, short *corners, short interior, PatAttr *ptrn)
 							//(unsigned short)mask *m++, mask = (mask << 16) | mask;
 							*d++ ^= mask;
 							*d++ ^= mask;
-#if 0
-							y++;
-							if (y >= ptrn->height)
-								y = 0, s = (unsigned long *)ptrn->exp_data, m = ptrn->mask;
-#endif
 							d += bypl;
 						}
 					}
@@ -454,11 +491,6 @@ fill_16x_4b(RASTER *r, COLINF *c, short *corners, short interior, PatAttr *ptrn)
 								*d++ ^= mask;
 								*d++ ^= mask;
 							}
-#if 0
-							y++;
-							if (y >= ptrn->height)
-								y = 0, s = (unsigned long *)ptrn->exp_data, m = ptrn->mask;
-#endif
 							d += bypl;
 						}
 					}
@@ -472,11 +504,6 @@ fill_16x_4b(RASTER *r, COLINF *c, short *corners, short interior, PatAttr *ptrn)
 							//(unsigned short)mask = *m++, mask = (mask << 16) | mask;
 							*d++ = (*d & ~lem) | ((*d ^ mask) & lem);
 							*d++ = (*d & ~lem) | ((*d ^ mask) & lem);
-#if 0
-							y++;
-							if (y >= ptrn->height)
-								y = 0, s = (unsigned long *)ptrn->exp_data, m = ptrn->mask;
-#endif
 							d += bypl;
 						}
 					}
@@ -492,11 +519,6 @@ fill_16x_4b(RASTER *r, COLINF *c, short *corners, short interior, PatAttr *ptrn)
 							}
 							*d++ = (*d & ~lem) | ((*d ^ mask) & lem);
 							*d++ = (*d & ~lem) | ((*d ^ mask) & lem);
-#if 0
-							y++;
-							if (y >= ptrn->height)
-								y = 0, s = (unsigned long *)ptrn->exp_data, m = ptrn->mask;
-#endif
 							d += bypl;
 						}
 					}
@@ -513,11 +535,6 @@ fill_16x_4b(RASTER *r, COLINF *c, short *corners, short interior, PatAttr *ptrn)
 							//(unsigned short)mask = *m++, mask = (mask << 16) | mask;
 							*d++ = (*d & ~lsm) | ((*d ^ mask) & lsm);
 							*d++ = (*d & ~lsm) | ((*d ^ mask) & lsm);
-#if 0
-							y++;
-							if (y >= ptrn->height)
-								y = 0, s = (unsigned long *)ptrn->exp_data, m = ptrn->mask;
-#endif
 							d += bypl;
 						}
 					}
@@ -533,11 +550,6 @@ fill_16x_4b(RASTER *r, COLINF *c, short *corners, short interior, PatAttr *ptrn)
 								*d++ ^= mask;
 								*d++ ^= mask;
 							}
-#if 0
-							y++;
-							if (y >= ptrn->height)
-								y = 0, s = (unsigned long *)ptrn->exp_data, m = ptrn->mask;
-#endif
 							d += bypl;
 						}
 					}
@@ -552,11 +564,6 @@ fill_16x_4b(RASTER *r, COLINF *c, short *corners, short interior, PatAttr *ptrn)
 							//(unsigned short)mask = *m++, mask = (mask << 16) | mask;
 							*d++ = (*d & ~lsm) | ((*d ^ mask) & lsm);
 							*d++ = (*d & ~lsm) | ((*d ^ mask) & lsm);
-#if 0
-							y++;
-							if (y >= ptrn->height)
-								y = 0, s = (unsigned long *)ptrn->exp_data, m = ptrn->mask;
-#endif
 							d += bypl;
 						}
 					}
@@ -574,11 +581,6 @@ fill_16x_4b(RASTER *r, COLINF *c, short *corners, short interior, PatAttr *ptrn)
 							}
 							*d++ = (*d & ~lem) | ((*d ^ mask) & lem);
 							*d++ = (*d & ~lem) | ((*d ^ mask) & lem);
-#if 0
-							y++;
-							if (y >= ptrn->height)
-								y = 0, s = (unsigned long *)ptrn->exp_data, m = ptrn->mask;
-#endif
 							d += bypl;
 						}
 					}
@@ -588,9 +590,9 @@ fill_16x_4b(RASTER *r, COLINF *c, short *corners, short interior, PatAttr *ptrn)
 		}
 		case 3: /* erase */
 		{
-			unsigned long mask, tmp;
+			unsigned long mask;
 			lp0 = 0xffffffff;
-			lp1 = lp0;
+			//lp1 = lp0;
 
 			if (lsm == 0xffffffff)
 			{
@@ -746,7 +748,511 @@ fill_16x_4b(RASTER *r, COLINF *c, short *corners, short interior, PatAttr *ptrn)
 			break;
 		} /* case (wrmode) */
 	}
+	goto done;
 
+singleline:
+	SYNC_RASTER(r);
+
+	switch (wrmode)
+	{
+		case 0:
+		{
+			if (lsm == 0xffffffff)
+			{
+				if (lem == 0xffffffff)
+				{
+					if (!words)
+					{
+						for (; height > 0; height--)
+						{
+							*d++ = lp0;
+							*d++ = lp1;
+							d += bypl;
+						}
+					}
+					else
+					{
+						for (; height > 0; height--)
+						{
+							for (i = words + 1; i > 0; i--)
+							{
+								*d++ = lp0;
+								*d++ = lp1;
+							}
+							d += bypl;
+						}
+					}
+				}
+				else // endif (em == 0xffff)
+				{
+					if (!words)
+					{
+						lp0 &= lem;
+						lp1 &= lem;
+						for (; height > 0; height--)
+						{
+							*d++ = (*d & ~lem) | lp0;
+							*d++ = (*d & ~lem) | lp1;
+							d += bypl;
+						}
+					}
+					else
+					{
+						for (; height > 0; height--)
+						{	
+							for (i = words; i > 0; i--)
+							{
+								*d++ = lp0;
+								*d++ = lp1;
+							}
+							*d++ = (*d & ~lem) | (lp0 & lem);
+							*d++ = (*d & ~lem) | (lp1 & lem);
+							d += bypl;
+						}
+					}
+				}
+			}
+			else // (sm == 0xffff)
+			{
+				if ((short)lem == 0xffffffff)
+				{
+					if (!words)
+					{
+						lp0 &= lsm;
+						lp1 &= lsm;
+						for (; height > 0; height--)
+						{
+							*d++ = (*d & ~lsm) | lp0;
+							*d++ = (*d & ~lsm) | lp1;
+							d += bypl;
+						}
+					}
+					else
+					{
+						for (; height > 0; height--)
+						{
+							*d++ = (*d & ~lsm) | (lp0 & lsm);
+							*d++ = (*d & ~lsm) | (lp1 & lsm);
+							for (i = words; i > 0; i--)
+							{
+								*d++ = lp0;
+								*d++ = lp1;
+							}
+							d += bypl;
+						}
+					}
+				}
+				else // Got both start and endmasks
+				{
+					if (!words)
+					{
+						lsm &= lem;
+						lp0 &= lsm;
+						lp1 &= lsm;
+						for (; height > 0; height--)
+						{
+							*d++ = (*d & ~lsm) | lp0;
+							*d++ = (*d & ~lsm) | lp1;
+							d += bypl;
+						}
+					}
+					else
+					{
+						for (; height > 0; height--)
+						{
+							*d++ = (*d & ~lsm) | (lp0 & lsm);
+							*d++ = (*d & ~lsm) | (lp1 & lsm);
+							for (i = words - 1; i > 0; i--)
+							{
+								*d++ = lp0;
+								*d++ = lp1;
+							}
+							*d++ = (*d & ~lem) | (lp0 & lem);
+							*d++ = (*d & ~lem) | (lp1 & lem);
+							d += bypl;
+						}
+					}
+				}
+			}
+			break;
+		}
+		case 1: /* trans */
+		{
+			unsigned long tmp;
+
+			if (lsm == 0xffffffff)
+			{
+				if (lem == 0xffffffff)
+				{
+					if (!words)
+					{
+						lp0 &= lmask;
+						lp1 &= lmask;
+						for (; height > 0; height--)
+						{
+							*d++ = (*d & ~lmask) | lp0;
+							*d++ = (*d & ~lmask) | lp1;
+							d += bypl;
+						}
+					}
+					else
+					{
+						lp0 &= lmask;
+						lp1 &= lmask;
+						for (; height > 0; height--)
+						{
+							for (i = words + 1; i > 0; i--)
+							{
+								*d++ = (*d & ~lmask) | lp0;
+								*d++ = (*d & ~lmask) | lp1;
+							}
+							d += bypl;
+						}
+					}
+				}
+				else // endif (em == 0xffff)
+				{
+					if (!words)
+					{
+						lmask &= lem;
+						lp0 &= lmask;
+						lp1 &= lmask;
+						for (; height > 0; height--)
+						{
+							*d++ = (*d & ~lmask) | lp0;
+							*d++ = (*d & ~lmask) | lp1;
+							d += bypl;
+						}
+					}
+					else
+					{
+						lp0 &= lmask;
+						lp1 &= lmask;
+						tmp = lmask & lem;
+						for (; height > 0; height--)
+						{	
+							for (i = words; i > 0; i--)
+							{
+								*d++ = (*d & ~lmask ) | lp0;
+								*d++ = (*d & ~lmask ) | lp1;
+							}
+							*d++ = (*d & ~tmp) | (lp0 & tmp);
+							*d++ = (*d & ~tmp) | (lp1 & tmp);
+							d += bypl;
+						}
+					}
+				}
+			}
+			else // (sm == 0xffff)
+			{
+				if ((short)lem == 0xffffffff)
+				{
+					if (!words)
+					{
+						lmask &= lsm;
+						lp0 &= lmask;
+						lp1 &= lmask;
+						for (; height > 0; height--)
+						{
+							*d++ = (*d & ~lmask) | lp0;
+							*d++ = (*d & ~lmask) | lp1;
+							d += bypl;
+						}
+					}
+					else
+					{
+						lp0 &= lmask;
+						lp1 &= lmask;
+						tmp = lmask & lsm;
+						for (; height > 0; height--)
+						{
+							*d++ = (*d & ~tmp) | (lp0 & tmp);
+							*d++ = (*d & ~tmp) | (lp1 & tmp);
+							for (i = words; i > 0; i--)
+							{
+								*d++ = (*d & ~lmask) | lp0;
+								*d++ = (*d & ~lmask) | lp1;
+							}
+							d += bypl;
+						}
+					}
+				}
+				else // Got both start and endlmasks
+				{
+					if (!words)
+					{
+						lsm &= lem;
+						lmask &= lsm;
+						lp0 &= lmask;
+						lp1 &= lmask;
+						for (; height > 0; height--)
+						{
+							*d++ = (*d & ~lmask) | lp0;
+							*d++ = (*d & ~lmask) | lp1;
+							d += bypl;
+						}
+					}
+					else
+					{
+						lp0 &= lmask;
+						lp1 &= lmask;
+						tmp = lmask & lsm;
+						lem = lmask & lem;
+						for (; height > 0; height--)
+						{
+							*d++ = (*d & ~tmp) | (lp0 & tmp);
+							*d++ = (*d & ~tmp) | (lp1 & tmp);
+							for (i = words - 1; i > 0; i--)
+							{
+								*d++ = (*d & ~lmask) | lp0;
+								*d++ = (*d & ~lmask) | lp1;
+							}
+							*d++ = (*d & ~lem) | (lp0 & lem);
+							*d++ = (*d & ~lem) | (lp1 & lem);
+							d += bypl;
+						}
+					}
+				}
+			}
+			break;
+		}
+		case 2: /* eor */
+		{
+			lmask = 0xffffffffUL;
+
+			if (lsm == 0xffffffff)
+			{
+				if (lem == 0xffffffff)
+				{
+					if (!words)
+					{
+						for (; height > 0; height--)
+						{
+							*d++ ^= lmask;
+							*d++ ^= lmask;
+							d += bypl;
+						}
+					}
+					else
+					{
+						for (; height > 0; height--)
+						{
+							for (i = words + 1; i > 0; i--)
+							{
+								*d++ ^= lmask;
+								*d++ ^= lmask;
+							}
+							d += bypl;
+						}
+					}
+				}
+				else // endif (em == 0xffff)
+				{
+					if (!words)
+					{
+						for (; height > 0; height--)
+						{
+							*d++ = (*d & ~lem) | ((*d ^ lmask) & lem);
+							*d++ = (*d & ~lem) | ((*d ^ lmask) & lem);
+							d += bypl;
+						}
+					}
+					else
+					{
+						for (; height > 0; height--)
+						{	
+							for (i = words; i > 0; i--)
+							{
+								*d++ ^= lmask;
+								*d++ ^= lmask;
+							}
+							*d++ = (*d & ~lem) | ((*d ^ lmask) & lem);
+							*d++ = (*d & ~lem) | ((*d ^ lmask) & lem);
+							d += bypl;
+						}
+					}
+				}
+			}
+			else // (sm == 0xffff)
+			{
+				if ((short)lem == 0xffffffff)
+				{
+					if (!words)
+					{
+						for (; height > 0; height--)
+						{
+							*d++ = (*d & ~lsm) | ((*d ^ lmask) & lsm);
+							*d++ = (*d & ~lsm) | ((*d ^ lmask) & lsm);
+							d += bypl;
+						}
+					}
+					else
+					{
+						for (; height > 0; height--)
+						{
+							*d++ = (*d & ~lsm) | ((*d ^ lmask) & lsm);
+							*d++ = (*d & ~lsm) | ((*d ^ lmask) & lsm);
+							for (i = words; i > 0; i--)
+							{
+								*d++ ^= lmask;
+								*d++ ^= lmask;
+							}
+							d += bypl;
+						}
+					}
+				}
+				else // Got both start and endlmasks
+				{
+					if (!words)
+					{
+						lsm &= lem;
+						for (; height > 0; height--)
+						{
+							*d++ = (*d & ~lsm) | ((*d ^ lmask) & lsm);
+							*d++ = (*d & ~lsm) | ((*d ^ lmask) & lsm);
+							d += bypl;
+						}
+					}
+					else
+					{
+						for (; height > 0; height--)
+						{
+							*d++ = (*d & ~lsm) | ((*d ^ lmask) & lsm);
+							*d++ = (*d & ~lsm) | ((*d ^ lmask) & lsm);
+							for (i = words - 1; i > 0; i--)
+							{
+								*d++ ^= lmask;
+								*d++ ^= lmask;
+							}
+							*d++ = (*d & ~lem) | ((*d ^ lmask) & lem);
+							*d++ = (*d & ~lem) | ((*d ^ lmask) & lem);
+							d += bypl;
+						}
+					}
+				}
+			}
+			break;
+		}
+		case 3: /* erase */
+		{
+			//unsigned long tmp;
+			lp0 = 0xffffffff;
+
+			if (lsm == 0xffffffff)
+			{
+				if (lem == 0xffffffff)
+				{
+					if (!words)
+					{
+						for (; height > 0; height--)
+						{
+							*d++ = (*d & lmask) | ((*d ^ lp0) & ~lmask);
+							*d++ = (*d & lmask) | ((*d ^ lp0) & ~lmask);
+							d += bypl;
+						}
+					}
+					else
+					{
+						for (; height > 0; height--)
+						{
+							for (i = words + 1; i > 0; i--)
+							{
+								*d++ = (*d & lmask) | ((*d ^ lp0) & ~lmask);
+								*d++ = (*d & lmask) | ((*d ^ lp0) & ~lmask);
+							}
+							d += bypl;
+						}
+					}
+				}
+				else // endif (em == 0xffff)
+				{
+					if (!words)
+					{
+						for (; height > 0; height--)
+						{
+							*d++ = ((*d & lmask) & ~lem) | (((*d ^ lp0) & ~lmask) & lem);
+							*d++ = ((*d & lmask) & ~lem) | (((*d ^ lp0) & ~lmask) & lem);
+							d += bypl;
+						}
+					}
+					else
+					{
+						for (; height > 0; height--)
+						{	
+							for (i = words; i > 0; i--)
+							{
+								*d++ = (*d & lmask) | ((*d ^ lp0) & ~lmask);
+								*d++ = (*d & lmask) | ((*d ^ lp0) & ~lmask);
+							}
+							*d++ = ((*d & lmask) & ~lem) | (((*d ^ lp0) & ~lmask) & lem);
+							*d++ = ((*d & lmask) & ~lem) | (((*d ^ lp0) & ~lmask) & lem);
+							d += bypl;
+						}
+					}
+				}
+			}
+			else // (sm == 0xffff)
+			{
+				if ((short)lem == 0xffffffff)
+				{
+					if (!words)
+					{
+						for (; height > 0; height--)
+						{
+							*d++ = ((*d & lmask) & ~lsm) | (((*d ^ lp0) & ~lmask) & lsm);
+							*d++ = ((*d & lmask) & ~lsm) | (((*d ^ lp0) & ~lmask) & lsm);
+							d += bypl;
+						}
+					}
+					else
+					{
+						for (; height > 0; height--)
+						{
+							*d++ = ((*d & lmask) & ~lsm) | (((*d ^ lp0) & ~lmask) & lsm);
+							*d++ = ((*d & lmask) & ~lsm) | (((*d ^ lp0) & ~lmask) & lsm);
+							for (i = words; i > 0; i--)
+							{
+								*d++ = (*d & lmask) | ((*d ^ lp0) & ~lmask);
+								*d++ = (*d & lmask) | ((*d ^ lp0) & ~lmask);
+							}
+							d += bypl;
+						}
+					}
+				}
+				else // Got both start and endlmasks
+				{
+					if (!words)
+					{
+						lsm &= lem;
+						for (; height > 0; height--)
+						{
+							*d++ = ((*d & lmask) & ~lsm) | (((*d ^ lp0) & ~lmask) & lsm);
+							*d++ = ((*d & lmask) & ~lsm) | (((*d ^ lp0) & ~lmask) & lsm);
+							d += bypl;
+						}
+					}
+					else
+					{
+						for (; height > 0; height--)
+						{
+							*d++ = ((*d & lmask) & ~lsm) | (((*d ^ lp0) & ~lmask) & lsm);
+							*d++ = ((*d & lmask) & ~lsm) | (((*d ^ lp0) & ~lmask) & lsm);
+							for (i = words - 1; i > 0; i--)
+							{
+								*d++ = (*d & lmask) | ((*d ^ lp0) & ~lmask);
+								*d++ = (*d & lmask) | ((*d ^ lp0) & ~lmask);
+							}
+							*d++ = ((*d & lmask) & ~lem) | (((*d ^ lp0) & ~lmask) & lem);
+							*d++ = ((*d & lmask) & ~lem) | (((*d ^ lp0) & ~lmask) & lem);
+							d += bypl;
+						}
+					}
+				}
+			}
+			break;
+		} /* case (wrmode) */
+	}
+done:
 	if (!ptrn->expanded)
 	{
 		ptrn->exp_data = 0;

@@ -108,11 +108,14 @@ new_xbios(short *p)
 		oc = *p++;
 
 		if (oc == 0x15)
+		{
 			ret = oCursconf(HW, p);
+		}
 
 		if (oc == 0x25)
+		{
 			ret = oVsync(HW, p);
-
+		}
 		if (oc >= 0x02 && oc <= 0x07)
 		{
 			f = xbios_2thru7[oc - 0x2];
@@ -214,7 +217,8 @@ oSetscreen(OVDI_HWAPI *hw, short *p)
 
 	if (phys != 0xffffffffUL)
 	{
-		if ((phys < (unsigned long)hw->driver->vram_start) || (phys > (unsigned long)((unsigned long)hw->driver->vram_start + hw->driver->vram_size)))
+		if (	(phys < (unsigned long)hw->driver->vram_start) ||
+			(phys > (unsigned long)((unsigned long)hw->driver->vram_start + hw->driver->vram_size)) )
 			return 0;
 
 		hw->driver->r.base = (*d->setpscr)(hw->driver, (unsigned char *)phys);

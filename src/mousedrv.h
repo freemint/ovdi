@@ -1,10 +1,9 @@
 #ifndef _OVDI_MOUSEDRV_H
 #define _OVDI_MOUSEDRV_H
 
-#include "ovdi_defs.h"
+//#include "ovdi_defs.h"
 #include "linea.h"
 #include "mouse.h"
-//#include "ovdi_dev.h"
 
 #define	MB_LEFT		1
 #define MB_RIGHT	2
@@ -122,7 +121,7 @@ struct mouseapi
 };
 typedef struct mouseapi MOUSEAPI;
 
-MOUSEAPI * init_mouse	(VIRTUAL *v, LINEA_VARTAB *la);
+MOUSEAPI * init_mouse	(OVDI_DRIVER *drv, LINEA_VARTAB *la);
 
 extern void init_mouse_device	(MOUSEDRV *mdrv);
 

@@ -23,7 +23,6 @@ HEADER = \
 	mousedrv.h \
 	ovdi.h \
 	ovdi_defs.h \
-	ovdi_dev.h \
 	ovdi_rasters.h \
 	ovdi_types.h \
 	patch_gem.h \

@@ -2,7 +2,6 @@
 #include "draw.h"
 #include "ovdi_defs.h"
 #include "vdi_defs.h"
-#include "ovdi_dev.h"
 #include "polygon.h"
 #include "rasters.h"
 #include "vdi_globals.h"

@@ -1,6 +1,7 @@
 /*
  This file contains the time-related stuff.
 */
+#include <osbind.h>
 
 #include "display.h"
 #include "linea.h"
@@ -54,11 +55,18 @@ unsigned long timeints[] =
 *  own things.
 */
 struct timeapi *
-init_time(VIRTUAL *v, LINEA_VARTAB *la)
+init_time(LINEA_VARTAB *la)
 {
 	short sr;
 	struct timedrv *td = &tdrv;
 	struct timeapi *ta = &tapi;
+	long usp;
+
+	usp = Super(1);
+	if (!usp)
+		usp = Super(0);
+	else
+		usp = 0;
 
 	if (old_timeint != 0)
 	{
@@ -85,9 +93,12 @@ init_time(VIRTUAL *v, LINEA_VARTAB *la)
 	ta->disable		= disable_tint;
 
 	sr = spl7();
-	old_timeint = *(long *)etv_timer;
-	*(long *)etv_timer = (unsigned long)&time_interruptw;
+	old_timeint = (long)Setexc(etv_timer >> 2, time_interruptw);
 	spl(sr);
+
+	if (usp)
+		Super(usp);
+
 	return ta;
 }
 

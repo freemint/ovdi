@@ -11,7 +11,6 @@
 #include "memory.h"
 #include "mousedrv.h"
 #include "ovdi_defs.h"
-#include "ovdi_dev.h"
 #include "ovdi_rasters.h"
 #include "polygon.h"
 #include "rasters.h"
@@ -157,6 +156,41 @@ raster_reschange(RASTER *r, COLINF *c)
 	else
 		r->hpixel = 278;
 
+}
+
+void
+reschange_devtab(DEV_TAB *dt, RASTER *r)
+{
+	unsigned long palettesize;
+
+	dt->xres	= r->w - 1;
+	dt->yres	= r->h - 1;
+	dt->wpixel	= r->wpixel;
+	dt->hpixel	= r->hpixel;
+
+	if (r->planes == 1)
+		dt->cancolor = 0;
+	else
+		dt->cancolor = 1;
+
+	if (r->planes < 8)
+		dt->colors = 1 << r->planes;
+	else
+		dt->colors = 256;
+
+	palettesize = (long)r->rgb_levels.red * (long)r->rgb_levels.green * (long)r->rgb_levels.blue;
+
+	if (palettesize > 32767UL)
+		dt->palette = 0;
+	else
+		dt->palette = (unsigned short)palettesize;
+}
+
+void
+reschange_inqtab(INQ_TAB *it, RASTER *r)
+{
+	it->planes	= r->planes;
+	it->lut		= r->clut;
 }
 
 COLINF *

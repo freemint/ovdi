@@ -3,7 +3,6 @@
 #include "mouse.h"
 #include "mousedrv.h"
 #include "ovdi_defs.h"
-#include "ovdi_dev.h"
 #include "16b_driver.h"
 
 /* ******************************************************** */

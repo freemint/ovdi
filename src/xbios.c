@@ -4,7 +4,6 @@
 #include "display.h"
 #include "console.h"
 #include "ovdi_defs.h"
-#include "ovdi_dev.h"
 #include "ovdi_types.h"
 #include "vdi_defs.h"
 #include "xbios.h"

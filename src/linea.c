@@ -45,6 +45,8 @@ extern short systemfont08[];
 extern short systemfont09[];
 extern short systemfont10[];
 
+static void set_vector(void);
+
 void linea_handler(short);
 void linea_plot_pixel(void);
 long linea_get_pixel(void);
@@ -95,7 +97,10 @@ init_linea_vartab(VIRTUAL *v, LINEA_VARTAB *la)
 {
 
 	la->cur_font = sysfnt10p->font_head; //v->fring->;
-	la->cur_work = v;
+
+	if (v)
+		la->cur_work = v;
+
 	la->def_font = la->cur_font = sysfnt10p->font_head;
 	la->font_ring[0] = sysfnt08p->font_head;
 	la->font_ring[1] = sysfnt10p->font_head;
@@ -103,7 +108,7 @@ init_linea_vartab(VIRTUAL *v, LINEA_VARTAB *la)
 	la->font_ring[3] = 0;
 	la->font_count = 3;
 
-	linea_reschange(la, v->raster, v->colinf);
+	//linea_reschange(la, v->raster, v->colinf);
 
 	return;
 }
@@ -138,18 +143,25 @@ linea_reschange(LINEA_VARTAB *la, RASTER *r, COLINF *c)
 void
 set_linea_vector(void)
 {
-#ifndef PRG_TEST
 	short sr;
 
 	if (old_LineA_Handler)
 		return;
 
+	Supexec(set_vector);
+
+	return;
+}
+
+static void
+set_vector(void)
+{
+	short sr;
+
 	sr = spl7();
 	old_LineA_Handler = *(long *)VEC_LINEA;
 	*(long *)VEC_LINEA = (long)&LineA_Handler;
 	spl(sr);
-#endif
-	return;
 }
 	
 void

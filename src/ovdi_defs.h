@@ -6,10 +6,14 @@ typedef struct colinf COLINF;
 typedef struct virtual VIRTUAL;
 typedef struct ovdi_lib OVDI_LIB;
 
+typedef struct ovdi_driver OVDI_DRIVER;
+typedef struct ovdi_device OVDI_DEVICE;
+
 #include "vdi_defs.h"
 #include "mousedrv.h"
 
 //#include "ovdi_dev.h"
+
 
 #define MAX_VIRTUALS		512
 #define MAX_VDI_FUNCTIONS	140
@@ -212,6 +216,7 @@ struct virtual
 	struct kbdapi		*kbdapi;
 	struct mouseapi		*mouseapi;
 	struct timeapi		*timeapi;
+	struct vbiapi		*vbiapi;
 
 #if 0
 	short			*color_vdi2hw;
@@ -230,6 +235,17 @@ struct virtual
 
 };
 
+struct ovdi_hwapi
+{
+	struct	ovdi_driver	*driver;
+	struct	console		*console;
+	struct	colinf		*colinf;
+	struct	kbdapi		*keyboard;
+	struct	mouseapi	*mouse;
+	struct	timeapi		*time;
+	struct	vbiapi		*vbi;
+};
+typedef struct ovdi_hwapi OVDI_HWAPI;
 
 typedef void (*GDP_function)(VDIPB *pb, VIRTUAL *v);
 typedef void (*vdi_function)(VDIPB *pb, VIRTUAL *v);
@@ -428,5 +444,79 @@ struct ovdi_utils
 	long	cnv_d2v_rsv[4];
 };
 typedef struct ovdi_utils OVDI_UTILS;
+
+
+//typedef	struct ovdidrv_functab OVDIDRV_FUNCTAB;
+
+struct ovdi_driver
+{
+	long		version;
+	short		format;
+	
+#define PF_ATARI	1
+#define PF_PLANES	2
+#define PF_PACKED	4
+#define	PF_FALCON	8
+#define	PF_BE		16
+#define	PF_BS		32
+
+	RASTER		r;
+	
+	unsigned long	palette;
+	short		v_top, v_bottom, v_left, v_right;
+
+	void		*vram_start;
+	long		vram_size;
+
+	short		scr_count;
+	long		scr_size;
+
+	void		*log_base;
+
+	OVDI_DEVICE	*dev;
+
+	struct ovdi_drawers	*drawers_1b;
+	struct ovdi_drawers	*drawers_2b;
+	struct ovdi_drawers	*drawers_4b;
+	struct ovdi_drawers	*drawers_8b;
+	struct ovdi_drawers	*drawers_15b;
+	struct ovdi_drawers	*drawers_16b;
+	struct ovdi_drawers	*drawers_24b;
+	struct ovdi_drawers	*drawers_32b;
+	
+/* If add_vbifunc is NULL, the built in vbi functions are copied into
+ * these elements and used.
+ * If driver wants to provide vbi functions, ALL the below functions
+ * are considered to be valid if add_vbifunc is not NULL */
+#if 0
+	short		(*add_vbifunc)(unsigned long function, unsigned long tics);
+	short		(*get_vbitics)(void);
+	void		(*remove_vbifunc)(unsigned long function);
+	void		(*reset_vbi)(void);
+	void		(*enable_vbi)(void);
+	void		(*disable_vbi)(void);
+#endif
+
+};
+
+struct ovdi_device
+{
+	long version;
+	char *name;
+
+	OVDI_DRIVER *	(*open)(struct ovdi_device *dev);
+	long		(*close)(OVDI_DRIVER *drv);
+	short		(*set_vdires)(OVDI_DRIVER *drv, short scrndev_id);
+	short		(*get_res_info)(OVDI_DRIVER *drv);
+	unsigned char *	(*setpscr)(OVDI_DRIVER *drv, unsigned char *scrnadr);
+	unsigned char *	(*setlscr)(OVDI_DRIVER *drv, unsigned char *logscr);
+	void		(*setcol)(OVDI_DRIVER *drv, short pen, RGB_LIST *colors);
+	void		(*vsync)(OVDI_DRIVER *drv);
+
+ 	void		(*vreschk)(short x, short y);
+};
+
+OVDI_DEVICE *	device_init		(struct ovdi_lib *lib);
+
 
 #endif	/* _OVDI_DEFS_H */

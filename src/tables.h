@@ -21,6 +21,12 @@
 short	scrsizmm_x;
 short	scrsizmm_y;
 
+short	sysfnt_minwchar;
+short	sysfnt_maxwchar;
+short	sysfnt_minhchar;
+short	sysfnt_maxhchar;
+short	sysfnt_faces;
+
 struct	xgdf_head *sysfnt08p = 0;
 struct	xgdf_head *sysfnt09p = 0;
 struct	xgdf_head *sysfnt10p = 0;

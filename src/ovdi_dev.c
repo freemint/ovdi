@@ -4,24 +4,25 @@
 #include "display.h"
 #include "libkern.h"
 #include "vdi_defs.h"
-#include "ovdi_dev.h"
+#include "ovdi_defs.h"
 #include "xcb.h"
 #include "std_driver.h"
 
-static OVDI_DRIVER *	ovdidev_open		(OVDI_DEVICE *dev, short dev_id);
-
-static long		ovdidev_close		(OVDI_DRIVER *drv);
-static unsigned char *	ovdidev_setpscreen	(OVDI_DRIVER *drv, unsigned char *scrnadr);
-static unsigned char *	ovdidev_setlscreen	(OVDI_DRIVER *drv, unsigned char *scrnadr);
-static void		ovdidev_setcolor	(OVDI_DRIVER *drv, short pen, RGB_LIST *colors);
-static void		ovdidev_vsync		(OVDI_DRIVER *drv);
-static void		ovdidev_vreschk		(short x, short y);
+static OVDI_DRIVER *	dev_open		(OVDI_DEVICE *dev);
+static long		dev_close		(OVDI_DRIVER *drv);
+static short		dev_set_vdi_res		(OVDI_DRIVER *drv, short scrndev_id);
+static short		dev_get_res_info	(OVDI_DRIVER *drv);
+static unsigned char *	dev_setpscreen		(OVDI_DRIVER *drv, unsigned char *scrnadr);
+static unsigned char *	dev_setlscreen		(OVDI_DRIVER *drv, unsigned char *scrnadr);
+static void		dev_setcolor		(OVDI_DRIVER *drv, short pen, RGB_LIST *colors);
+static void		dev_vsync		(OVDI_DRIVER *drv);
+static void		dev_vreschk		(short x, short y);
 
 static short	Load_Resolution(char *fname, short index, RESOLUTION *res);
-static short	change_resolution(OVDI_DRIVER *drv, RESOLUTION *res);
+static void	do_set_res(OVDI_DRIVER *drv, RESOLUTION *res);
 
 static short	boot_drive;
-int get_cookie(long tag, long *ret);
+//int get_cookie(long tag, long *ret);
 
 static OVDI_LIB	*lib;
 
@@ -33,13 +34,15 @@ static OVDI_DEVICE ovdidev =
 {
 	(long)"0.01",
 	ovdidev_name,
-	ovdidev_open,
-	ovdidev_close,
-	ovdidev_setpscreen,
-	ovdidev_setlscreen,
-	ovdidev_setcolor,
-	ovdidev_vsync,
-	ovdidev_vreschk,
+	dev_open,
+	dev_close,
+	dev_set_vdi_res,
+	dev_get_res_info,
+	dev_setpscreen,
+	dev_setlscreen,
+	dev_setcolor,
+	dev_vsync,
+	dev_vreschk,
 };
 
 static OVDI_DRIVER driver;
@@ -496,37 +499,19 @@ device_init(OVDI_LIB *l)
 };
 
 static OVDI_DRIVER *
-ovdidev_open(OVDI_DEVICE *dev, short dev_id)
+dev_open(OVDI_DEVICE *dev)
 {
-	XCB *x = xcb;
 	OVDI_DRIVER *drv = &driver;
-	RESOLUTION res;
-	short res_index;
-	char fname[] = "c:\\auto\\sta_vdi.bib\0";
 
-	if (dev_id == 1)
-		res_index = (unsigned char)x->resolution;
-	else
-		res_index = dev_id;
+	drv->dev	= dev;
 
-	if ( !(Load_Resolution((char *)&fname, res_index, &res)) )
-	{
-		res_index = 0;
-		if ( !(Load_Resolution((char *)&fname, res_index, &res)) )
-			return 0;
-	}
+	(void)dev_get_res_info(drv);
 
-	if (change_resolution(drv, &res))
-	{
-		drv->dev	= dev;
-		return drv;
-	}
-	else
-		return 0;
+	return drv;
 }
 
 static long
-ovdidev_close(OVDI_DRIVER *drv)
+dev_close(OVDI_DRIVER *drv)
 {
 	RESOLUTION res;
 	char fname[] = "c:\\auto\\emulator.bib\0";
@@ -534,25 +519,61 @@ ovdidev_close(OVDI_DRIVER *drv)
 	if ( !(Load_Resolution((char *)&fname, 0, &res)) )
 		return 0;
 
-	if ( change_resolution(drv, &res) )
-		return (long)drv;
-	else
-		return 0;
+	do_set_res(drv, &res);
+	(void)dev_get_res_info(drv);
 
-	return 0;
+	return (long)drv;
 }
 
 static short
-change_resolution(OVDI_DRIVER *drv, RESOLUTION *res)
+dev_set_vdi_res(OVDI_DRIVER *drv, short res_id)
+{
+	XCB *x = xcb;
+	short res_index;
+	RESOLUTION res;
+	char fname[] = "c:\\auto\\sta_vdi.bib\0";
+
+	if (res_id <= 0)
+	{
+		dev_get_res_info(drv);
+		return 0;
+	}
+	else if (res_id == 1)
+		res_index = (unsigned char)x->resolution;
+	else
+		res_index = res_id - 2;
+
+	if ( !(Load_Resolution((char *)&fname, res_index, &res)) )
+	{
+		res_index = 0;
+		if ( !(Load_Resolution((char *)&fname, res_index, &res)) )
+			return -1;
+	}
+
+	do_set_res(drv, &res);
+
+	(void)dev_get_res_info(drv);
+
+	return res_index;
+}
+
+static void
+do_set_res(OVDI_DRIVER *drv, RESOLUTION *res)
 {
 	XCB *x = xcb;
 	long tmp;
-	short fmt;
 
-	tmp =	(long)x->scr_base;
-	tmp -=	(long)x->base;
-
+	tmp	= (long)x->scr_base;
+	tmp	-= (long)x->base;
 	do_p_chres((long)x->p_chres, res, tmp);
+}
+
+/* WOOAHH - Fix the 'fmt' issue!! */
+static short
+dev_get_res_info(OVDI_DRIVER *drv)
+{
+	short fmt;
+	XCB *x = xcb;
 
 	drv->r.planes		= x->planes;
 	drv->r.bypl		= x->bypl;
@@ -572,6 +593,8 @@ change_resolution(OVDI_DRIVER *drv, RESOLUTION *res)
 	drv->r.lenght		= x->scrn_siz;
 	drv->r.base		= x->scr_base;
 	drv->r.flags		= R_IS_SCREEN | R_IN_VRAM;
+
+	fmt = *(short *)x->hw_flags;
 
 	if (drv->r.planes == 1)
 	{
@@ -649,15 +672,14 @@ change_resolution(OVDI_DRIVER *drv, RESOLUTION *res)
 	}
 	else
 	{
-		return 0;
+		return -1;
 	}
 
-	return 1;
+	return 0;
 }
 
-
 static unsigned char *
-ovdidev_setpscreen(OVDI_DRIVER *drv, unsigned char *scradr)
+dev_setpscreen(OVDI_DRIVER *drv, unsigned char *scradr)
 {
 	if (scradr < (unsigned char *)drv->vram_start)
 		return xcb->scr_base;
@@ -669,14 +691,14 @@ ovdidev_setpscreen(OVDI_DRIVER *drv, unsigned char *scradr)
 }
 
 static unsigned char *
-ovdidev_setlscreen(OVDI_DRIVER *drv, unsigned char *logscr)
+dev_setlscreen(OVDI_DRIVER *drv, unsigned char *logscr)
 {
 	*(long *)v_bas_ad = (long)logscr;
 	return logscr;
 }
 
 static void
-ovdidev_setcolor(OVDI_DRIVER *drv, short pen, RGB_LIST *colors)
+dev_setcolor(OVDI_DRIVER *drv, short pen, RGB_LIST *colors)
 {
 	unsigned char bcols[4];
 
@@ -690,7 +712,7 @@ ovdidev_setcolor(OVDI_DRIVER *drv, short pen, RGB_LIST *colors)
 }
 
 static void
-ovdidev_vsync(OVDI_DRIVER *drv)
+dev_vsync(OVDI_DRIVER *drv)
 {
 	do_p_vsync((long)xcb->p_vsync);
 	return;
@@ -700,7 +722,7 @@ ovdidev_vsync(OVDI_DRIVER *drv)
 * the mouse moves.
 */
 static void
-ovdidev_vreschk(short x, short y)
+dev_vreschk(short x, short y)
 {
 	do_p_chng_vrt((long)xcb->p_chng_vrt, x, y);
 	return;

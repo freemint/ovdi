@@ -9,4 +9,7 @@ COLINF * new_colinf		(RASTER *r);
 void	init_colinf		(RASTER *r, COLINF *c);
 void	clone_colinf		(COLINF *dst, COLINF *src);
 
+void	reschange_devtab	(DEV_TAB *dt, RASTER *r);
+void	reschange_inqtab	(INQ_TAB *it, RASTER *r);
+
 #endif	/* _OVDI_RASTERS_H */

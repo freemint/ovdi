@@ -2,7 +2,6 @@
 #define _STDDRV_8B_H
 
 #include "ovdi_defs.h"
-#include "ovdi_dev.h"
 
 extern pixel_blit dpf_8b[]; //draw_pixel dpf_8b[];
 extern pixel_blit rt_ops_8b[]; //draw_pixel rt_ops_8b[];

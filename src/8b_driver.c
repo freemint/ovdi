@@ -5,7 +5,6 @@
 #include "mouse.h"
 #include "mousedrv.h"
 #include "ovdi_defs.h"
-#include "ovdi_dev.h"
 #include "8b_driver.h"
 
 /* ******************************************************** */

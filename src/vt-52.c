@@ -1,3 +1,4 @@
+#include <osbind.h>
 
 #include "console.h"
 #include "draw.h"
@@ -6,10 +7,10 @@
 #include "gdf_text.h"
 #include "libkern.h"
 #include "ovdi_defs.h"
-#include "ovdi_dev.h"
 #include "ovdi_rasters.h"
 #include "ovdi_types.h"
 #include "rasters.h"
+#include "vbi.h"
 #include "vdi_defs.h"
 #include "vdi_globals.h"
 #include "../../sys/mint/arch/asm_spl.h"
@@ -24,9 +25,9 @@
 #define bell_hook	*(long *)(0x5ac)
 #define conterm		*(char *)(0x484)
 
-//static void change_resolution(CONSOLE *c, RASTER *r);
+static void set_vectors(void);
 
-EscFunc ctrl_codes[] =
+static EscFunc ctrl_codes[] =
 {
 	bell,
 	Esc_D, /*backspace*/
@@ -35,7 +36,7 @@ EscFunc ctrl_codes[] =
 	CarrigeReturn,
 };
 
-EscFunc	UC_escapes[] =
+static EscFunc	UC_escapes[] =
 {
 	Esc_A,
 	Esc_B,
@@ -57,7 +58,7 @@ EscFunc	UC_escapes[] =
 	Esc_nosys
 };
 
-EscFunc LC_escapes[] =
+static EscFunc LC_escapes[] =
 {
 	Esc_nosys,
 	Esc_b,
@@ -79,7 +80,7 @@ EscFunc LC_escapes[] =
 	Esc_nosys, Esc_nosys, Esc_nosys
 };
 
-char UC_escapeflags[] =
+static char UC_escapeflags[] =
 {
 	0, 0, 0, 0,
 	0, 0, 0, 0,
@@ -89,7 +90,7 @@ char UC_escapeflags[] =
 	0, 0, 0, 0,
 	1, 0
 };
-char LC_escapeflags[] =
+static char LC_escapeflags[] =
 {
 	0, 1, 1, 0,
 	0, 0, 0, 0,
@@ -114,23 +115,24 @@ static unsigned long pixelvalues[256];
 /* init console structure. All console functions will reference the
  * VIRTUAL structure passed here.
 */
-void
-init_console(VIRTUAL *v, LINEA_VARTAB *la)
+//void
+//init_console(VIRTUAL *v, LINEA_VARTAB *la)
+CONSOLE *
+init_console(OVDI_HWAPI *hw, RASTER *r, LINEA_VARTAB *la)
 {
 	CONSOLE *c = &console;
 	FONT_HEAD *f;
 
 	bzero(&console, sizeof(CONSOLE));
 
-
-	f	= sysfnt10p->font_head; //sysfnt10p;
+	f	= sysfnt09p->font_head; //sysfnt10p;
 	c->f	= f;
-	c->r	= v->raster;
-	c->drv	= v->driver;
+	c->r	= r;
+	c->drv	= hw->driver;
 	c->la	= la;
 
 	c->curs_hide_ct = 1;
-	c->tps = (*v->driver->get_vbitics)();
+	c->tps = (*hw->vbi->get_tics)();
 
 	/* console driver */
 	c->enter_console	= &console_enter;
@@ -163,10 +165,37 @@ init_console(VIRTUAL *v, LINEA_VARTAB *la)
 	la->scale = 0;
 	la->chup = 0;
 
-	change_console_resolution(c, v->raster);
+	change_console_resolution(c, r);
 
-	v->con = c;
+	return c;
+}
+
+void
+install_console_handlers(CONSOLE *c)
+{
+	set_constate(c, (long)&con_state_handler);
+	set_xconout_raw(c, (long)&rawcon_output);
+
+	(void)Supexec(set_vectors);
+
 	return;
+}
+
+static void
+set_vectors(void)
+{
+	short sr;
+
+	sr = spl7();
+	old_con_state	= con_state;
+	con_state 	= (long)&do_con_state;
+
+	old_xconout_console = xconout_console;
+	xconout_console = (long)&do_xconout_console;
+
+	old_xconout_raw = xconout_raw;
+	xconout_raw = (long)&do_xconout_raw;
+	spl(sr);
 }
 
 void
@@ -232,27 +261,6 @@ change_console_resolution(CONSOLE *c, RASTER *r)
 
 	la->textfg	= cinf->color_vdi2hw[1];
 	la->textbg	= cinf->color_vdi2hw[0];
-}
-
-void
-install_console_handlers(CONSOLE *c)
-{
-	short	sr;
-
-	set_constate(c, (long)&con_state_handler);
-	set_xconout_raw(c, (long)&rawcon_output);
-
-	sr = spl7();
-	old_con_state	= con_state;
-	con_state = (long)&do_con_state;
-
-	old_xconout_console = xconout_console;
-	xconout_console = (long)&do_xconout_console;
-
-	old_xconout_raw = xconout_raw;
-	xconout_raw = (long)&do_xconout_raw;
-	spl(sr);
-	return;
 }
 
 void
@@ -1062,10 +1070,19 @@ draw_text_cursor(CONSOLE *c)
 	cwidth = c->f->max_cell_width;
 	cheight = c->f->top + c->f->bottom + 1;
 
+#if 1
+	/* horizontal two-pixel line */
+	coords[0] = c->la->v_cur_x * cwidth;
+	coords[1] = ((c->la->v_cur_y + 1) * cheight) - 2;
+	coords[2] = coords[0] + cwidth - 1;
+	coords[3] = coords[1] + 2;
+#else
+	/* block */
 	coords[0] = c->la->v_cur_x * cwidth;
 	coords[1] = c->la->v_cur_y * cheight;
 	coords[2] = coords[0] + cwidth - 1;
 	coords[3] = coords[1] + cheight - 1;
+#endif
 
 	c->pattern.wrmode = MD_XOR - 1;
 	rectfill( r, c->colinf, (VDIRECT *)&coords, (VDIRECT *)&r->x1, &c->pattern, FIS_SOLID);

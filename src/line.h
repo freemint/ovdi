@@ -3,7 +3,7 @@
 
 #include "vdi_defs.h"
 #include "ovdi_defs.h"
-#include "ovdi_dev.h"
+
 short code (POINT *input, VDIRECT *clip);
 short clip_line (VDIRECT *input, VDIRECT *clip);
 

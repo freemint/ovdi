@@ -16,6 +16,7 @@ typedef struct gdfso GDFSO;
 
 long	load_font		( char *fn, long *flen, long *fadr );
 void	fixup_font		( FONT_HEAD *font );
+void	init_systemfonts	( SIZ_TAB *st, DEV_TAB *dt);
 short	add_font		( XGDF_HEAD *start, XGDF_HEAD *new );
 short	find_fontbyindex	( XGDF_HEAD *start, short index, long *ret);
 short	find_fontbypoint	( XGDF_HEAD *start, short id, short point, long *ret );

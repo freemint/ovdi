@@ -16,7 +16,6 @@
 #include "memory.h"
 #include "mousedrv.h"
 #include "ovdi_defs.h"
-#include "ovdi_dev.h"
 #include "ovdi_rasters.h"
 #include "polygon.h"
 #include "rasters.h"
@@ -35,9 +34,7 @@
 
 
 static void change_resolution(VIRTUAL *v);
-static void reschange_devtab(DEV_TAB *, RASTER *);
 static void update_devtab(DEV_TAB *, VIRTUAL *);
-static void reschange_inqtab(INQ_TAB *, RASTER *);
 static void update_inqtab(INQ_TAB *, VIRTUAL *);
 static void update_siztab(SIZ_TAB *, VIRTUAL *);
 static void prepare_stdreturn( VDIPB *, VIRTUAL *);
@@ -47,6 +44,7 @@ static void get_MiNT_info(VIRTUAL *);
 static void setup_virtual(VDIPB *, VIRTUAL *, VIRTUAL *);
 static void setup_fonts(VIRTUAL *, SIZ_TAB *, DEV_TAB *);
 
+#if 0
 /* Keep a 'root' color info structure */
 static COLINF colinf;
 static short vdi2hw[256];
@@ -54,9 +52,10 @@ static short hw2vdi[256];
 static RGB_LIST request_rgb[256];
 static RGB_LIST actual_rgb[256];
 static unsigned long pixelvalues[256];
+#endif
 
 void
-v_opnwk(VDIPB *pb, VIRTUAL *wk, VIRTUAL *lawk, struct ovdi_device *dev)
+v_opnwk(VDIPB *pb, VIRTUAL *wk, VIRTUAL *lawk, OVDI_HWAPI *hwapi) //struct ovdi_device *dev)
 {
 	short i, vdidev_id;
 	OVDI_DRIVER *drv;
@@ -75,30 +74,30 @@ v_opnwk(VDIPB *pb, VIRTUAL *wk, VIRTUAL *lawk, struct ovdi_device *dev)
 		goto error;
 	}
 
-	log("Opening physical ID %d\n", vdidev_id);
-
 	MiNT = get_cookie((long)0x4d694e54/*"MiNT"*/, 0);
 
 	if (v_vtab[1].v)
 	{
 		scrnlog("This should absolutely NOT happen, I think\n");
-		log("This should absolutely NOT happen, I think\n");
+		//log("This should absolutely NOT happen, I think\n");
 		prepare_stdreturn(pb, wk);
 		goto error;
 	}
 
-	if (wk->handle)
-	{
-		exit_console(wk->con);
-	}
+	exit_console(hwapi->console);
 
-	drv = (*dev->open)(dev, vdidev_id);
+	drv	= hwapi->driver;
 
 	if (drv)
 	{
+		OVDI_DEVICE *dev;
 		short vdipen;
 		RASTER *r;
 		COLINF *c;
+
+		dev = drv->dev;		
+
+		(void)(*dev->set_vdires)(drv, vdidev_id);
 
 		r = (RASTER *)&drv->r;
 		wk->driver = drv;
@@ -107,15 +106,7 @@ v_opnwk(VDIPB *pb, VIRTUAL *wk, VIRTUAL *lawk, struct ovdi_device *dev)
 
 		init_raster(drv, r);
 
-		c = &colinf;
-		if (!wk->handle)
-		{
-			c->color_vdi2hw = (short *)&vdi2hw;
-			c->color_hw2vdi = (short *)&hw2vdi;
-			c->pixelvalues = (unsigned long *)&pixelvalues;
-			c->request_rgb = (RGB_LIST *)&request_rgb;
-			c->actual_rgb = (RGB_LIST *)&actual_rgb;
-		}
+		c = hwapi->colinf;
 
 		wk->raster = r;
 		wk->colinf = c;
@@ -127,10 +118,7 @@ v_opnwk(VDIPB *pb, VIRTUAL *wk, VIRTUAL *lawk, struct ovdi_device *dev)
 
 		change_resolution(wk);
 
-		if (wk->handle)
-		{
-			change_console_resolution(wk->con, r);
-		}
+		change_console_resolution(hwapi->console, r);
 
 		if (r->clut)
 		{
@@ -141,29 +129,16 @@ v_opnwk(VDIPB *pb, VIRTUAL *wk, VIRTUAL *lawk, struct ovdi_device *dev)
 			}
 		}
 
-	/* Check for available color indipendant driver services */
-		if (!drv->add_vbifunc) /* Check if driver has VBI api, if not, use generic built in stuff */
-		{
-			init_vbi();
-			drv->get_vbitics = get_vbitics;
-			drv->add_vbifunc = add_vbi_function;
-			drv->remove_vbifunc = remove_vbi_function;
-			drv->reset_vbi = reset_vbi;
-			drv->enable_vbi = enable_vbi;
-			drv->disable_vbi = disable_vbi;
-		}
-
 	/* Set physical/logical screen addresses */
 		r->base = (*dev->setpscr)(drv, r->base);
 		drv->log_base = (*dev->setlscr)(drv, r->base);
 		*(long *)v_bas_ad = (long)r->base;
 
-	/* Init Mouse/Keyboard device driver */
-		wk->mouseapi = init_mouse(wk, linea_vars);
-		wk->kbdapi = init_keyboard(wk);
-
-	/* install the time/interrupt specific thigns */
-		wk->timeapi = init_time(wk, linea_vars);
+		wk->mouseapi	= hwapi->mouse;
+		wk->kbdapi	= hwapi->keyboard;
+		wk->timeapi	= hwapi->time;
+		wk->vbiapi	= hwapi->vbi;
+		wk->con		= hwapi->console;
 
 		if (!wk->handle)
 			setup_fonts(wk, &SIZ_TAB_rom, &DEV_TAB_rom);
@@ -177,36 +152,17 @@ v_opnwk(VDIPB *pb, VIRTUAL *wk, VIRTUAL *lawk, struct ovdi_device *dev)
 
 		if (!wk->handle)
 		{
-		/* Make a copy of VIRTUAL for the linea and console (VT-52) to use */
-			*lawk = *wk;
-			wk->lawk = lawk;
-			lvs_clip(lawk, 0, 0);
-			init_console(wk->lawk, linea_vars);
-			wk->con = wk->lawk->con;
-
-		/* Init the console driver (VT-52) */
-			//init_console(wk->lawk, linea_vars);	/* !! This depends on systemfonts being fixedup, done in setup_virtual() */
-
-		/* Install some vectors */
-			set_linea_vector();
-			install_console_handlers(wk->con);
 			enable_xbios(wk);
 		}
 
 	/* Let mousedriver know about resolution */
 		(*wk->mouseapi->setxmfres)(wk->raster, wk->colinf);
-
-	/* Setup more LineA stuff */
-		init_linea_vartab(wk, linea_vars);
 	/* Add the mousecursor rendering function to VBI */
-		(*drv->add_vbifunc)((unsigned long)wk->mouseapi->housekeep, 0);
-	/* Add consoles textcursor blinker to VBI */
-		if (!wk->handle)
-			(*drv->add_vbifunc)((unsigned long)wk->con->textcursor_blink, 25);
+		(*wk->vbiapi->add_func)((unsigned long)wk->mouseapi->housekeep, 0);
 
 	/* Enable things ... */
 		(*wk->timeapi->enable)();
-		(*drv->enable_vbi)();
+		(*wk->vbiapi->enable)();
 		(*wk->mouseapi->enable)();
 
 		get_MiNT_info(wk);
@@ -222,6 +178,7 @@ v_opnwk(VDIPB *pb, VIRTUAL *wk, VIRTUAL *lawk, struct ovdi_device *dev)
 		prepare_stdreturn(pb, wk);
 
 		(*wk->mouseapi->enablemcurs)();
+
 	}
 	else
 error:	{
@@ -288,34 +245,7 @@ change_resolution(VIRTUAL *v)
 	ptrn->mask = 0xffff;
 	ptrn->data = &SOLID;
 }
-static void
-reschange_devtab(DEV_TAB *dt, RASTER *r)
-{
-	unsigned long palettesize;
 
-	dt->xres	= r->w - 1;
-	dt->yres	= r->h - 1;
-	dt->wpixel	= r->wpixel;
-	dt->hpixel	= r->hpixel;
-
-	if (r->planes == 1)
-		dt->cancolor = 0;
-	else
-		dt->cancolor = 1;
-
-	if (r->planes < 8)
-		dt->colors = 1 << r->planes;
-	else
-		dt->colors = 256;
-
-	palettesize = (long)r->rgb_levels.red * (long)r->rgb_levels.green * (long)r->rgb_levels.blue;
-
-	if (palettesize > 32767UL)
-		dt->palette = 0;
-	else
-		dt->palette = (unsigned short)palettesize;
-
-}
 static void
 update_devtab(DEV_TAB *dt, VIRTUAL *v)
 {
@@ -326,12 +256,6 @@ static void
 update_siztab(SIZ_TAB *st, VIRTUAL *v)
 {
 	return;
-}
-static void
-reschange_inqtab(INQ_TAB *it, RASTER *r)
-{
-	it->planes	= r->planes;
-	it->lut		= r->clut;
 }
 static void
 update_inqtab(INQ_TAB *it, VIRTUAL *v)
@@ -446,6 +370,7 @@ v_opnvwk(VDIPB *pb, VIRTUAL *v)
 			new->kbdapi	= root->kbdapi;
 			new->mouseapi	= root->mouseapi;
 			new->timeapi	= root->timeapi;
+			new->vbiapi	= root->vbiapi;
 
 			setup_virtual(pb, new, root);
 			lvst_load_fonts(new);
@@ -477,11 +402,10 @@ v_clswk( VDIPB *pb, VIRTUAL *root)
 	if (root->root)
 	{
 		scrnlog("Cannot close physical with virtual handle!!!!\n");
-		log("Cannot close physical with virtual handle!!!!\n");
+		//log("Cannot close physical with virtual handle!!!!\n");
 		return;
 	}
 
-	log("%s is Closing physical\n", root->procname);
 	lvs_clip(root, 0, 0);
 
 	/* Make sure that all virtual workstations are closed */
@@ -512,9 +436,9 @@ v_clswk( VDIPB *pb, VIRTUAL *root)
 		(*root->timeapi->reset_user_tim)();
 		(*root->timeapi->reset_next_tim)();
 	/* remove consoles textcursor blinker from VBI */
-	//	(*root->driver->f.remove_vbifunc)((unsigned long)root->con->textcursor_blink);
+	//	(*root->vbiapi->del_func)((unsigned long)root->con->textcursor_blink);
 	/* remove the mousecursor rendering function from VBI */
-		(*root->driver->remove_vbifunc)((unsigned long)root->mouseapi->housekeep);
+		(*root->vbiapi->del_func)((unsigned long)root->mouseapi->housekeep);
 
  /* ANY MEMORY ALLOCATED FOR THE PROCESS THAT OPENED THE PHYSICAL */
  /* MUST NOW BE RELEASED!!! */
@@ -601,7 +525,7 @@ vq_extnd( VDIPB *pb, VIRTUAL *v)
 		}
 		case 2:
 		{
-			log("doing scrninfreturn for %s!\n", v->procname);
+			scrnlog("doing scrninfreturn for %s!\n", v->procname);
 			prepare_scrninfreturn(pb, v);
 			break;
 		}
@@ -879,10 +803,6 @@ char sysfnames[] =
 	"\0"
 };
 
-extern char systemfont08[];
-extern char systemfont09[];
-extern char systemfont10[];
-
 static void
 setup_virtual(VDIPB *pb, VIRTUAL *v, VIRTUAL *root)
 {
@@ -972,20 +892,26 @@ setup_virtual(VDIPB *pb, VIRTUAL *v, VIRTUAL *root)
 /* Only to be executed for the physical workstation. Also updates the
  * INQ tab associated with that physical workstation.
 */
+static short fonts_is_loaded = 0;
+
 static void
 setup_fonts(VIRTUAL *v, SIZ_TAB *st, DEV_TAB *dt)
 {
-	if (!sysfnt08p)
+	if (!fonts_is_loaded)
 	{
 		short i;
 		long size;
 		char *fnptrs, *fnptrd, *fdnptr;
 		char fname[40];
-		FONT_HEAD *f1;
 		XGDF_HEAD *xf;
 
-		st->minwchar = st->minhchar = 0x7fff;
-		st->maxwchar = st->maxhchar = 0;
+		fonts_is_loaded = 1;
+
+	/* I know this is not needed here right now .. but later? */
+		st->minwchar = sysfnt_minwchar;
+		st->maxwchar = sysfnt_maxwchar;
+		st->minhchar = sysfnt_minhchar;
+		st->maxhchar = sysfnt_maxhchar;
 
 		v->font.pts	= 0;
 		v->font.chup	= 0;
@@ -993,41 +919,7 @@ setup_fonts(VIRTUAL *v, SIZ_TAB *st, DEV_TAB *dt)
 		v->font.sclsts	= 0;
 		v->font.scratch_head = 0;
 
-		v->font.num	= 1;
-
-		f1 = (FONT_HEAD *)&systemfont08;
-		xf = &xsystemfont08;
-		xf->links = 1;
-		xf->font_head = f1;
-		for (i = 0; i < 256; i++)
-			xf->cache[i] = 0;
-		fixup_font(f1);
-		sysfnt08p = xf; //f1;
-		f1->id = 1;
-
-		f1 = (FONT_HEAD *)&systemfont09;
-		xf = &xsystemfont09;
-		xf->links = 1;
-		xf->font_head = f1;
-		for (i = 0; i < 256; i++)
-			xf->cache[i] = 0;
-		fixup_font(f1);
-		sysfnt09p = xf; //f1;
-		f1->id = 1;
-		if ((add_font(sysfnt08p, xf)) == 1) //f1)) == 1)
-			v->font.num++;
-
-		f1 = (FONT_HEAD *)&systemfont10;
-		xf = &xsystemfont10;
-		xf->links = 1;
-		xf->font_head = f1;
-		for (i = 0; i < 256; i++)
-			xf->cache[i] = 0;
-		fixup_font(f1);
-		sysfnt10p = xf; //f1;
-		f1->id = 1;
-		if ((add_font(sysfnt08p, xf)) == 1) //f1)) == 1)
-			v->font.num++;
+		v->font.num	= sysfnt_faces;
 
 		v->fring = sysfnt08p;
 		v->font.defid = sysfnt10p->font_head->id;
@@ -1052,7 +944,7 @@ setup_fonts(VIRTUAL *v, SIZ_TAB *st, DEV_TAB *dt)
 
 				*fnptrd++ = *fnptrs++;
 
-				if (!load_font(&fname[0], &size, (long *)&xf)) //f1))
+				if (!load_font(&fname[0], &size, (long *)&xf))
 				{
 					fixup_font(xf->font_head); //f1);
 
@@ -1061,12 +953,12 @@ setup_fonts(VIRTUAL *v, SIZ_TAB *st, DEV_TAB *dt)
 
 					if (v->font.loaded)
 					{
-						if ((add_font(v->font.loaded, xf)) == 1) //f1)) == 1)
+						if ((add_font(v->font.loaded, xf)) == 1)
 							v->font.lcount++;
 					}
 					else
 					{
-						v->font.loaded = xf; //f1;
+						v->font.loaded = xf;
 						v->font.lcount++;
 					}
 
@@ -1079,39 +971,7 @@ setup_fonts(VIRTUAL *v, SIZ_TAB *st, DEV_TAB *dt)
 					break;
 			}
 		}
-		//log("Loaded %d fontfaces\n", v->font.lcount);
-
-		//log("*** Font-ring (sysfonts): ***\n");
-		xf = sysfnt08p; //f1 = sysfnt08p;
-		while(xf) //f1)
-		{
-			f1 = xf->font_head;
-			//log("  id %d, point %d, height %d, name %s\n", f1->id, f1->point, f1->top, f1->name);
-
-			if (f1->max_char_width < st->minwchar)
-				st->minwchar = f1->max_char_width;
-			if (f1->max_char_width > st->maxwchar)
-				st->maxwchar = f1->max_char_width;
-
-			if (f1->top < st->minhchar)
-				st->minhchar = f1->top;
-			if (f1->top > st->maxhchar)
-				st->maxhchar = f1->top;
-
-			xf = xf->next; //f1 = f1->next;
-		}
-		//log("*** Loaded fonts: ***\n");
-		xf = v->font.loaded; //f1 = v->font.loaded;
-		while(xf)
-		{
-			f1 = xf->font_head;
-			//log("  id %d, point %d, height %d, name %s\n", f1->id, f1->point, f1->top, f1->name);
-			xf = xf->next;
-		}
-
-		dt->faces = v->font.num;
-
-		//log("\n");
 	}
 	return;
 }
+

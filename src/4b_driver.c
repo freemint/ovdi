@@ -1,5 +1,4 @@
 #include "ovdi_defs.h"
-#include "ovdi_dev.h"
 #include "4b_driver.h"
 
 void dlp_TRNS_c00_4b(unsigned char *addr, long data);

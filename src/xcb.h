@@ -10,7 +10,7 @@
 /* den Registern d0-d2, Zeiger in den Registern a0-a1 */
 struct xcb
 {
-	unsigned long	version;
+	long	version;
 	unsigned char	resolution;
 	unsigned char	blnk_time;
 	unsigned char	ms_speed;
@@ -48,12 +48,13 @@ struct xcb
 	char		name[36];
 	unsigned long	mem_size;
 
-	unsigned char	hw_flags[4]; //format;
+	/* This stuff below here is only there from version 1.20!! */
+	char		hw_flags[8];	/* Four card-dependant bytes */
 	short		cpu;
 	void		(*set_gamma)(unsigned char *gamma);
 	short		gamma_able;
 	short		gamma_rgb[3];
-	unsigned short	*mem_reg;
+	unsigned char	*mem_reg;
 };
 typedef struct xcb XCB;
 

@@ -1,11 +1,43 @@
+/*
+s 15, d 3, w 1, h 18
+2, shift 12, hb 1, eb 0, g 0, sp 3, bm 8, em f
+s 15, d 3, w 1, h 65
+2, shift 12, hb 1, eb 0, g 0, sp 3, bm 8, em f
+s 15, d 3, w 1, h 36
+2, shift 12, hb 1, eb 0, g 0, sp 3, bm 8, em f
+
+s 7, d 11, w 8, h 18
+3, shift 4, hb 5, eb 3, g 0, sp 0, bm f800, em 7
+s 7, d 11, w 8, h 65
+3, shift 4, hb 5, eb 3, g 0, sp 0, bm f800, em 7
+s 7, d 11, w 8, h 36
+3, shift 4, hb 5, eb 3, g 0, sp 0, bm f800, em 7
+
+s 15, d 3, w 8, h 18
+2, shift 12, hb 8, eb 0, g 0, sp 10, bm 7f8, em 7ff
+s 15, d 3, w 8, h 65
+2, shift 12, hb 8, eb 0, g 0, sp 10, bm 7f8, em 7ff
+s 15, d 3, w 8, h 36
+2, shift 12, hb 8, eb 0, g 0, sp 10, bm 7f8, em 7ff 
+
+
+
+s 15, d 3, w 1, h 18
+2, shift 12, hb 1, eb 0, g 0, sp 3, bm 8, em f
+
+s 15, d 3, w 8, h 18
+2, shift 12, hb 8, eb 0, g 0, sp 10, bm 7f8, em 7ff
+
+*/
 
 #include "display.h"
 #include "linea.h"
 #include "mouse.h"
 #include "mousedrv.h"
 #include "ovdi_defs.h"
-#include "ovdi_dev.h"
 #include "1b_driver.h"
+
+//extern short logit;
 
 /* ******************************************************** */
 /* *************** DIFFERENT WRMODES **************** */
@@ -493,6 +525,14 @@ raster_blit rops_1b[] =
 	0,	/* rb_ALL_BLACK*/
 };
 
+/*
+s 15, d 3, w 1, h 18
+2, shift 12, hb 1, eb 0, g 0, sp 3, bm 8, em f
+
+s 15, d 3, w 8, h 18
+2, shift 12, hb 8, eb 0, g 0, sp 10, bm 7f8, em 7ff
+
+*/
 static void
 rb_S_ONLY(ROP_PB *rpb)
 {
@@ -547,7 +587,8 @@ rb_S_ONLY(ROP_PB *rpb)
 			{
 				hbits = width + hbits;
 				groups = ebits = 0;
-				begmask &= endmask;
+				if (width)
+					begmask &= endmask;
 			}
 			else if (width > 15)
 			{
@@ -559,6 +600,7 @@ rb_S_ONLY(ROP_PB *rpb)
 				groups = 0;
 				ebits = width;
 			}
+
 			for (; height > 0; height--)
 			{
 				s = src;
@@ -586,7 +628,8 @@ rb_S_ONLY(ROP_PB *rpb)
 			{
 				hbits = width + hbits;
 				groups = ebits = 0;
-				begmask &= endmask;
+				if (width)
+					begmask &= endmask;
 			}
 			else if (width > 15)
 			{
@@ -599,8 +642,6 @@ rb_S_ONLY(ROP_PB *rpb)
 				ebits = width;
 			}
 
-			spans = s_shift + width; //(16 - s_shift) + width; //ebits - shift;
-
 			for (; height > 0; height--)
 			{
 				s = src;
@@ -609,7 +650,7 @@ rb_S_ONLY(ROP_PB *rpb)
 				if (hbits)
 				{
 					data = *s-- >> shift;
-					if (spans > 16)
+					if ((s_shift + hbits) > 16) //spans > 16)
 						data |= *s << (16 - shift);
 					*d-- = (data & begmask) | (*d & ~ begmask);
 
@@ -628,7 +669,7 @@ rb_S_ONLY(ROP_PB *rpb)
 				if (ebits)
 				{
 					data = *s-- >> shift;
-					if ((spans & 0xf) < ebits)
+					if (s_shift + ebits > 16) //spans < ebits)
 						data |= *s << (16 - shift);
 					*d-- = (data & endmask) | (*d & ~endmask);
 				}
@@ -651,7 +692,8 @@ rb_S_ONLY(ROP_PB *rpb)
 			{
 				hbits = width + hbits;
 				groups = ebits = 0;
-				begmask &= endmask;
+				if (width)
+					begmask &= endmask;
 			}
 			else if (width > 15)
 			{
@@ -743,7 +785,8 @@ rb_S_ONLY(ROP_PB *rpb)
 			{
 				hbits = width + hbits;
 				groups = ebits = 0;
-				begmask &= endmask;
+				if (width)
+					begmask &= endmask;
 			}
 			else if (width > 15)
 			{
@@ -782,7 +825,8 @@ rb_S_ONLY(ROP_PB *rpb)
 			{
 				hbits = width + hbits;
 				groups = ebits = 0;
-				begmask &= endmask;
+				if (width)
+					begmask &= endmask;
 			}
 			else if (width > 15)
 			{
@@ -849,7 +893,8 @@ rb_S_ONLY(ROP_PB *rpb)
 			{
 				hbits = width + hbits;
 				groups = ebits = 0;
-				begmask &= endmask;
+				if (width)
+					begmask &= endmask;
 			}
 			else if (width > 15)
 			{
@@ -873,7 +918,7 @@ rb_S_ONLY(ROP_PB *rpb)
 				{
 					data = *s++ << shift;
 
-					if (spans > 16)
+					if ((s_shift + hbits) > 16) //spans > 16)
 						data |= *s >> (16 - shift); //spans;
 
 					*d++ = (data & begmask) | (*d & ~begmask);
@@ -891,7 +936,7 @@ rb_S_ONLY(ROP_PB *rpb)
 				{
 					data = *s++ << shift;
 
-					if ((spans & 0xf) < ebits)
+					if ((s_shift + ebits) > 16) //(spans & 0xf) < ebits)
 						data |= *s >> (16 - shift);
 
 					*d++ = (data & endmask) | (*d & ~endmask);
@@ -960,7 +1005,8 @@ rb_S_XOR_D(ROP_PB *rpb)
 			{
 				hbits = width + hbits;
 				groups = ebits = 0;
-				begmask &= endmask;
+				if (width)
+					begmask &= endmask;
 			}
 			else if (width > 15)
 			{
@@ -999,7 +1045,8 @@ rb_S_XOR_D(ROP_PB *rpb)
 			{
 				hbits = width + hbits;
 				groups = ebits = 0;
-				begmask &= endmask;
+				if (width)
+					begmask &= endmask;
 			}
 			else if (width > 15)
 			{
@@ -1012,8 +1059,6 @@ rb_S_XOR_D(ROP_PB *rpb)
 				ebits = width;
 			}
 
-			spans = s_shift + width; //(16 - s_shift) + width; //ebits - shift;
-
 			for (; height > 0; height--)
 			{
 				s = src;
@@ -1022,7 +1067,7 @@ rb_S_XOR_D(ROP_PB *rpb)
 				if (hbits)
 				{
 					data = *s-- >> shift;
-					if (spans > 16)
+					if ((s_shift + hbits) > 16)
 						data |= *s << (16 - shift);
 					*d-- = ((*d ^ data) & begmask) | (*d & ~ begmask);
 
@@ -1041,7 +1086,7 @@ rb_S_XOR_D(ROP_PB *rpb)
 				if (ebits)
 				{
 					data = *s-- >> shift;
-					if ((spans & 0xf) < ebits)
+					if ((s_shift + ebits) > 16)
 						data |= *s << (16 - shift);
 					*d-- = ((*d ^ data) & endmask) | (*d & ~endmask);
 				}
@@ -1064,7 +1109,8 @@ rb_S_XOR_D(ROP_PB *rpb)
 			{
 				hbits = width + hbits;
 				groups = ebits = 0;
-				begmask &= endmask;
+				if (width)
+					begmask &= endmask;
 			}
 			else if (width > 15)
 			{
@@ -1156,7 +1202,8 @@ rb_S_XOR_D(ROP_PB *rpb)
 			{
 				hbits = width + hbits;
 				groups = ebits = 0;
-				begmask &= endmask;
+				if (width)
+					begmask &= endmask;
 			}
 			else if (width > 15)
 			{
@@ -1195,7 +1242,8 @@ rb_S_XOR_D(ROP_PB *rpb)
 			{
 				hbits = width + hbits;
 				groups = ebits = 0;
-				begmask &= endmask;
+				if (width)
+					begmask &= endmask;
 			}
 			else if (width > 15)
 			{
@@ -1262,7 +1310,8 @@ rb_S_XOR_D(ROP_PB *rpb)
 			{
 				hbits = width + hbits;
 				groups = ebits = 0;
-				begmask &= endmask;
+				if (width)
+					begmask &= endmask;
 			}
 			else if (width > 15)
 			{
@@ -1275,8 +1324,6 @@ rb_S_XOR_D(ROP_PB *rpb)
 				ebits = width;
 			}
 
-			spans = s_shift + width;
-
 			for (; height > 0; height--)
 			{
 				s = src;
@@ -1286,8 +1333,8 @@ rb_S_XOR_D(ROP_PB *rpb)
 				{
 					data = *s++ << shift;
 
-					if (spans > 16)
-						data |= *s >> (16 - shift); //spans;
+					if ((s_shift + hbits) > 16)
+						data |= *s >> (16 - shift);
 
 					*d++ = ((*d ^ data) & begmask) | (*d & ~begmask);
 				}
@@ -1304,7 +1351,7 @@ rb_S_XOR_D(ROP_PB *rpb)
 				{
 					data = *s++ << shift;
 
-					if ((spans & 0xf) < ebits)
+					if ((s_shift + ebits) > 16)
 						data |= *s >> (16 - shift);
 
 					*d++ = ((*d ^ data) & endmask) | (*d & ~endmask);
@@ -1371,7 +1418,8 @@ rb_S_OR_D(ROP_PB *rpb)
 			{
 				hbits = width + hbits;
 				groups = ebits = 0;
-				begmask &= endmask;
+				if (width)
+					begmask &= endmask;
 			}
 			else if (width > 15)
 			{
@@ -1410,7 +1458,8 @@ rb_S_OR_D(ROP_PB *rpb)
 			{
 				hbits = width + hbits;
 				groups = ebits = 0;
-				begmask &= endmask;
+				if (width)
+					begmask &= endmask;
 			}
 			else if (width > 15)
 			{
@@ -1423,8 +1472,6 @@ rb_S_OR_D(ROP_PB *rpb)
 				ebits = width;
 			}
 
-			spans = s_shift + width; //(16 - s_shift) + width; //ebits - shift;
-
 			for (; height > 0; height--)
 			{
 				s = src;
@@ -1433,7 +1480,7 @@ rb_S_OR_D(ROP_PB *rpb)
 				if (hbits)
 				{
 					data = *s-- >> shift;
-					if (spans > 16)
+					if ((s_shift + hbits) > 16)
 						data |= *s << (16 - shift);
 					*d-- = ((*d | data) & begmask) | (*d & ~ begmask);
 
@@ -1452,7 +1499,7 @@ rb_S_OR_D(ROP_PB *rpb)
 				if (ebits)
 				{
 					data = *s-- >> shift;
-					if ((spans & 0xf) < ebits)
+					if ((s_shift + ebits) > 16)
 						data |= *s << (16 - shift);
 					*d-- = ((*d | data) & endmask) | (*d & ~endmask);
 				}
@@ -1475,7 +1522,8 @@ rb_S_OR_D(ROP_PB *rpb)
 			{
 				hbits = width + hbits;
 				groups = ebits = 0;
-				begmask &= endmask;
+				if (width)
+					begmask &= endmask;
 			}
 			else if (width > 15)
 			{
@@ -1567,7 +1615,8 @@ rb_S_OR_D(ROP_PB *rpb)
 			{
 				hbits = width + hbits;
 				groups = ebits = 0;
-				begmask &= endmask;
+				if (width)
+					begmask &= endmask;
 			}
 			else if (width > 15)
 			{
@@ -1606,7 +1655,8 @@ rb_S_OR_D(ROP_PB *rpb)
 			{
 				hbits = width + hbits;
 				groups = ebits = 0;
-				begmask &= endmask;
+				if (width)
+					begmask &= endmask;
 			}
 			else if (width > 15)
 			{
@@ -1673,7 +1723,8 @@ rb_S_OR_D(ROP_PB *rpb)
 			{
 				hbits = width + hbits;
 				groups = ebits = 0;
-				begmask &= endmask;
+				if (width)
+					begmask &= endmask;
 			}
 			else if (width > 15)
 			{
@@ -1686,8 +1737,6 @@ rb_S_OR_D(ROP_PB *rpb)
 				ebits = width;
 			}
 
-			spans = s_shift + width;
-
 			for (; height > 0; height--)
 			{
 				s = src;
@@ -1697,7 +1746,7 @@ rb_S_OR_D(ROP_PB *rpb)
 				{
 					data = *s++ << shift;
 
-					if (spans > 16)
+					if ((s_shift + hbits) > 16)
 						data |= *s >> (16 - shift); //spans;
 
 					*d++ = ((*d | data) & begmask) | (*d & ~begmask);
@@ -1715,7 +1764,7 @@ rb_S_OR_D(ROP_PB *rpb)
 				{
 					data = *s++ << shift;
 
-					if ((spans & 0xf) < ebits)
+					if ((s_shift + ebits) > 16)
 						data |= *s >> (16 - shift);
 
 					*d++ = ((*d | data) & endmask) | (*d & ~endmask);

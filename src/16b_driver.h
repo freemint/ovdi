@@ -2,7 +2,6 @@
 #define _STDDRV_16B_H
 
 #include "ovdi_defs.h"
-#include "ovdi_dev.h"
 
 extern pixel_blit dpf_16b[];
 extern pixel_blit rt_ops_16b[];

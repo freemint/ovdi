@@ -17,6 +17,12 @@ typedef	struct cookie COOKIE;
 #endif
 #define CJAR	((struct cookie **)0x5A0L);
 
+extern short	sysfnt_minwchar;
+extern short	sysfnt_maxwchar;
+extern short	sysfnt_minhchar;
+extern short	sysfnt_maxhchar;
+extern short	sysfnt_faces;
+
 extern	struct xgdf_head *sysfnt08p;
 extern	struct xgdf_head *sysfnt09p;
 extern	struct xgdf_head *sysfnt10p;

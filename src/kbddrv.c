@@ -13,7 +13,7 @@ static long		get_kbd_state(void);
 KBDAPI	kapi;
 
 KBDAPI *
-init_keyboard( VIRTUAL *v )
+init_keyboard( void )
 {
 	KBDAPI *k = &kapi;
 

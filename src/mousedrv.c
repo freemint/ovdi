@@ -24,7 +24,6 @@ used to render the mouse cursor/graphics onscreen.
 #include "mouse.h"
 #include "mousedrv.h"
 #include "ovdi_defs.h"
-#include "ovdi_dev.h"
 #include "ovdi_types.h"
 #include "../../sys/mint/arch/asm_spl.h"
 
@@ -120,7 +119,7 @@ static short arrow_cdb[] =
 *  own things.
 */
 MOUSEAPI *
-init_mouse(VIRTUAL *v, LINEA_VARTAB *la)
+init_mouse(OVDI_DRIVER *drv, LINEA_VARTAB *la)
 {
 	XMFORM *xmf;
 	XMSAVE *xms;
@@ -173,11 +172,11 @@ init_mouse(VIRTUAL *v, LINEA_VARTAB *la)
 	m->absmovmcurs	= m_abs_move;		//mouse_absolute_move;
 	m->butchg	= m_but_chg;			//mouse_buttons_change;
 
-	m->vreschk	= v->driver->dev->vreschk;
+	m->vreschk	= drv->dev->vreschk;
+
 /* Gather necessary info about the graphics, and install the 'mouse rendering' (layer 3)
  * part of the threesome.
 */
-	//set_xmf_res(v->raster);
 	set_new_mform((MFORM *)&arrow_cdb);
 
  /* setup stuff in the Line A variable table */

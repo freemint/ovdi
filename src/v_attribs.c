@@ -3,7 +3,6 @@
 #include "draw.h"
 #include "vdi_defs.h"
 #include "ovdi_defs.h"
-#include "ovdi_dev.h"
 #include "vdi_globals.h"
 #include "v_attribs.h"
 #include "v_fill.h"

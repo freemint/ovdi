@@ -3,6 +3,7 @@
 #include "fonts.h"
 #include "gdf_defs.h"
 #include "vdi_defs.h"
+#include "vdi_globals.h"
 
 char fonts_buffer[];
 char *nextfont = (char *)&fonts_buffer;
@@ -104,6 +105,86 @@ fixup_font( FONT_HEAD *font )
 	font->font_seg = 0;
 
 	return;
+}
+
+/* Set up the system font */
+extern char systemfont08[];
+extern char systemfont09[];
+extern char systemfont10[];
+
+void
+init_systemfonts(SIZ_TAB *st, DEV_TAB *dt)
+{
+	short i;
+	FONT_HEAD *f1;
+	XGDF_HEAD *xf;
+
+	if (!sysfnt08p)
+	{
+
+		sysfnt_minwchar = sysfnt_minhchar = 0x7fff;
+		sysfnt_maxwchar = sysfnt_maxhchar = 0;
+
+		sysfnt_faces	= 1;
+
+		f1 = (FONT_HEAD *)&systemfont08;
+		xf = &xsystemfont08;
+		xf->links = 1;
+		xf->font_head = f1;
+		for (i = 0; i < 256; i++)
+			xf->cache[i] = 0;
+		fixup_font(f1);
+		sysfnt08p = xf;
+		f1->id = 1;
+
+		f1 = (FONT_HEAD *)&systemfont09;
+		xf = &xsystemfont09;
+		xf->links = 1;
+		xf->font_head = f1;
+		for (i = 0; i < 256; i++)
+			xf->cache[i] = 0;
+		fixup_font(f1);
+		sysfnt09p = xf;
+		f1->id = 1;
+		if ((add_font(sysfnt08p, xf)) == 1)
+			sysfnt_faces++;
+
+		f1 = (FONT_HEAD *)&systemfont10;
+		xf = &xsystemfont10;
+		xf->links = 1;
+		xf->font_head = f1;
+		for (i = 0; i < 256; i++)
+			xf->cache[i] = 0;
+		fixup_font(f1);
+		sysfnt10p = xf; //f1;
+		f1->id = 1;
+		if ((add_font(sysfnt08p, xf)) == 1)
+			sysfnt_faces++;
+
+		xf = sysfnt08p;
+		while(xf)
+		{
+			f1 = xf->font_head;
+
+			if (f1->max_char_width < sysfnt_minwchar)
+				sysfnt_minwchar = f1->max_char_width;
+			if (f1->max_char_width > sysfnt_maxwchar)
+				sysfnt_maxwchar = f1->max_char_width;
+
+			if (f1->top < sysfnt_minhchar)
+				sysfnt_minhchar = f1->top;
+			if (f1->top > sysfnt_maxhchar)
+				sysfnt_maxhchar = f1->top;
+
+			xf = xf->next;
+		}
+
+		dt->faces	= sysfnt_faces;
+		st->minwchar	= sysfnt_minwchar;
+		st->maxwchar	= sysfnt_maxwchar;
+		st->minhchar	= sysfnt_minhchar;
+		st->maxhchar	= sysfnt_maxhchar;
+	}
 }
 
 /* Returns 0 if added font was not a new face, only new size */

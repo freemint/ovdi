@@ -3,7 +3,6 @@
 #include "line.h"
 #include "math.h"
 #include "ovdi_defs.h"
-#include "ovdi_dev.h"
 #include "polygon.h"
 #include "vdi_defs.h"
 #include "vdi_globals.h"

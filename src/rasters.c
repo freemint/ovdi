@@ -4,7 +4,6 @@
 #include "draw.h"
 #include "libkern.h"
 #include "ovdi_defs.h"
-#include "ovdi_dev.h"
 #include "patch_gem.h"
 #include "rasters.h"
 #include "vdi_defs.h"

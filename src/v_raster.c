@@ -3,7 +3,6 @@
 #include "display.h"
 #include "rasters.h"
 #include "ovdi_defs.h"
-#include "ovdi_dev.h"
 #include "vdi_defs.h"
 #include "v_raster.h"
 #include "vdi_globals.h"

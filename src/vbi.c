@@ -1,4 +1,4 @@
-
+#include <osbind.h>
 
 #include "display.h"
 #include "libkern.h"
@@ -16,6 +16,23 @@
 extern void new_vbi_wrapper(void);
 void new_vbi (void);
 
+static short	get_vbitics(void);
+static short	add_vbi_function(unsigned long function, unsigned long tics);
+static void	remove_vbi_function(unsigned long function);
+static void	reset_vbi(void);
+static void	enable_vbi(void);
+static void	disable_vbi(void);
+
+static VBIAPI vbiapi =
+{
+	get_vbitics,
+	add_vbi_function,
+	remove_vbi_function,
+	reset_vbi,
+	enable_vbi,
+	disable_vbi,
+};
+
 static short flags = 0;
 static unsigned long vbiints[] = 
 {
@@ -32,14 +49,21 @@ static unsigned long vbiints[] =
 	0, 0, 0
 };
 
-void
+VBIAPI *
 init_vbi(void)
 {
 	int i;
 	short nvbi;
 	unsigned long *VBI_entry;
+	long usp;
 
 	reset_vbi();
+
+	usp	= Super(1);
+	if (!usp)
+		usp = Super(0);
+	else
+		usp = 0;
 
 	if (!(flags & VBI_INST))
 	{
@@ -67,10 +91,14 @@ init_vbi(void)
 #endif
 		flags |= VBI_INST;
 	}
-	return;
+
+	if (usp)
+		Super(usp);
+
+	return &vbiapi;
 }
 
-void
+static void
 reset_vbi(void)
 {
 
@@ -79,7 +107,7 @@ reset_vbi(void)
 	return;
 }
 
-void
+static void
 enable_vbi(void)
 {
 	if (!(flags & VBI_INST))
@@ -89,14 +117,14 @@ enable_vbi(void)
 	return;
 }
 
-void
+static void
 disable_vbi(void)
 {
 	flags &= ~VBI_ENABLE;
 	return;
 }
 
-short
+static short
 get_vbitics(void)
 {
 	return (1000/50);
@@ -127,7 +155,7 @@ new_vbi(void)
 	return;
 }
 
-short
+static short
 add_vbi_function(unsigned long function, unsigned long tics)
 {
 	int i;
@@ -154,7 +182,7 @@ add_vbi_function(unsigned long function, unsigned long tics)
 	return -1;
 }
 
-void
+static void
 remove_vbi_function(unsigned long function)
 {
 	short sr;

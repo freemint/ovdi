@@ -11,6 +11,6 @@ struct kbdapi
 };
 typedef struct kbdapi KBDAPI;
 
-KBDAPI * init_keyboard( VIRTUAL *v);
+KBDAPI * init_keyboard(void);
 
 #endif	/* _OVDI_KBDDRV_H */

@@ -22,8 +22,6 @@ struct	console
 	short		blinkrate;
 	short		nxt_blink;
 	short		save_row;
-//	short		*col_vdi2hw;
-//	short		*col_hw2vdi;
 	PatAttr		pattern;
 	
 	/* Device API */
@@ -42,7 +40,7 @@ typedef struct console CONSOLE;
 
 typedef void (*EscFunc)(CONSOLE *c);
 
-void init_console(VIRTUAL *v, LINEA_VARTAB *la);
+CONSOLE * init_console(OVDI_HWAPI *hw, RASTER *r, LINEA_VARTAB *la);
 void install_console_handlers(CONSOLE *c);
 void change_console_resolution(CONSOLE *c, struct raster *r);
 void enter_console(CONSOLE *c);

@@ -1,5 +1,6 @@
 #ifndef _V_FILL_H
 #define _V_FILL_H
+
 void	vsf_color	( VDIPB *pb, VIRTUAL *v );
 void	vsf_interior	( VDIPB *pb, VIRTUAL *v );
 void	vsf_perimeter	( VDIPB *pb, VIRTUAL *v );

@@ -29,6 +29,6 @@ struct timeapi
 	
 };
 
-struct timeapi * init_time( VIRTUAL *v, LINEA_VARTAB *la);
+struct timeapi * init_time(LINEA_VARTAB *la);
 
 #endif /* _TIME_H */

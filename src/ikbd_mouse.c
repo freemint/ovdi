@@ -87,5 +87,3 @@ IKBD_Mouse(char *pkt)
 	}
 	return;
 }
-	
-		

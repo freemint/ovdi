@@ -111,11 +111,11 @@ static unsigned short consfill = 0xffff;
 static CONSOLE console;
 
 static COLINF colinf;
-static short vdi2hw[256];
-static short hw2vdi[256];
+static O_16 vdi2hw[256];
+static O_16 hw2vdi[256];
 static RGB_LIST request_rgb[256];
 static RGB_LIST actual_rgb[256];
-static unsigned long pixelvalues[256];
+static O_u32 pixelvalues[256];
 
 /* init console structure. All console functions will reference the
  * VIRTUAL structure passed here.
@@ -231,7 +231,7 @@ new_font(CONSOLE *c, FONT_HEAD *f)
 void
 change_console_resolution(CONSOLE *c, RASTER *r)
 {
-	short i, hwpen;
+	int i, hwpen;
 	//FONT_HEAD *f = c->f;
 	LINEA_VARTAB *la = c->la;
 	COLINF *cinf;
@@ -243,9 +243,9 @@ change_console_resolution(CONSOLE *c, RASTER *r)
 	else
 	{
 		cinf = &colinf;
-		cinf->color_vdi2hw = (short *)&vdi2hw;
-		cinf->color_hw2vdi = (short *)&hw2vdi;
-		cinf->pixelvalues = (unsigned long *)&pixelvalues;
+		cinf->color_vdi2hw = (O_16 *)&vdi2hw;
+		cinf->color_hw2vdi = (O_16 *)&hw2vdi;
+		cinf->pixelvalues = (O_u32 *)&pixelvalues;
 		cinf->request_rgb = (RGB_LIST *)&request_rgb;
 		cinf->actual_rgb = (RGB_LIST *)&actual_rgb;
 
@@ -254,7 +254,7 @@ change_console_resolution(CONSOLE *c, RASTER *r)
 	
 	init_colinf(r, cinf);
 
-	if (r->clut)
+	if (r->res.clut)
 	{
 		for (i = 0; i < cinf->pens; i++)
 		{
@@ -265,9 +265,9 @@ change_console_resolution(CONSOLE *c, RASTER *r)
 
 	c->pattern.expanded = 0;
 	c->pattern.color[0] = c->pattern.color[1] = cinf->color_vdi2hw[0];
-	c->pattern.color[2] = c->pattern.color[3] = r->planes > 8 ? 0 : 0xff;
+	c->pattern.color[2] = c->pattern.color[3] = r->res.planes > 8 ? 0 : 0xff;
 	c->pattern.bgcol[0] = c->pattern.bgcol[1] = cinf->color_vdi2hw[1];
-	c->pattern.bgcol[2] = c->pattern.bgcol[3] = r->planes > 8 ? 0xff : 0x0;
+	c->pattern.bgcol[2] = c->pattern.bgcol[3] = r->res.planes > 8 ? 0xff : 0x0;
 
 	c->pattern.width	= 16;
 	c->pattern.height	= 1;
@@ -275,8 +275,8 @@ change_console_resolution(CONSOLE *c, RASTER *r)
 	c->pattern.planes	= 1;
 	c->pattern.wrmode	= 2;
 	c->pattern.data		= &consfill;
-	c->pattern.exp_data	= (unsigned short *)&c->pd.edata;
-	c->pattern.mask		= (unsigned short *)&c->pd.mask;
+	c->pattern.exp_data	= (O_u16 *)&c->pd.edata;
+	c->pattern.mask		= (O_u16 *)&c->pd.mask;
 
 	/* Initialize the Line A variables used by the console/vt52 emulator */
 	la->v_col_fg	= cinf->color_vdi2hw[1];
@@ -296,7 +296,7 @@ set_console_font(CONSOLE *c, const char *path, char *fname)
 	long fs;
 	char fqpn[128+32];
 	
- /* Crealte Fully Qualified Path Name and get size of fontfile */
+ /* Create Fully Qualified Path Name and get size of fontfile */
 	dst = (char *)&fqpn;
 	if (path)
 		(const char *)src = path;
@@ -359,10 +359,10 @@ exit_console(CONSOLE *c)
 	return;
 };
 
-short
-conf_textcursor_blink(CONSOLE *c, short mode, short rate)
+O_Int
+conf_textcursor_blink(CONSOLE *c, O_Int mode, O_Int rate)
 {
-	short oldrate;
+	int oldrate;
 
 	oldrate = c->blinkrate;
 
@@ -403,9 +403,9 @@ textcursor_blink(CONSOLE *c)
 }
 
 void
-con_state_handler(CONSOLE *c, short character)
+con_state_handler(CONSOLE *c, O_Int character)
 {
-	register short chr = character & 0xff;
+	register O_16 chr = character & 0xff;
 
 	if (chr > 31)
 	{
@@ -444,7 +444,7 @@ bell(CONSOLE *c)
 void
 tab(CONSOLE *c)
 {
-	register short column, columns;
+	register int column, columns;
 
 	columns = c->la->v_cel_mx;
 	column = (c->la->v_cur_x & ~7) + 8;
@@ -457,7 +457,7 @@ tab(CONSOLE *c)
 void
 LineFeed(CONSOLE *c)
 {
-	register short row = c->la->v_cur_y + 1;
+	register int row = c->la->v_cur_y + 1;
 
 	if (row > c->la->v_cel_my)
 	{
@@ -479,11 +479,11 @@ CarrigeReturn(CONSOLE *c)
 
 	
 void			
-rawcon_output(CONSOLE *c, short character)
+rawcon_output(CONSOLE *c, O_Int character)
 {
-	register short column = c->la->v_cur_x + 1;
-	register short row = c->la->v_cur_y;
-	register short chr = character & 0xff;
+	register int column = c->la->v_cur_x + 1;
+	register int row = c->la->v_cur_y;
+	register int chr = character & 0xff;
 
 	hide_text_cursor(c);
 	(*c->draw_character)(c, chr);
@@ -513,9 +513,9 @@ rawcon_output(CONSOLE *c, short character)
 }
 
 void
-VT52_handler(CONSOLE *c, short character)
+VT52_handler(CONSOLE *c, O_Int character)
 {
-	register short chr;
+	register int chr;
 	register EscFunc ef;
 	register char flag;
 
@@ -561,7 +561,7 @@ Esc_nosys(CONSOLE *c)
 void
 Esc_A(CONSOLE *c)
 {
-	register short row;
+	register int row;
 
 	row = c->la->v_cur_y - 1;
 
@@ -579,7 +579,7 @@ Esc_A(CONSOLE *c)
 void
 Esc_B(CONSOLE *c)
 {
-	register short row = c->la->v_cur_y + 1;
+	register int row = c->la->v_cur_y + 1;
 
 	if (row > c->la->v_cel_my)
 		return;
@@ -595,7 +595,7 @@ Esc_B(CONSOLE *c)
 void
 Esc_C(CONSOLE *c)
 {
-	register short column = c->la->v_cur_x + 1;
+	register int column = c->la->v_cur_x + 1;
 
 	if (column > c->la->v_cel_mx)
 		return;
@@ -611,7 +611,7 @@ Esc_C(CONSOLE *c)
 void
 Esc_D(CONSOLE *c)
 {
-	register short column = c->la->v_cur_x - 1;
+	register int column = c->la->v_cur_x - 1;
 
 	if (column < 0)
 		return;
@@ -651,7 +651,7 @@ Esc_H(CONSOLE *c)
 void
 Esc_I(CONSOLE *c)
 {
-	register short row = c->la->v_cur_y - 1;
+	register int row = c->la->v_cur_y - 1;
 
 	hide_text_cursor(c);
 
@@ -738,14 +738,14 @@ Esc_Y(CONSOLE *c)
 	return;
 }
 void
-Esc_Y_save_row(CONSOLE *c, short row)
+Esc_Y_save_row(CONSOLE *c, O_Int row)
 {
 	c->save_row = (row & 0xff) - 32;
 	set_constate(c, (long)&Esc_Y_save_column);
 	return;
 }
 void
-Esc_Y_save_column( CONSOLE *c, short column)
+Esc_Y_save_column( CONSOLE *c, O_Int column)
 {
 	move_text_cursor(c, (column & 0xff) - 32, c->save_row);
 	set_constate(c, (long)&con_state_handler);
@@ -763,7 +763,7 @@ Esc_b(CONSOLE *c)
 	return;
 }
 void
-Esc_b_collect(CONSOLE *c, short color)
+Esc_b_collect(CONSOLE *c, O_Int color)
 {
 	c->la->v_col_fg = c->colinf->color_vdi2hw[color & 0xf];
 	set_constate(c, (long)&con_state_handler);
@@ -781,7 +781,7 @@ Esc_c(CONSOLE *c)
 	return;
 }
 void
-Esc_c_collect(CONSOLE *c, short color)
+Esc_c_collect(CONSOLE *c, O_Int color)
 {
 	c->la->v_col_bg = c->colinf->color_vdi2hw[color & 0xf];
 	set_constate(c, (long)&con_state_handler);
@@ -919,9 +919,9 @@ reset_text_cursor(CONSOLE *c)
 }
 
 void
-move_text_cursor(CONSOLE *c, short x, short y)
+move_text_cursor(CONSOLE *c, O_Int x, O_Int y)
 {
-	register short mx, my;
+	register int mx, my;
 
 	mx = c->la->v_cel_mx;
 	my = c->la->v_cel_my;
@@ -1019,15 +1019,15 @@ console_exit(CONSOLE *c)
 * goes from start x, y to cursor x, y.
 */
 void
-erase_lines( CONSOLE *c, short x1, short y1, short x2, short y2)
+erase_lines( CONSOLE *c, O_Int x1, O_Int y1, O_Int x2, O_Int y2)
 {
 	FONT_HEAD *f;
 	RASTER *r;
 	COLINF *ci;
 	Ffilled_rect fr;
 
-	short cwidth, cheight, lines;
-	short coords[4];
+	int cwidth, cheight, lines;
+	O_Pos coords[4];
 
 	f = c->f;
 	r = c->r;
@@ -1087,13 +1087,13 @@ erase_lines( CONSOLE *c, short x1, short y1, short x2, short y2)
 
 /* Scroll nlines lines starting at y direction way ... yeah. */
 void
-scroll_lines( CONSOLE *c, short y, short nlines, short direction)
+scroll_lines( CONSOLE *c, O_Int y, O_Int nlines, O_Int direction)
 {
-	short cheight, cwidth;
+	int cheight, cwidth;
 	FONT_HEAD *f;
 	RASTER *r;
-	short pts[8];
-	register short *srcpts, *dstpts;
+	O_Pos pts[8];
+	register O_Pos *srcpts, *dstpts;
 	MFDB src, dst;
 
 	f = c->f;
@@ -1102,8 +1102,8 @@ scroll_lines( CONSOLE *c, short y, short nlines, short direction)
 	cheight = f->top + f->bottom + 1;
 	cwidth = f->max_cell_width;
 
-	srcpts = (short *)&pts[0];
-	dstpts = (short *)&pts[4];
+	srcpts = (O_Pos *)&pts[0];
+	dstpts = (O_Pos *)&pts[4];
 
 	srcpts[0] = dstpts[0] = 0;
 	srcpts[2] = dstpts[2] = ((c->la->v_cel_mx + 1) * cwidth) - 1;
@@ -1140,8 +1140,8 @@ void
 draw_text_cursor(CONSOLE *c)
 {
 	RASTER *r;
-	register short cwidth, cheight;
-	short coords[4];
+	register int cwidth, cheight;
+	O_Pos coords[4];
 
 	r = c->r;
 
@@ -1187,13 +1187,13 @@ undraw_text_cursor(CONSOLE *c)
 }
 
 void
-draw_character(CONSOLE *c, short chr)
+draw_character(CONSOLE *c, O_Int chr)
 {
 	MFDB dst, fontd;
 	FONT_HEAD *f;
 	RASTER *r;
-	register short cwidth, cheight, fc, bc;
-	short coords[8];
+	register int cwidth, cheight, fc, bc;
+	O_Pos coords[8];
 
 	f = c->f;
 	r = c->r;
@@ -1214,12 +1214,12 @@ draw_character(CONSOLE *c, short chr)
 
 	dst.fd_addr = 0;
 
-	if (r->planes == 1)
+	if (r->res.planes == 1)
 	{
 		if (c->la->v_cur_flag & V_INVERSED)
-			RO_CPYFM(r, &fontd, &dst, (short *)coords, (VDIRECT *)&r->x1, 12);
+			RO_CPYFM(r, &fontd, &dst, (O_Pos *)coords, (VDIRECT *)&r->x1, 12);
 		else
-			RO_CPYFM(r, &fontd, &dst, (short *)coords, (VDIRECT *)&r->x1, 3);
+			RO_CPYFM(r, &fontd, &dst, (O_Pos *)coords, (VDIRECT *)&r->x1, 3);
 	}
 	else
 	{
@@ -1234,6 +1234,6 @@ draw_character(CONSOLE *c, short chr)
 			bc = c->la->v_col_bg;
 		}
 
-		RT_CPYFM( r, c->colinf, &fontd, &dst, (short *)coords, (VDIRECT *)&r->x1, fc, bc, 0);
+		RT_CPYFM( r, c->colinf, &fontd, &dst, (O_Pos *)coords, (VDIRECT *)&r->x1, fc, bc, 0);
 	}
 }

@@ -18,7 +18,7 @@
 void
 vqin_mode( VDIPB *pb, VIRTUAL *v)
 {
-	short mode = -1;
+	int mode = -1;
 
 	switch (pb->intin[0])
 	{
@@ -59,18 +59,18 @@ vsin_mode( VDIPB *pb, VIRTUAL *v)
 	pb->contrl[N_INTOUT] = 1;
 }
 	
-short
-lvsin_mode( VIRTUAL *v, short dev, short mode)
+int
+lvsin_mode( VIRTUAL *v, int dev, int mode)
 {
-	short *flag = 0;
-	short ret;
+	int *flag = 0;
+	int ret;
 
 	switch (dev)
 	{
-		case 1: flag = (short *)&v->locator;	break;
-		case 2: flag = (short *)&v->valuator;	break;
-		case 3:	flag = (short *)&v->choise;	break;
-		case 4:	flag = (short *)&v->string;	break;
+		case 1: flag = (int *)&v->locator;	break;
+		case 2: flag = (int *)&v->valuator;	break;
+		case 3:	flag = (int *)&v->choise;	break;
+		case 4:	flag = (int *)&v->string;	break;
 	}
 
 	if (flag)
@@ -135,8 +135,8 @@ vxx_locator( VDIPB *pb, VIRTUAL *v)
 	}
 	else /* Sample mode */
 	{
-		short xy[2];
-		short ret = 0;
+		int xy[2];
+		int ret = 0;
 
 		bs = (*v->mouseapi->getbutstat)();
 		key = (*v->kbdapi->keywaiting)();
@@ -221,7 +221,8 @@ vxx_choice( VDIPB *pb, VIRTUAL *v)
 void
 vxx_string( VDIPB *pb, VIRTUAL *v)
 {
-	short maxlen, keep, i, asci, scan;
+	int maxlen, keep, i;
+	short asci, scan;
 	long kbs;
 
 	maxlen = pb->intin[0];
@@ -263,6 +264,6 @@ vxx_string( VDIPB *pb, VIRTUAL *v)
 void
 vq_key_s( VDIPB *pb, VIRTUAL *v)
 {
-	pb->intout[0] = (short)(((*v->kbdapi->getks)()) & 0xf);
+	pb->intout[0] = (int)(((*v->kbdapi->getks)()) & 0xf);
 	pb->contrl[N_INTOUT] = 1;
 }

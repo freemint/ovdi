@@ -1,6 +1,7 @@
 #ifndef	_CONSOLE_H
 #define _CONSOLE_H
 
+#include "ovdi_types.h"
 #include "linea_vars.h"
 #include "ovdi_defs.h"
 #include "vdi_defs.h"
@@ -37,11 +38,11 @@ struct	console
 	void (*draw_text_cursor)(struct console *c);
 	void (*undraw_text_cursor)(struct console *c);
 	void (*textcursor_blink)(void);
-	void (*scroll_lines)(struct console *c, short y, short nlines, short direction);
-	void (*erase_lines)(struct console *c, short x1, short y1, short x2, short y2);
-	void (*draw_character)(struct console *c, short character);
+	void (*scroll_lines)(struct console *c, O_Int y, O_Int nlines, O_Int direction);
+	void (*erase_lines)(struct console *c, O_Int x1, O_Int y1, O_Int x2, O_Int y2);
+	void (*draw_character)(struct console *c, O_Int character);
 
-	void (*csout_char)(short character);
+	void (*csout_char)(O_Int character);
 
 	const char *fontpath;
 	char fontfile[32];
@@ -58,10 +59,10 @@ void	change_console_resolution(CONSOLE *c, struct raster *r);
 void	set_console_font(CONSOLE *c, const char *fontpath, char *fontfile);
 void	enter_console(CONSOLE *c);
 void	exit_console(CONSOLE *c);
-short	conf_textcursor_blink(CONSOLE *c, short mode, short rate);
-void	con_state_handler(CONSOLE *c, short character);
-void	rawcon_output(CONSOLE *c, short chr);
-void	VT52_handler(CONSOLE *c, short character);
+O_Int	conf_textcursor_blink(CONSOLE *c, O_Int mode, O_Int rate);
+void	con_state_handler(CONSOLE *c, O_Int character);
+void	rawcon_output(CONSOLE *c, O_Int chr);
+void	VT52_handler(CONSOLE *c, O_Int character);
 
 void Esc_nosys		(CONSOLE *c);
 void Esc_A		(CONSOLE *c);
@@ -76,12 +77,12 @@ void Esc_K		(CONSOLE *c);
 void Esc_L		(CONSOLE *c);
 void Esc_M		(CONSOLE *c);
 void Esc_Y		(CONSOLE *c);
-void Esc_Y_save_row	(CONSOLE *c, short character);
-void Esc_Y_save_column	(CONSOLE *c, short character);
+void Esc_Y_save_row	(CONSOLE *c, O_Int character);
+void Esc_Y_save_column	(CONSOLE *c, O_Int character);
 void Esc_b		(CONSOLE *c);
-void Esc_b_collect	(CONSOLE *c, short character);
+void Esc_b_collect	(CONSOLE *c, O_Int character);
 void Esc_c		(CONSOLE *c);
-void Esc_c_collect	(CONSOLE *c, short character);
+void Esc_c_collect	(CONSOLE *c, O_Int character);
 void Esc_d		(CONSOLE *c);
 void Esc_e		(CONSOLE *c);
 void Esc_f		(CONSOLE *c);
@@ -105,7 +106,7 @@ void console_exit	(CONSOLE *c);
 void text_cursor_on	(CONSOLE *c);
 void text_cursor_off	(CONSOLE *c);
 void reset_text_cursor	(CONSOLE *c);
-void move_text_cursor	(CONSOLE *c, short x, short y);
+void move_text_cursor	(CONSOLE *c, O_Int x, O_Int y);
 void show_text_cursor	(CONSOLE *c);
 void hide_text_cursor	(CONSOLE *c);
 void draw_text_cursor	(CONSOLE *c);
@@ -113,16 +114,16 @@ void undraw_text_cursor	(CONSOLE *c);
 void textcursor_blink	(CONSOLE *c);
 
 
-void erase_lines	(CONSOLE *c, short x1, short y1, short x2, short y2);
-void scroll_lines	(CONSOLE *c, short y, short nlines, short direction);
-void draw_character	(CONSOLE *c, short character);
+void erase_lines	(CONSOLE *c, O_Int x1, O_Int y1, O_Int x2, O_Int y2);
+void scroll_lines	(CONSOLE *c, O_Int y, O_Int nlines, O_Int direction);
+void draw_character	(CONSOLE *c, O_Int character);
 
 /* asm wrappers */
 extern long	old_con_state;
 extern long	old_xconout_console;
 extern long	old_xconout_raw;
 
-void	cs_output_character(short character);
+void	cs_output_character(O_Int character);
 void	do_con_state(void);
 void	do_xconout_console(void);
 void	do_xconout_raw(void);

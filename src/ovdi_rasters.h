@@ -3,9 +3,15 @@
 
 #include "ovdi_defs.h"
 
-void	init_raster		(OVDI_DRIVER *drv, RASTER *r);
+void	init_device_jumptable	(OVDI_HWAPI *hw, OVDI_DRIVER *drv, char *mem);
+OVDI_DRIVER * open_device	(OVDI_HWAPI *hw);
+
+void	init_raster		(OVDI_HWAPI *hw, RASTER *r);
+RASTER * new_raster		(OVDI_HWAPI *hw, char *base, O_Pos x2, O_Pos y2, RESFMT *rf);
+void	free_raster		(RASTER *r);
 void	raster_reschange	(RASTER *r, COLINF *c);
-COLINF * new_colinf		(RASTER *r);
+void	init_raster_rgb		(RASTER *r);
+COLINF * new_colinf		(char *);
 void	init_colinf		(RASTER *r, COLINF *c);
 void	clone_colinf		(COLINF *dst, COLINF *src);
 

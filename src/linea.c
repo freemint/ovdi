@@ -16,7 +16,7 @@
 
 #define	VEC_LINEA	0x28
 
-extern short logit;
+extern int logit;
 
 //unsigned long	old_la_vect = 0;
 
@@ -47,7 +47,7 @@ extern short systemfont10[];
 
 static void set_vector(void);
 
-void linea_handler(short);
+void linea_handler(int);
 void linea_plot_pixel(void);
 long linea_get_pixel(void);
 void linea_arb_line(void);
@@ -60,7 +60,7 @@ void linea_showmouse(void);
 void linea_hidemouse(void);
 void linea_transformmouse(void);
 void linea_undrawsprite(MSAVE *ms);
-void linea_drawsprite(MFORM *mf, short x, short y, MSAVE *ms);
+void linea_drawsprite(MFORM *mf, int x, int y, MSAVE *ms);
 void linea_copyraster(void);
 void linea_seedfill(void);
 
@@ -116,7 +116,7 @@ init_linea_vartab(VIRTUAL *v, LINEA_VARTAB *la)
 void
 linea_reschange(LINEA_VARTAB *la, RASTER *r, COLINF *c)
 {
-	register short i;
+	register int i;
 	register short *dst;
 
 	memcpy(&la->inq, &INQ_TAB_rom, sizeof(INQ_TAB));
@@ -135,7 +135,7 @@ linea_reschange(LINEA_VARTAB *la, RASTER *r, COLINF *c)
 	la->v_rez_hz	= r->w;
 	la->v_rez_vt	= r->h;
 	la->bytes_lin	= r->bypl;
-	la->planes	= r->planes;
+	la->planes	= r->res.planes;
 	la->width	= r->bypl;
 	
 }
@@ -159,7 +159,7 @@ set_vector(void)
 }
 	
 void
-linea_handler(short func)
+linea_handler(int func)
 {
 #if 0
 	short pid = Pgetpid();
@@ -189,7 +189,7 @@ linea_get_pixel(void)
 	VIRTUAL *v = la->cur_work;
 	RASTER *r = v->raster;
 	unsigned long pixel;
-	short planes = v->raster->planes;
+	int planes = v->raster->res.planes;
 
 	pixel = (*r->drawers->get_pixel)(r->base, r->bypl,
 					 la->ptsin[0], la->ptsin[1]);
@@ -220,7 +220,7 @@ linea_arb_line(void)
 	LINEA_VARTAB *la = linea_vars;
 	VIRTUAL *v = la->cur_work;
 	PatAttr ptrn;
-	short color = 0;
+	int color = 0;
 
 	if (la->colbit0)
 		color |= 1;
@@ -251,7 +251,7 @@ linea_hor_line(void)
 	LINEA_VARTAB *la = linea_vars;
 	VIRTUAL *v = la->cur_work;
 	PatAttr ptrn;
-	short color = 0;
+	int color = 0;
 	unsigned short *pdata;
 
 	if (la->colbit0)
@@ -285,7 +285,7 @@ linea_filled_rect(void)
 	VIRTUAL *v = la->cur_work;
 	RASTER *r = v->raster;
 	PatAttr ptrn;
-	short color = 0;
+	int color = 0;
 	short *pdata;
 
 	if (la->colbit0)
@@ -324,9 +324,9 @@ linea_filled_poly(void)
 	RASTER *r = v->raster;
 	VDIRECT *clip;
 	PatAttr ptrn;
-	short color = 0;
+	int color = 0;
 	short *pdata;
-	short spanbuff[100];
+	O_Pos spanbuff[100];
 
 	if (la->colbit0)
 		color |= 1;
@@ -348,7 +348,7 @@ linea_filled_poly(void)
 	ptrn.data = &pdata[la->patmsk];
 
 	clip = la->clip ? (VDIRECT *)&la->xmincl : (VDIRECT *)&r->x1;
-	filled_poly(r, v->colinf, (short *)&la->ptsin[0], la->contrl[1], clip, (short *)&spanbuff, sizeof(spanbuff), &ptrn);
+	filled_poly(r, v->colinf, (O_16 *)&la->ptsin[0], la->contrl[1], clip, (O_Pos *)&spanbuff, sizeof(spanbuff), &ptrn);
 
 	return;
 }
@@ -359,7 +359,7 @@ linea_bitblt(BITBLT *b)
 #if 0
 	LINEA_VARTAB *la = linea_vars;
 	VIRTUAL *v = la->cur_work;
-	short wrmode = 0;
+	int wrmode = 0;
 	MFDB src, dst;
 
 	src.fd_addr = b->s_form;
@@ -382,7 +382,7 @@ linea_textblt(void)
 #if 0
 	LINEA_VARTAB *la = linea_vars;
 	VIRTUAL *v = la->cur_work;
-	short wrmode = 0;
+	int wrmode = 0;
 	MFDB fmfdb, dst;
 #endif
 
@@ -429,7 +429,7 @@ linea_undrawsprite(MSAVE *ms)
 }
 
 void
-linea_drawsprite(MFORM *mf, short x, short y, MSAVE *ms)
+linea_drawsprite(MFORM *mf, int x, int y, MSAVE *ms)
 {
 	return;
 }

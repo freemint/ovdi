@@ -7,7 +7,7 @@
 BASEPAGE *
 load_module(char *filename, long *err)
 {
-	BASEPAGE *b = 0;
+	BASEPAGE *b = NULL;
 	long keep;
 
 	b = (BASEPAGE *)Pexec( 3, filename, "", 0);

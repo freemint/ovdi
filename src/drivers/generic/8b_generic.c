@@ -27,19 +27,20 @@ static void NOTS_OR_D	(unsigned char *addr, long data);
 static void NOT_SANDD	(unsigned char *addr, long data);
 static void ALL_BLACK	(unsigned char *addr, long data);
 
-unsigned long
-get_pixel_8b(unsigned char *sb, short bpl, short x, short y)
+O_u32
+get_pixel_8b(unsigned char *sb, O_Int bpl, O_Pos x, O_Pos y)
 {
 	return ((*(unsigned char *)(sb + (long)(x + ((long)y * bpl)))) & 0xff);
 }
 
 void
-put_pixel_8b(unsigned char *sb, short bpl, short x, short y, unsigned long pixel)
+put_pixel_8b(unsigned char *sb, O_Int bpl, O_Pos x, O_Pos y, O_u32 pixel)
 {
 	*(sb + (long)(x + ((long)y * bpl))) = (unsigned char)pixel;
 	return;
 }
 
+#if 0
 pixel_blit dpf_8b[] = 
 {
 	S_ONLY,
@@ -57,6 +58,7 @@ pixel_blit dpf_8b[] =
 	0,0,0,0,	/* reserved */
 	0,0,0,0		/* reserved */
 };
+#endif
 
 pixel_blit rt_ops_8b[] = 
 {
@@ -403,12 +405,12 @@ rb_S_ONLY(ROP_PB *rpb)
 			for (i = width; i > 0; i--)
 				*--d = *--s;
 #else
-			for (i = (unsigned short)width >> 4; i > 0; i--)
+			for (i = (O_u16)width >> 4; i > 0; i--)
 			{
-				*(unsigned long *)--((long *)d) = *(unsigned long *)--((long *)s);
-				*(unsigned long *)--((long *)d) = *(unsigned long *)--((long *)s);
-				*(unsigned long *)--((long *)d) = *(unsigned long *)--((long *)s);
-				*(unsigned long *)--((long *)d) = *(unsigned long *)--((long *)s);
+				*(O_u32 *)--((long *)d) = *(O_u32 *)--((long *)s);
+				*(O_u32 *)--((long *)d) = *(O_u32 *)--((long *)s);
+				*(O_u32 *)--((long *)d) = *(O_u32 *)--((long *)s);
+				*(O_u32 *)--((long *)d) = *(O_u32 *)--((long *)s);
 			}
 			for (i = width & 0xf; i > 0; i--)
 				*(unsigned char *)--((char *)d) = *(char *)--((unsigned char *)s);
@@ -427,12 +429,12 @@ rb_S_ONLY(ROP_PB *rpb)
 			for (i = width; i > 0; i--)
 				*d++ = *s++;
 #else
-			for (i = (unsigned short)width >> 4; i > 0; i--)
+			for (i = (O_u16)width >> 4; i > 0; i--)
 			{
-				*(unsigned long *)((long *)d)++ = *(unsigned long *)((long *)s)++;
-				*(unsigned long *)((long *)d)++ = *(unsigned long *)((long *)s)++;
-				*(unsigned long *)((long *)d)++ = *(unsigned long *)((long *)s)++;
-				*(unsigned long *)((long *)d)++ = *(unsigned long *)((long *)s)++;
+				*(O_u32 *)((long *)d)++ = *(O_u32 *)((long *)s)++;
+				*(O_u32 *)((long *)d)++ = *(O_u32 *)((long *)s)++;
+				*(O_u32 *)((long *)d)++ = *(O_u32 *)((long *)s)++;
+				*(O_u32 *)((long *)d)++ = *(O_u32 *)((long *)s)++;
 			}
 			for (i = width & 0xf; i > 0; i--)
 				*(unsigned char *)((char *)d)++ = *(unsigned char *)((char *)s)++;
@@ -574,8 +576,8 @@ rb_S_XOR_D(ROP_PB *rpb)
 static void
 rb_S_OR_D(ROP_PB *rpb)
 {
-	short height;
-	register short i, width, sbpl, dbpl;
+	int height;
+	register int i, width, sbpl, dbpl;
 	register char *dst, *src, *s, *d;
 
 	width	= rpb->sx2 - rpb->sx1 + 1;
@@ -605,12 +607,12 @@ rb_S_OR_D(ROP_PB *rpb)
 				*--d |= *--s;
 #else
 
-			for (i = (unsigned short)width >> 4; i > 0; i--)
+			for (i = (O_u16)width >> 4; i > 0; i--)
 			{
-				*(unsigned long *)--((long *)d) |= *(unsigned long *)--((long *)s);
-				*(unsigned long *)--((long *)d) |= *(unsigned long *)--((long *)s);
-				*(unsigned long *)--((long *)d) |= *(unsigned long *)--((long *)s);
-				*(unsigned long *)--((long *)d) |= *(unsigned long *)--((long *)s);
+				*(O_u32 *)--((long *)d) |= *(O_u32 *)--((long *)s);
+				*(O_u32 *)--((long *)d) |= *(O_u32 *)--((long *)s);
+				*(O_u32 *)--((long *)d) |= *(O_u32 *)--((long *)s);
+				*(O_u32 *)--((long *)d) |= *(O_u32 *)--((long *)s);
 			}
 			for (i = width & 0xf; i > 0; i--)
 				*(unsigned char *)--((char *)d) |= *(unsigned char *)--((char *)s);
@@ -630,12 +632,12 @@ rb_S_OR_D(ROP_PB *rpb)
 			for (i = width; i > 0; i--)
 				*d++ |= *s++;
 #else
-			for (i = (unsigned short)width >> 4; i > 0; i--)
+			for (i = (O_u16)width >> 4; i > 0; i--)
 			{
-				*(unsigned long *)((long *)d)++ |= *(unsigned long *)((long *)s)++;
-				*(unsigned long *)((long *)d)++ |= *(unsigned long *)((long *)s)++;
-				*(unsigned long *)((long *)d)++ |= *(unsigned long *)((long *)s)++;
-				*(unsigned long *)((long *)d)++ |= *(unsigned long *)((long *)s)++;
+				*(O_u32 *)((long *)d)++ |= *(O_u32 *)((long *)s)++;
+				*(O_u32 *)((long *)d)++ |= *(O_u32 *)((long *)s)++;
+				*(O_u32 *)((long *)d)++ |= *(O_u32 *)((long *)s)++;
+				*(O_u32 *)((long *)d)++ |= *(O_u32 *)((long *)s)++;
 			}
 			for (i = width & 0xf; i > 0; i--)
 				*(unsigned char *)((char *)d)++ |= *(char *)((unsigned char *)s)++;
@@ -1079,7 +1081,7 @@ rb_ALL_BLACK(ROP_PB *rpb)
 void
 draw_mousecurs_8b(register XMFORM *mf, register short x, register short y)
 {
-	register short width, height, xoff, yoff, bypl;
+	register int width, height, xoff, yoff, bypl;
 	register XMSAVE *ms;
 
 	width = mf->width;
@@ -1101,8 +1103,8 @@ draw_mousecurs_8b(register XMFORM *mf, register short x, register short y)
 	}
 	else
 	{
-		register short x2 = x + width - 1;
-		register short mx = mf->mx;
+		register int x2 = x + width - 1;
+		register int mx = mf->mx;
 
 		if (x2 > mx)
 		{
@@ -1126,8 +1128,8 @@ draw_mousecurs_8b(register XMFORM *mf, register short x, register short y)
 	}
 	else
 	{
-		register short y2 = y + height - 1;
-		register short my = mf->my;
+		register int y2 = y + height - 1;
+		register int my = mf->my;
 
 		if (y2 > my)
 		{
@@ -1140,7 +1142,7 @@ draw_mousecurs_8b(register XMFORM *mf, register short x, register short y)
 	}
 	{
 		register unsigned char *src, *dst;
-		register short i, j, nl;
+		register int i, j, nl;
 
 		dst = (unsigned char *)ms->save;
 		src = mf->scr_base + (long)(((long)y * bypl) + x);
@@ -1165,16 +1167,16 @@ draw_mousecurs_8b(register XMFORM *mf, register short x, register short y)
 
 	if (mf->planes == 1)
 	{
-		register short i, j, nl, mnl, w;
-		register unsigned long fgc, bgc;
-		register unsigned short mask, data, ovl;
-		register unsigned short *ma;
+		register int i, j, nl, mnl, w;
+		register O_u32 fgc, bgc;
+		register O_u16 mask, data, ovl;
+		register O_u16 *ma;
 		register unsigned char *dst;
 
 
 		nl = bypl - width;
 		dst = mf->scr_base + (long)(((long)y * bypl) + x);
-		ma = (unsigned short *)mf->data + (long)(yoff * mf->mfbypl) + (long)((xoff >> 4) << 1);
+		ma = (O_u16 *)mf->data + (long)(yoff * mf->mfbypl) + (long)((xoff >> 4) << 1);
 		xoff &= 0xf;
 		mnl = ((mf->width - (xoff + width)) >> 4) << 1;
 		fgc = mf->fg_pix;
@@ -1245,9 +1247,9 @@ draw_mousecurs_8b(register XMFORM *mf, register short x, register short y)
 	}
 	else
 	{
-		register short i, j, dnl, snl, mnl, w;
-		register unsigned short mask, ovl;
-		register unsigned short *ma;
+		register int i, j, dnl, snl, mnl, w;
+		register O_u16 mask, ovl;
+		register O_u16 *ma;
 		register unsigned char *src, *dst;
 
 
@@ -1256,7 +1258,7 @@ draw_mousecurs_8b(register XMFORM *mf, register short x, register short y)
 		dst = mf->scr_base + (long)(((long)y * bypl) + x);
 		src = mf->data + (long)(((long)yoff * snl) + (long)xoff);
 		snl -= width;
-		ma = (unsigned short *)mf->mask + (long)(yoff * ((mf->width >> 4) +1)) + (long)(xoff >> 4);
+		ma = (O_u16 *)mf->mask + (long)(yoff * ((mf->width >> 4) +1)) + (long)(xoff >> 4);
 		xoff &= 0xf;
 		mnl = (mf->width - (xoff + width)) >> 4;
 
@@ -1314,7 +1316,7 @@ draw_mousecurs_8b(register XMFORM *mf, register short x, register short y)
 void
 restore_msave_8b(XMSAVE *ms)
 {
-	register short width, w, height, nl;
+	register int width, w, height, nl;
 	register unsigned char *src, *dst;
 
 	if (ms->valid)

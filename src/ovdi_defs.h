@@ -1,6 +1,7 @@
 #ifndef _OVDI_DEFS_H
 #define _OVDI_DEFS_H
 
+#include "ovdi_types.h"
 typedef struct raster RASTER;
 typedef struct colinf COLINF;
 typedef struct virtual VIRTUAL;
@@ -11,9 +12,11 @@ typedef struct ovdi_device OVDI_DEVICE;
 
 #include "vdi_defs.h"
 #include "ovdi_mouse.h"
+#include "vdi_printer.h"
 
-#define MAX_VIRTUALS		512
-#define MAX_VDI_FUNCTIONS	140
+#define MAX_VIRTUALS		 512
+#define MAX_VDI_FUNCTIONS	 259
+#define MAX_VDI_NEGFUNCTIONS	   4
 #define SCRATCH_BUFFER_SIZE	1024
 
 /*
@@ -21,7 +24,7 @@ typedef struct ovdi_device OVDI_DEVICE;
 */
 #define R_IS_SCREEN	1		/* Indicates that this raster is the physical screen raster */
 #define R_IN_VRAM	2		/* Indicates that raster is accessible hardware accelerator, where it exists */
-
+#define R_MALLOCED	4		/* Indicates if raster base can be deallocated via free_mem */
 /*
  * Macro to check if wheter or not the raster is accessed by hardware,
  * for example if accelerator is finished
@@ -33,6 +36,15 @@ typedef struct ovdi_device OVDI_DEVICE;
 		while ( !(*n->sync)() );	\
 	}					\
 }
+struct resfmt
+{
+	O_16	planes;
+	O_16	clut;
+	O_16	format;
+	O_16	pixlen;
+	char	*pixelformat;
+};
+typedef struct resfmt RESFMT;
 
 /*
  * Structure describing a raster - all drawing primitives get its info from
@@ -43,23 +55,20 @@ struct raster
 	/* The top part of raster structure is filled	*/
 	/* in by the device driver upon resolution	*/
 	/* changes, etc.				*/
-	int			(*sync)(void);		/* Hardware ready? (accelerator done, etc) */
+	long			(*sync)(void);		/* Hardware ready? (accelerator done, etc) */
 	unsigned char		*base;			/* Address of raster */
-	unsigned long		lenght;			/* Lenght of raster in bytes */
-	short			flags;			/* Flags */
-	short			realflags;		/* Real flags */
-	short			format;			/* Pixel format */
-	short			w, h;			/* width and height of raster in pixels */
-	short			x1, y1, x2, y2;		/* Bounding rectangle (usually 0,0, w-1, h-1) */
-	short			clut;			/* Color Lookup flag */
-	short			planes;			/* Number of planes */
-	short			pixlen;			/* Size of one pixel. positive number == bytes (>=8), negative number == bits (< 8) */
-	short			bypl;			/* Size of one line in bytes */
-	char			*pixelformat;		/* Address of a pixel layout description */
+	O_u32		lenght;			/* Lenght of raster in bytes */
+	long			bypl;			/* Size of one line in bytes */
+	O_16			flags;			/* Flags */
+	O_16			realflags;		/* Real flags */
+	O_Pos			w, h;			/* width and height of raster in pixels */
+	O_Pos			x1, y1, x2, y2;		/* Bounding rectangle (usually 0,0, w-1, h-1) */
+
+	RESFMT			res;
 
 	/* This part is filled in by the VDI.		*/
 	/* Device driver must NOT touch this area!	*/
-	short			wpixel, hpixel;
+	O_16			wpixel, hpixel;
 	struct ovdi_drawers	*drawers;		/* Drawers used with current resolution of raster */
 	struct ovdi_drawers	(**odrawers);		/* Pointer to table of different resolution drawers - used when changing raster resolution */
 	struct ovdi_utils	*utils;			/* Pointer to table of different utility functions */
@@ -73,10 +82,10 @@ struct raster
 */
 struct colinf
 {
-	short		pens;			/* Number of pens */
-	short		planes;			/* Planes */
-	short		*color_vdi2hw;		/* vdi to hardware colorindex conversion table */
-	short		*color_hw2vdi;		/* hardware to vdi colorindex conversion table */
+	O_16		pens;			/* Number of pens */
+	O_16		planes;			/* Planes */
+	O_16		*color_vdi2hw;		/* vdi to hardware colorindex conversion table */
+	O_16		*color_hw2vdi;		/* hardware to vdi colorindex conversion table */
 	char		*pixelformat;		/* Pointer to pixel layout description */
 	long		*pixelvalues;		/* Pixelvalues, as they're written into video-ram */
 	RGB_LIST	*request_rgb;		/* Requested, relative RGB values (0 - 1000) */
@@ -89,39 +98,39 @@ struct colinf
 */
 struct pattern_attribs
 {
-	short		expanded;		/* planes in expanded data or NULL if not expanded. */
-	short		interior;		/* */
-	short		wrmode;			/* writing mode (unused as of yet) */
-	short		width;			/* Width of pattern in pixels */
-	short		height;			/* Height of pattern in pixels */
-	short		wwidth;			/* Width of fill pattern in words */
-	short		planes;			/* True if fill is multiplane */
-	short		color[4];		/* wrmode is used as index into color array */
-	short		bgcol[4];		/* background color */
-	short		ud;			/* User define data */
-	unsigned short	*data;			/* Original data */
-	unsigned short	*mask;			/* Mask - created when expanded */
-	unsigned short	*exp_data;		/* Expanded data - device dependant */
+	O_16		expanded;		/* planes in expanded data or NULL if not expanded. */
+	O_16		interior;		/* */
+	O_16		wrmode;			/* writing mode (unused as of yet) */
+	O_16		width;			/* Width of pattern in pixels */
+	O_16		height;			/* Height of pattern in pixels */
+	O_16		wwidth;			/* Width of fill pattern in words */
+	O_16		planes;			/* True if fill is multiplane */
+	O_16		color[4];		/* wrmode is used as index into color array */
+	O_16		bgcol[4];		/* background color */
+	O_16		ud;			/* User define data */
+	O_u16	*data;			/* Original data */
+	O_u16	*mask;			/* Mask - created when expanded */
+	O_u16	*exp_data;		/* Expanded data - device dependant */
 	union
 	{
 		struct /* Fill */
 		{
-			short style;
+			O_16 style;
 			struct pattern_attribs *perimeter; /* NULL == no perimeter, else points to pattern_attribs used to render permimeter */
 		} f;
 		struct /* Lines */
 		{
-			short index;
-			short width;
-			short beg, end;
+			O_16 index;
+			O_16 width;
+			O_16 beg, end;
 		} l;
 		struct /* Polymarkers */
 		{
-			short index;		/* Line index used to draw poly marker */
-			short type;		/* Polymarker type */
-			short width;
-			short height;
-			short scale;
+			O_16 index;		/* Line index used to draw poly marker */
+			O_16 type;		/* Polymarker type */
+			O_16 width;
+			O_16 height;
+			O_16 scale;
 		} p;
 	} t;
 };
@@ -129,27 +138,27 @@ typedef struct pattern_attribs PatAttr;
 
 struct	currfont
 {
-	short	defid;
-	short	defht;
+	O_16	defid;
+	O_16	defht;
 	struct	xgdf_head *current;
 	struct	font_head *header;
 	struct	xgdf_head *loaded;
-	short	color;
-	short	bgcol;
-	short	wrmode;
-	short	style;
-	short	angle;
-	short	fx_x_ofst;
-	short	fx_y_ofst;
-	short	pts;			/* true if height set in points */
-	short	size;			/* in height or points */
-	short	chup;			/* Character Up vector */
-	short	lcount;			/* number of loaded fonts */
-	short	num;			/* Total number of faces */
-	short	halign;
-	short	valign;
-	short	scaled;
-	short	sclsts;			/* True if scaling up */
+	O_16	color;
+	O_16	bgcol;
+	O_16	wrmode;
+	O_16	style;
+	O_16	angle;
+	O_16	fx_x_ofst;
+	O_16	fx_y_ofst;
+	O_16	pts;			/* true if height set in points */
+	O_16	size;			/* in height or points */
+	O_16	chup;			/* Character Up vector */
+	O_16	lcount;			/* number of loaded fonts */
+	O_16	num;			/* Total number of faces */
+	O_16	halign;
+	O_16	valign;
+	O_16	scaled;
+	O_16	sclsts;			/* True if scaling up */
 	struct	font_head *scratch_head;
 };
 typedef struct currfont CURRFONT;
@@ -159,24 +168,28 @@ typedef struct currfont CURRFONT;
 */
 struct pattern_data
 {
-	unsigned short data[(2*16) * 16];
-	unsigned short mask[(2*16) * 16];
-	unsigned short edata[(2*16) * 16];
+	O_u16 data[(2*16) * 16];
+	O_u16 mask[(2*16) * 16];
+	O_u16 edata[(2*16) * 16];
 };
 typedef struct pattern_data PatDat;
 
 /*
  * This is the main VIRTUAL structure.
-*/	
+*/
+#define V_OSBM		1
+#define V_OWN_APPBUFF	2
+
 struct virtual
 {
-	short			func;
-	short			handle;
-	short			pid;
+	O_16			flags;
+	O_16			func;
+	O_16			handle;
+	O_16			pid;
 	char			procname[32];
-	short			dda_inc;		/* Fraction to be added to the DDA	*/
+	O_16			dda_inc;		/* Fraction to be added to the DDA	*/
 	char			*scratchp;		/* Pointer to text scratch buffer	*/
-	short			scratchs;		/* Offset to large text buffer		*/
+	O_16			scratchs;		/* Offset to large text buffer		*/
 
 	struct xgdf_head	*fring;
 	struct currfont		font;
@@ -188,23 +201,23 @@ struct virtual
 	PatAttr			line;
 	PatAttr			pmarker;
 
-	PatDat			filldata;
-	PatDat			udfilldata;
-
 #define REQ_MODE	1
 
-	short			locator;
-	short			valuator;
-	short			choise;
-	short			string;
+	O_16			locator;
+	O_16			valuator;
+	O_16			choise;
+	O_16			string;
 	
 	VIRTUAL			*lawk;			/* Physical workstation used by the console */
 	VIRTUAL			*root;			/* Physical parent. NULL if this is parent */
-	short			wrmode;			/* Current writing mode			*/
-	short			xfm_mode;		/* Transformation mode requested	*/
+	O_16			wrmode;			/* Current writing mode			*/
+	O_16			xfm_mode;		/* Transformation mode requested	*/
 
 	CLIPRECT		clip;
-	
+
+	PRN_SETTINGS		*prn_settings;
+
+	struct ovdi_hwapi	*hw;
 	struct console		*con;
 	struct ovdi_driver	*driver;
 	struct ovdi_driver	*physical;
@@ -214,29 +227,44 @@ struct virtual
 	struct mouseapi		*mouseapi;
 	struct timeapi		*timeapi;
 	struct vbiapi		*vbiapi;
+	struct fontapi		*fontapi;
+
+	long			app_buff_size;
+	void			*app_buff;
 
 	long			ptsbuffsiz;
 	long			spanbuffsiz;
-	short			ptsbuff[PTSBUFF_SIZ >> 1];
-	short			spanbuff[SPANBUFF_SIZ >> 1];
+
+	O_Pos			ptsbuff[PTSBUFF_SIZ >> 1];
+	O_Pos			spanbuff[SPANBUFF_SIZ >> 1];
+
+	PatDat			filldata;
+	PatDat			udfilldata;
+	PatDat			perimeterdata;
+	PatDat			linedata;
+	PatDat			pmarkerdata;
 
 };
 
 /*
  * Root hardware API. Together the pointers in this structure
- * makes up a complete physical VDI device.
+ * makes up a complete physical VDI device. Should be possible
+ * for oVDI to drive several cards this way.
 */
 struct ovdi_hwapi
 {
-	struct	ovdi_device	*device;
-	struct	ovdi_driver	*driver;
-	struct	console		*console;
-	struct	colinf		*colinf;
-	struct	kbdapi		*keyboard;
-	struct	mouseapi	*mouse;
-	struct	pdvapi		*pointdev;
-	struct	timeapi		*time;
-	struct	vbiapi		*vbi;
+	struct	ovdi_device	*device;	/* Device API */
+	struct	ovdi_driver	*driver;	/* Driver for this physical */
+	struct	ovdi_drawers	(**odrawers);	/* Pointer to table of different resolution drawers */
+	struct	ovdi_utils	*utils;		/* Pointer to utility functions specific to this device */
+	struct	console		*console;	/* Console driver */
+	struct	colinf		*colinf;	/* Root colinf */
+	struct	kbdapi		*keyboard;	/* Keyboard driver */
+	struct	mouseapi	*mouse;		/* Mouse driver */
+	struct	pdvapi		*pointdev;	/* Pointing device driver */
+	struct	timeapi		*time;		/* Time driver */
+	struct	vbiapi		*vbi;		/* VBI driver */
+	struct	fontapi		*font;		/* Font driver */
 };
 
 typedef void (*GDP_function)(VDIPB *pb, VIRTUAL *v);
@@ -253,7 +281,7 @@ typedef struct ovdi_jmptab OVDI_JMPTAB;
 struct ovdi_vtab
 {
 	VIRTUAL *v;
-	short pid;
+	O_16 pid;
 };
 typedef struct ovdi_vtab OVDI_VTAB;
 
@@ -263,19 +291,19 @@ typedef struct ovdi_vtab OVDI_VTAB;
 /* *************************************************************************** */
 struct rop_pb
 {
-	short	sx1, sy1, sx2, sy2;
-	short	dx1, dy1, dx2, dy2;
+	O_Pos	sx1, sy1, sx2, sy2;
+	O_Pos	dx1, dy1, dx2, dy2;
 
 
 	void	*s_addr;
-	short	s_is_scrn;
-	short	s_bypl;
-	short	s_w, s_h;
+	O_16	s_is_scrn;
+	O_16	s_bypl;
+	O_Pos	s_w, s_h;
 
 	void	*d_addr;
-	short	d_is_scrn;
-	short	d_bypl;
-	short	d_w, d_h;
+	O_16	d_is_scrn;
+	O_16	d_bypl;
+	O_Pos	d_w, d_h;
 };
 typedef struct rop_pb ROP_PB;
 
@@ -342,7 +370,7 @@ typedef void	(*raster_blit)(ROP_PB *);
 //typedef void		(*draw_pixel)(unsigned char *adr, long data);
 //typedef long		(*read_pixel)(unsigned char *adr);
 //typedef void		(*put_pixel)(short x, short y, long data);
-//typedef unsigned long	(*get_pixel)(unsigned char *scrbase, short bypl, short x, short y);
+//typedef O_u32	(*get_pixel)(unsigned char *scrbase, short bypl, short x, short y);
 //typedef void		(*raster_op)(unsigned char *srcbase, short srcbypl, unsigned char *dstbase, short dstbypl, short width, short height, short dir);
 
 typedef raster_blit raster_blits[16];
@@ -354,25 +382,25 @@ typedef pixel_blit pixel_blits[16];
   * color-depth mode (1, 2, 4, 8, 15, 16, 24 and 32 bit color modes) respectively.
  */
 typedef	void (*Ffilled_rect)	( RASTER *r, COLINF *c, VDIRECT *corners, VDIRECT *clip, PatAttr *ptrn);
-typedef	void (*Ffilledpoly)	( RASTER *r, COLINF *c, short *pts, short n, VDIRECT *clip, short *points, long pointasize, PatAttr *ptrn);
+typedef	void (*Ffilledpoly)	( RASTER *r, COLINF *c, O_Pos *pts, O_Int n, VDIRECT *clip, O_Pos *points, long pointasize, PatAttr *ptrn);
 
-typedef	void (*Farc)		( VIRTUAL *v, short xc, short yc, short xrad, short beg_ang, short end_ang, short *points, PatAttr *ptrn);
-typedef	void (*Fcircle)		( VIRTUAL *v, short xc, short yc, short xrad, short *points, PatAttr *ptrn);
-typedef	void (*Fellipse)	( VIRTUAL *v, short xc, short yc, short xrad, short yrad, short *points, PatAttr *ptrn);
-typedef	void (*Fellarc)		( VIRTUAL *v, short xc, short yc, short xrad, short yrad, short beg_ang, short end_ang, short *points, PatAttr *ptrn);
-typedef	void (*Frbox)		( VIRTUAL *v, short gdp_code, VDIRECT *corners, PatAttr *ptrn);
+typedef	void (*Farc)		( VIRTUAL *v, O_Pos xc, O_Pos yc, O_Pos xrad, O_Int beg_ang, O_Int end_ang, O_Pos *points, PatAttr *ptrn);
+typedef	void (*Fcircle)		( VIRTUAL *v, O_Pos xc, O_Pos yc, O_Pos xrad, O_Pos *points, PatAttr *ptrn);
+typedef	void (*Fellipse)	( VIRTUAL *v, O_Pos xc, O_Pos yc, O_Pos xrad, O_Pos yrad, O_Pos *points, PatAttr *ptrn);
+typedef	void (*Fellarc)		( VIRTUAL *v, O_Pos xc, O_Pos yc, O_Pos xrad, O_Pos yrad, O_Int beg_ang, O_Int end_ang, O_Pos *points, PatAttr *ptrn);
+typedef	void (*Frbox)		( VIRTUAL *v, O_Int gdp_code, VDIRECT *corners, PatAttr *ptrn);
 
-typedef	void (*Fpline)		( RASTER *r, COLINF *c, short *pts, long numpts, VDIRECT *clip, short *points, long pointasize, PatAttr *ptrn);
-typedef	void (*Fhvline)		( RASTER *r, COLINF *c, short xory1, short xory2, short xory, PatAttr *ptrn);
+typedef	void (*Fpline)		( RASTER *r, COLINF *c, O_Pos *pts, long numpts, VDIRECT *clip, O_Pos *points, long pointasize, PatAttr *ptrn);
+typedef	void (*Fhvline)		( RASTER *r, COLINF *c, O_Pos xory1, O_Pos xory2, O_Pos xory, PatAttr *ptrn);
 typedef	void (*Fabline)		( RASTER *r, COLINF *c, struct vdirect *pnts, PatAttr *ptrn);
 
-typedef	void (*Fspans)		( RASTER *r, COLINF *c, short x1, short x2, short y, PatAttr *ptrn);
-typedef void (*Fmspans)		( RASTER *r, COLINF *c, short x1, short x2, short y1, short y2, PatAttr *ptrn);
+typedef	void (*Fspans)		( RASTER *r, COLINF *c, O_Pos x1, O_Pos x2, O_Pos y, PatAttr *ptrn);
+typedef void (*Fmspans)		( RASTER *r, COLINF *c, O_Pos x1, O_Pos x2, O_Pos y1, O_Pos y2, PatAttr *ptrn);
 
-typedef	void (*Fpmarker)	( RASTER *v, COLINF *c, POINT *origin, VDIRECT *clip, short type, short size, short w_in, short h_in, PatAttr *ptrn);
+typedef	void (*Fpmarker)	( RASTER *v, COLINF *c, POINT *origin, VDIRECT *clip, O_Int type, O_Int size, O_Int w_in, O_Int h_in, PatAttr *ptrn);
 
-typedef	void (*Ftcpyfm)		( RASTER *r, COLINF *c, MFDB *src, MFDB *dst, short *pnts, VDIRECT *clip, short fgcol, short bgcol, short wrmode);
-typedef	void (*Focpyfm)		( RASTER *r, MFDB *src, MFDB *dst, short *pnts, VDIRECT *clip, short wrmode);
+typedef	void (*Ftcpyfm)		( RASTER *r, COLINF *c, MFDB *src, MFDB *dst, O_Pos *pnts, VDIRECT *clip, O_Int fgcol, O_Int bgcol, O_Int wrmode);
+typedef	void (*Focpyfm)		( RASTER *r, MFDB *src, MFDB *dst, O_Pos *pnts, VDIRECT *clip, O_Int wrmode);
 
  /*
   * This table contains pointers to the VDI primitives.
@@ -466,8 +494,7 @@ typedef struct vdiprimitives VDIPRIMITIVES;
 
 struct ovdi_drawers
 {
-/* REMEMBER TO UPDATE THE TABLES IN WORKSTATION WHEN MODIFYING HERE !!!!!!!!!!!!!!!!11 */ 
-
+/* REMEMBER TO UPDATE THE TABLES IN OVDI_RASTERS.C WHEN MODIFYING HERE !!!!!!!!!!!!!!!!11 */ 
  /*
   * The VDI primitive functions
  */
@@ -477,13 +504,15 @@ struct ovdi_drawers
   * Functions below here is always color-depth dependant. If driver dont provide
   * these, standard and VERY, VERY slow ones are used.
  */
+	RESFMT		*res;
+
 	void		(*draw_pixel)		( unsigned char *adr, long data);
 	void		(*read_pixel)		( unsigned char *adr, long data);
-	void		(*put_pixel)		( unsigned char *base, short bypl, short x, short y, unsigned long data);
-	unsigned long	(*get_pixel)		( unsigned char *base, short bypl, short x, short y);
+	void		(*put_pixel)		( unsigned char *base, O_Int bypl, O_Pos x, O_Pos y, O_u32 data);
+	O_u32		(*get_pixel)		( unsigned char *base, O_Int bypl, O_Pos x, O_Pos y);
 
-	void		(*fill_16x)		( RASTER *r, COLINF *c, short *corners, PatAttr *ptrn);
-	void		(*spans_16x)		( RASTER *r, COLINF *c, short *spans, int n, PatAttr *ptrn);
+	void		(*fill_16x)		( RASTER *r, COLINF *c, O_Pos *corners, PatAttr *ptrn);
+	void		(*spans_16x)		( RASTER *r, COLINF *c, O_Pos *spans, O_Int n, PatAttr *ptrn);
 
 	pixel_blits	drp;	/* Draw Raster Points */
 	pixel_blits	dlp;	/* Draw line Points */
@@ -500,37 +529,37 @@ typedef struct ovdi_drawers OVDI_DRAWERS;
 struct ovdi_utils
 {
 /*  color/hardware indipendant helper functions */
-	short	(*clc_nsteps)		( short xrad, short yrad);
-	void	(*clc_arc)		( VIRTUAL *v, short gdp_code, short xc, short yc, short xrad, short yrad, short beg_ang, short end_ang, short del_ang, short n_steps, short *points, PatAttr *ptrn);
+	O_Int	(*clc_nsteps)		( O_Pos xrad, O_Pos yrad);
+	void	(*clc_arc)		( VIRTUAL *v, O_Int gdp_code, O_Pos xc, O_Pos yc, O_Pos xrad, O_Pos yrad, O_Int beg_ang, O_Int end_ang, O_Int del_ang, O_Int n_steps, O_Pos *points, PatAttr *ptrn);
 
-	short	(*clipbox)		( VDIRECT *corners, VDIRECT *clip);
-	void	(*sortcpy_corners)	( short *source, short *dest );
+	O_Int	(*clipbox)		( VDIRECT *corners, VDIRECT *clip);
+	void	(*sortcpy_corners)	( O_16 *source, O_Pos *dest );
 
-	short	(*code)			( POINT *input, VDIRECT *clip);
-	short	(*clip_line)		( VDIRECT *input, VDIRECT *clip);
+	O_Int	(*code)			( POINT *input, VDIRECT *clip);
+	O_Int	(*clip_line)		( VDIRECT *input, VDIRECT *clip);
 
-	short	(*fix_raster_coords)	( short *spts, short *dpts, short *c);
+	O_Int	(*fix_raster_coords)	( O_Pos *spts, O_Pos *dpts, O_Pos *c);
 
-	void	(*trnfm)		( VIRTUAL *v, MFDB *src, MFDB *dst);
+	void	(*trnfm)		( MFDB *src, MFDB *dst);
 
-	void	(*cnv_v2d_1b)		( unsigned short *src, unsigned short *dst, unsigned long splen);
-	void	(*cnv_v2d_2b)		( unsigned short *src, unsigned short *dst, unsigned long splen);
-	void	(*cnv_v2d_4b)		( unsigned short *src, unsigned short *dst, unsigned long splen);
-	void	(*cnv_v2d_8b)		( unsigned short *src, unsigned short *dst, unsigned long splen);
-	void	(*cnv_v2d_15b)		( unsigned short *src, unsigned short *dst, unsigned long splen);
-	void	(*cnv_v2d_16b)		( unsigned short *src, unsigned short *dst, unsigned long splen);
-	void	(*cnv_v2d_24b)		( unsigned short *src, unsigned short *dst, unsigned long splen);
-	void	(*cnv_v2d_32b)		( unsigned short *src, unsigned short *dst, unsigned long splen);
+	void	(*cnv_v2d_1b)		( O_u16 *src, O_u16 *dst, O_u32 splen);
+	void	(*cnv_v2d_2b)		( O_u16 *src, O_u16 *dst, O_u32 splen);
+	void	(*cnv_v2d_4b)		( O_u16 *src, O_u16 *dst, O_u32 splen);
+	void	(*cnv_v2d_8b)		( O_u16 *src, O_u16 *dst, O_u32 splen);
+	void	(*cnv_v2d_15b)		( O_u16 *src, O_u16 *dst, O_u32 splen);
+	void	(*cnv_v2d_16b)		( O_u16 *src, O_u16 *dst, O_u32 splen);
+	void	(*cnv_v2d_24b)		( O_u16 *src, O_u16 *dst, O_u32 splen);
+	void	(*cnv_v2d_32b)		( O_u16 *src, O_u16 *dst, O_u32 splen);
 	long	cnv_v2d_rsv[4];
 
-	void	(*cnv_d2v_1b)		( unsigned short *src, unsigned short *dst, unsigned long splen);
-	void	(*cnv_d2v_2b)		( unsigned short *src, unsigned short *dst, unsigned long splen);
-	void	(*cnv_d2v_4b)		( unsigned short *src, unsigned short *dst, unsigned long splen);
-	void	(*cnv_d2v_8b)		( unsigned short *src, unsigned short *dst, unsigned long splen);
-	void	(*cnv_d2v_15b)		( unsigned short *src, unsigned short *dst, unsigned long splen);
-	void	(*cnv_d2v_16b)		( unsigned short *src, unsigned short *dst, unsigned long splen);
-	void	(*cnv_d2v_24b)		( unsigned short *src, unsigned short *dst, unsigned long splen);
-	void	(*cnv_d2v_32b)		( unsigned short *src, unsigned short *dst, unsigned long splen);
+	void	(*cnv_d2v_1b)		( O_u16 *src, O_u16 *dst, O_u32 splen);
+	void	(*cnv_d2v_2b)		( O_u16 *src, O_u16 *dst, O_u32 splen);
+	void	(*cnv_d2v_4b)		( O_u16 *src, O_u16 *dst, O_u32 splen);
+	void	(*cnv_d2v_8b)		( O_u16 *src, O_u16 *dst, O_u32 splen);
+	void	(*cnv_d2v_15b)		( O_u16 *src, O_u16 *dst, O_u32 splen);
+	void	(*cnv_d2v_16b)		( O_u16 *src, O_u16 *dst, O_u32 splen);
+	void	(*cnv_d2v_24b)		( O_u16 *src, O_u16 *dst, O_u32 splen);
+	void	(*cnv_d2v_32b)		( O_u16 *src, O_u16 *dst, O_u32 splen);
 	long	cnv_d2v_rsv[4];
 };
 typedef struct ovdi_utils OVDI_UTILS;
@@ -545,8 +574,8 @@ typedef struct ovdi_utils OVDI_UTILS;
 */ 
 struct ovdi_driver
 {
-	long		version;
-	short		format;
+	O_32		version;
+	O_16		format;
 	
 #define PF_ATARI	1
 #define PF_PLANES	2
@@ -557,14 +586,14 @@ struct ovdi_driver
 
 	RASTER		r;
 	
-	unsigned long	palette;
-	short		v_top, v_bottom, v_left, v_right;
+	O_u32		palette;
+	O_16		v_top, v_bottom, v_left, v_right;
 
 	void		*vram_start;
 	long		vram_size;
 
-	short		scr_count;
-	long		scr_size;
+	O_16		scr_count;
+	O_32		scr_size;
 
 	void		*log_base;
 
@@ -594,21 +623,23 @@ struct ovdi_driver
 struct ovdi_device
 {
 	struct ovdi_device	*nxtapi;
-	long 			version;
+	O_32 			version;
 	char 			*sname;
 	char			*lname;
+	char			*pathname;
+	char			*filename;
 
 	OVDI_DRIVER *	(*open)(struct ovdi_device *dev);
 	long		(*close)(OVDI_DRIVER *drv);
-	short		(*set_vdires)(OVDI_DRIVER *drv, short scrndev_id);
-	short		(*get_res_info)(OVDI_DRIVER *drv);
-	unsigned char *	(*setpscr)(OVDI_DRIVER *drv, unsigned char *scrnadr);
-	unsigned char *	(*setlscr)(OVDI_DRIVER *drv, unsigned char *logscr);
-	void		(*setcol)(OVDI_DRIVER *drv, short pen, RGB_LIST *colors);
+	O_Int		(*set_vdires)(OVDI_DRIVER *drv, O_Int scrndev_id);
+	O_Int		(*get_res_info)(OVDI_DRIVER *drv);
+	O_u8 *		(*setpscr)(OVDI_DRIVER *drv, O_u8 *scrnadr);
+	O_u8 *		(*setlscr)(OVDI_DRIVER *drv, O_u8 *logscr);
+	void		(*setcol)(OVDI_DRIVER *drv, O_Int pen, RGB_LIST *colors);
 	void		(*vsync)(OVDI_DRIVER *drv);
 
- 	void		(*vreschk)(short x, short y);
-	int		(*msema)(void);
+	void		(*vreschk)(O_Int x, O_Int y);
+	O_Int		(*msema)(void);
 };
 
 #endif	/* _OVDI_DEFS_H */

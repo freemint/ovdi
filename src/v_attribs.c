@@ -7,6 +7,7 @@
 #include "v_attribs.h"
 #include "v_fill.h"
 #include "v_line.h"
+#include "v_perimeter.h"
 #include "v_text.h"
 
 #define MIN_WRMODE  1;
@@ -14,7 +15,7 @@
 void
 vswr_mode( VDIPB *pb, VIRTUAL *v)
 {
-	short wrmode;
+	O_Int wrmode;
 	wrmode = pb->intin[0];
 	lvswr_mode( v, wrmode);
 	lvsf_wrmode( v, wrmode);		/* Fill writing mode */
@@ -23,18 +24,16 @@ vswr_mode( VDIPB *pb, VIRTUAL *v)
 	lvsprm_wrmode( v, wrmode);	/* perimeter writing mode */
 	lvst_wrmode( v, wrmode);		/* Text writing mode */
 	pb->intout[0] = v->wrmode + 1;
-	return;
 }
 
 void
-lvswr_mode( VIRTUAL *v, short wrmode)
+lvswr_mode( VIRTUAL *v, O_Int wrmode)
 {
 	set_writingmode( wrmode, &v->wrmode);
-	return;
 }
 
 void
-set_writingmode( short wrmode, short *ret)
+set_writingmode( O_Int wrmode, O_16 *ret)
 {
 	if (wrmode < MIN_MD_MODE)
 		wrmode = MIN_MD_MODE;
@@ -44,17 +43,15 @@ set_writingmode( short wrmode, short *ret)
 	if (ret)
 		*ret = wrmode - 1;
 
-	return;
 }
 
 void
 vs_clip( VDIPB *pb, VIRTUAL *v)
 {
-	lvs_clip( v, pb->intin[0], (VDIRECT *)&pb->ptsin[0]);
-	return;
+	lvs_clip( v, pb->intin[0], (O_16 *)&pb->ptsin[0]);
 }
 void
-lvs_clip( VIRTUAL *v, short flag, VDIRECT *rclip)
+lvs_clip( VIRTUAL *v, O_Int flag, O_16 *rclip)
 {
 	RASTER *r = v->raster;
 	CLIPRECT *clip = &v->clip;
@@ -62,7 +59,7 @@ lvs_clip( VIRTUAL *v, short flag, VDIRECT *rclip)
 	if (flag == 1)
 	{
 
-		sortcpy_corners((short *)rclip, (short *)&clip->x1);
+		sortcpy_corners( rclip, (O_Pos *)&clip->x1);
 
 		if (clip->x1 < 0)
 			clip->x1 = 0;
@@ -92,14 +89,13 @@ lvs_clip( VIRTUAL *v, short flag, VDIRECT *rclip)
 		clip->x2 = r->x2;
 		clip->y2 = r->y2;
 	}
-	return;
 }
 
 void
 vs_color( VDIPB *pb, VIRTUAL *v)
 {
 	RGB_LIST color;
-	short cval, i;
+	O_Int cval, i;
 	short *p;
 
 	p = (short *)&color;
@@ -123,11 +119,10 @@ vs_color( VDIPB *pb, VIRTUAL *v)
 		lvs_color( v, i, &v->colinf->actual_rgb[i]);
 
 	/* should this not return anything? */
-	return;
 }
 
-short
-calc_vdicolor( RASTER *r, COLINF *c, short vdipen, RGB_LIST *color)
+O_Int
+calc_vdicolor( RASTER *r, COLINF *c, O_Int vdipen, RGB_LIST *color)
 {
 	short hwpen;
 
@@ -138,7 +133,7 @@ calc_vdicolor( RASTER *r, COLINF *c, short vdipen, RGB_LIST *color)
 
 	c->request_rgb[hwpen] = *color;
 
-	reqrgb_2_actrgb( r->pixelformat,
+	reqrgb_2_actrgb( r->res.pixelformat,
 			 &r->rgb_levels,
 			&c->request_rgb[hwpen],
 			&c->actual_rgb[hwpen],
@@ -148,43 +143,17 @@ calc_vdicolor( RASTER *r, COLINF *c, short vdipen, RGB_LIST *color)
 }
 
 void
-lvs_color( VIRTUAL *v, short hwpen, RGB_LIST *color)
+lvs_color( VIRTUAL *v, O_Int hwpen, RGB_LIST *color)
 {
-	if (v->driver == v->physical && v->raster->clut)
+	if (v->driver == v->physical && v->raster->res.clut && !(v->flags & V_OSBM))
 		(*v->driver->dev->setcol)(v->driver, hwpen, color);
 
-	return;
 }
-#if 0
-void
-lvs_color( VIRTUAL *v, short vdipen, RGB_LIST *color)
-{
-	short hwpen;
-
-	if (vdipen > (Planes2Pens[v->driver->r.planes] - 1))
-		return;
-
-	hwpen = v->color_vdi2hw[vdipen];
-
-	v->request_rgb[hwpen] = *color;
-
-	reqrgb_2_actrgb( v->driver->r.pixelformat,
-			v->rgb_levels,
-			&v->request_rgb[hwpen],
-			&v->actual_rgb[hwpen],
-			&v->driver->r.pixelvalues[hwpen]);
-
-	if (v->driver == v->physical)
-		(*v->driver->dev->setcol)(v->driver, hwpen, &v->actual_rgb[hwpen]);
-
-	return;
-}
-#endif
 
 void
 vq_color( VDIPB *pb, VIRTUAL *v)
 {
-	short vdipen, hwpen, flag;
+	O_Int vdipen, hwpen, flag;
 	COLINF *c;
 	RASTER *r;
 
@@ -222,5 +191,4 @@ exit:
 		goto exit;
 
 	pb->intout[0] = vdipen;
-	return;
 }

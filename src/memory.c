@@ -2,20 +2,20 @@
 #include <osbind.h>
 #include "memory.h"
 
-extern short MiNT;
+extern int MiNT;
 
 unsigned char *vram_base = 0;
 unsigned long vram_size = 0;
 
 void * _cdecl
-omalloc(unsigned long amount, short type)
+omalloc(O_u32 amount, O_Int type)
 {
-	long start;
+	O_32 start;
 
 	if (MiNT)
-		start = (long)Mxalloc( amount, type);
+		start = (O_32)Mxalloc( amount, type);
 	else
-		start = (long)Malloc( amount );
+		start = (O_32)Malloc( amount );
 
 	return (void *)start;
 }

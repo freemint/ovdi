@@ -1,5 +1,5 @@
-#include "console.h"
 #include "ovdi_defs.h"
+#include "console.h"
 #include "vdi_defs.h"
 #include "v_escape.h"
 
@@ -20,9 +20,9 @@ v_exit_cur( VDIPB *pb, VIRTUAL *v)
 void
 v_curtext( VDIPB *pb, VIRTUAL *v)
 {
-	register CONSOLE *c;
-	register short count = pb->contrl[N_INTIN];
-	register short *string = (short *)&pb->intin[0];
+	CONSOLE *c;
+	int count = pb->contrl[N_INTIN];
+	O_16 *string = (O_16 *)&pb->intin[0];
 
 	c = v->con;
 	hide_text_cursor(c);

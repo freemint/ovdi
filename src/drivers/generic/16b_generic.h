@@ -8,8 +8,8 @@ extern pixel_blit rt_ops_16b[];
 extern raster_blit rops_16b[];
 
 
-unsigned long get_pixel_16b(unsigned char *base, short bypl, short x, short y);
-void put_pixel_16b(unsigned char *base, short bypl, short x, short y, unsigned long pixel);
+unsigned long get_pixel_16b(unsigned char *base, O_Int bypl, O_Pos x, O_Pos y);
+void put_pixel_16b(unsigned char *base, O_Int bypl, O_Pos x, O_Pos y, unsigned long pixel);
 
 void draw_mousecurs_16b(XMFORM *mx, short x, short y);
 void restore_msave_16b(XMSAVE *ms);

@@ -1,17 +1,20 @@
 #include <osbind.h>
 
+#include "libkern.h"
 #include "display.h"
 #include "file.h"
 #include "vdi_defs.h"
 #include "fonts.h"
 #include "gdf_defs.h"
 #include "memory.h"
+#include "vdi_font.h"
 #include "vdi_globals.h"
 
 long
 load_font( char *fn, long *size, long *loc, struct gdf_membuff *m)
 {
 	long fs, lbytes, used;
+	int i;
 	char *b = m->free;
 	XGDF_HEAD *xf;
 
@@ -41,6 +44,8 @@ load_font( char *fn, long *size, long *loc, struct gdf_membuff *m)
 	//scrnlog("Font '%s' loaded into %lx. fonthead %lx, Size %ld, nxtfree %lx\n", fn, xf, xf->font_head, lbytes + sizeof(XGDF_HEAD), (long)xf + lbytes + sizeof(XGDF_HEAD) );
 	//scrnlog("mbase %lx, mfree %lx, msize %ld\n\n", m->base, m->free, m->size);
 	
+	for (i = 200, b = (char *)&xf->filename[0]; i > 0 && (*b++ = *fn++); i--){}
+	*b = 0;
 
 	if (size)
 		*size = lbytes;
@@ -56,6 +61,7 @@ fixup_font( FONT_HEAD *font )
 	if (!(font->flags & F_STDFORM))
 	{
 		int i;
+		short flags;
 		unsigned short tmp;
 		unsigned short *tmp2;
 		
@@ -74,19 +80,31 @@ fixup_font( FONT_HEAD *font )
 		(long)font->off_table = ( ((long)font->off_table << 16) | ((long)font->off_table>>16) );
 		(long)font->dat_table = ( ((long)font->dat_table << 16) | ((long)font->dat_table>>16) );
 	
+		flags = font->flags;
 
-		tmp2 = (short *)((long)font + (long)font->off_table);
-		
-		for (i = 0; i < (font->last_ade - font->first_ade) + 2; i ++)
-			*tmp2++ = ( (*tmp2)<<8 | (*tmp2)>>8 );
+		{
+			unsigned short tmp3;
 
-		if (font->flags & F_HORZ_OFF)
+			tmp2 = (short *)((long)font + (long)font->off_table);
+			for (i = 0; i < (font->last_ade - font->first_ade) + 2; i ++)
+			{
+				tmp3	= *tmp2;
+				*tmp2++ = ( (*tmp2)<<8 | (*tmp2)>>8 );
+				if (*tmp2 != tmp)
+					flags &= ~F_MONOSPACE;
+			}
+		}
+			
+
+		if (flags & F_HORZ_OFF)
 		{
 			tmp2 = (short *)((long)font + (long)font->hor_table);
 			for (i = 0 ; i < (font->last_ade - font->first_ade) ; i++ )
  				*tmp2++ = ( (*tmp2)<<8 | (*tmp2)>>8 );
 		}
-		font->flags |= F_STDFORM;
+		flags |= F_STDFORM;
+
+		font->flags = flags;
 	}
 
 	if (font->flags & F_HORZ_OFF)
@@ -134,7 +152,7 @@ init_systemfonts(SIZ_TAB *st, DEV_TAB *dt)
 
 	if (!sysfnt08p)
 	{
-		short i;
+		int i;
 		long fs, size = 0;
 		char *buff;
 		FONT_HEAD *f1;
@@ -283,9 +301,9 @@ long		gdf_cache_size = 0;
 static char	*font_cache = 0;
 static char	*next_free = 0;
 GDF_CACHED *
-gdf_get_cachemem(XGDF_HEAD *xf, short chr)
+gdf_get_cachemem(XGDF_HEAD *xf, O_Int chr)
 {
-	short width;
+	int width;
 	long fdatlen, cachentlen, usedcache;
 	FONT_HEAD *f = xf->font_head;
 	GDF_CACHED *cachent = 0;
@@ -329,7 +347,7 @@ gdf_get_cachemem(XGDF_HEAD *xf, short chr)
 void
 gdf_free_cache(void)
 {
-	short i;
+	int i;
 
 	if (font_cache)
 	{
@@ -344,15 +362,17 @@ gdf_free_cache(void)
 	}
 	font_cache = next_free = 0;
 }
-
-/* Returns 0 if added font was not a new face, only new size */
-/* Returns 1 if font added was a new face */
-/* Returns -1 if font already existed in chain */
-short
+/*
+ * Add a new font to the font-ring starting at 'start'. 
+ * Returns 0 if added font was not a new face, only new size.
+ * Returns 1 if added font was a new face (first font with this fonts ID)
+ * Returns -1 if font with same ID and size already existed in chain.
+*/
+O_Int
 add_font( XGDF_HEAD *start, XGDF_HEAD *new) //FONT_HEAD *start, FONT_HEAD *new)
 {
 	XGDF_HEAD *f, *closest, *prev;
-	unsigned short diff;
+	O_uInt diff;
 
 	f = start;
 	closest = 0;
@@ -368,7 +388,7 @@ add_font( XGDF_HEAD *start, XGDF_HEAD *new) //FONT_HEAD *start, FONT_HEAD *new)
 
 			if (closest)
 			{
-				unsigned short d;
+				O_uInt d;
 
 				if (f->font_head->point > new->font_head->point)
 				{
@@ -420,43 +440,119 @@ add_font( XGDF_HEAD *start, XGDF_HEAD *new) //FONT_HEAD *start, FONT_HEAD *new)
 		return 1;
 	}
 }
-
-short
-find_fontbyindex ( XGDF_HEAD *start, short index, long *ret)
+/*
+ * Find font by index. Returns 0 if successful, or the index at which
+ * search stopped (end of fonts in ring). 'ret' is filled with pointer
+ * to the XGDF_HEAD found on success, or to the last XGDF_HEAD in the
+ * ring if not successful.
+*/
+O_Int
+find_fontbyindex ( XGDF_HEAD *start, O_Int index, long *ret)
 {
-	register short previd;
+	register O_Int previd;
 	register XGDF_HEAD *f, *p;
 
-	f = p = start;
+	f = start;
 	previd = 0xffff;
 
-	//index++;
-	while (index)
+	do
 	{
 		p = f;
 
-		if (previd != f->font_head->id)
+		if (previd != p->font_head->id)
 		{
-			previd = f->font_head->id;
+			previd = p->font_head->id;
 			index--;
 		}
-		else
-
-		if (!(f = p->next))
-			break;
-	}
+	} while (index && (f = p->next) );
 
 	if (ret)
 		*ret = (long)p;
 
 	return index;	/* Will return 0 if successful */
 }
+/*
+ * Find font by ID. Returns the index of the font in the ring
+ * when successful, else NULL. 'ret' is filled with the address
+ * of the found XGDF_HEAD on success, else it is not modified.
+*/
+O_Int
+find_fontbyid ( XGDF_HEAD *start, O_Int id, long *ret)
+{
+	O_Int previd, i, index;
+	XGDF_HEAD *f, *p;
 
-short
-find_fontbypoint ( XGDF_HEAD *start, short id, short point, long *ret )
+	f = start;
+	previd = start->font_head->id;
+	index = 0;
+	i = 1;
+
+	do
+	{
+		p = f;
+		if (p->font_head->id == id)
+		{
+			index = i;
+			break;
+		}
+		else if (p->font_head->id != previd)
+		{
+			i++;
+			previd = p->font_head->id;
+		} 
+	} while ((f = p->next));
+
+	if (ret && index)
+		*ret = (long)p;
+
+	return index;	/* Will return 0 if unsuccessful */
+}
+/*
+ * Find font ID by index. Used to look for different fonts having
+ * the same ID. Returns index on success, or NULL if not successful.
+ * 'ret' is filled in with the address of the found XGDF_HEAD on
+ * success, not modified on failure.
+*/
+O_Int
+find_fontbyidindex(XGDF_HEAD *start, O_Int id, O_Int index, long *ret)
+{
+	int i;
+	XGDF_HEAD *f, *p;
+
+	f = start;
+	i = 1;
+
+	do
+	{
+		p = f;
+		if (p->font_head->id == id)
+		{
+			if (i == index)
+			{
+				if (ret)
+					*ret = (long)p;
+				return i;
+			}
+			else
+				i++;
+		}
+	} while ( (f = p->next) );
+
+	return 0;	/* Will return 0 if unsuccessful */
+}
+/*
+ * Find font by id and point.
+ * Returns 0 (unsuccessful) if no font with ID 'id' was located.
+ * Returns 1 if a perfect match was found (id and point)
+ * Returns 2 if a font with ID 'id', but not 'point' was found.
+ * 'ret' is filled in with address of XGDF_HEAD, or not modified
+ * when unsuccessful.
+*/
+O_Int
+find_fontbypoint ( XGDF_HEAD *start, O_Int id, O_Int point, long *ret )
 {
 	XGDF_HEAD *f, *closest, *cu, *cd;
-	unsigned short d, du, dd;
+	O_uInt d, du, dd;
 
 	f = start;
 	closest = cu = cd = 0;
@@ -492,8 +588,7 @@ find_fontbypoint ( XGDF_HEAD *start, short id, short point, long *ret )
 				}
 			}
 		}
-	} 
-	while ( (f = f->next) );
+	}  while ( (f = f->next) );
 
 	if (cu && cd)
 		closest = cu; //dd < du ? cd : cu;
@@ -511,15 +606,19 @@ find_fontbypoint ( XGDF_HEAD *start, short id, short point, long *ret )
 	else
 		return 0;
 }
-
-/* returns 0 if not found, 1 if ideal font found, or 2 if font ID, but not size */
-/* found. If it returns 2, the font whose size was closest to the request is	*/
-/* is returned. */
-short
-find_fontbyheight ( XGDF_HEAD *start, short id, short height, long *ret )
+/*
+ * Find font by id and heigh.
+ * Returns 0 (unsuccessful) if no font with ID 'id' was located.
+ * Returns 1 if a perfect match was found (id and height)
+ * Returns 2 if a font with ID 'id', but not 'height' was found.
+ * 'ret' is filled in with address of XGDF_HEAD, or not modified
+ * when unsuccessful.
+*/
+O_Int
+find_fontbyheight ( XGDF_HEAD *start, O_Int id, O_Int height, long *ret )
 {
 	XGDF_HEAD *f, *closest, *cu, *cd;
-	unsigned short d, du, dd;
+	O_uInt d, du, dd;
 
 	f = start;
 	closest = cu = cd = 0;
@@ -574,11 +673,168 @@ find_fontbyheight ( XGDF_HEAD *start, short id, short height, long *ret )
 	else
 		return 0;
 }
+/*
+ * Find font by id and char width.
+ * Returns 0 (unsuccessful) if no font with ID 'id' was located.
+ * Returns 1 if a perfect match was found (id and width)
+ * Returns 2 if a font with ID 'id', but not 'width' was found.
+ * 'ret' is filled in with address of XGDF_HEAD, or not modified
+ * when unsuccessful.
+*/
+O_Int
+find_fontbycharwidth ( XGDF_HEAD *start, O_Int id, O_Int width, long *ret )
+{
+	XGDF_HEAD *f, *closest, *cu, *cd;
+	O_uInt d, du, dd;
+
+	f = start;
+	closest = cu = cd = 0;
+	du = dd = 0xffff;
+
+	do
+	{
+		if (f->font_head->id == id)
+		{
+			if (f->font_head->max_char_width == width)
+			{
+				if (ret)
+					*ret = (long)f;
+				return 1;
+			}
+
+			if (f->font_head->max_char_width > width)
+			{
+				d = f->font_head->max_char_width - width;
+				if (d < du)
+				{
+					du = d;
+					cu = f;
+				}
+			}
+			else
+			{
+				d = width - f->font_head->max_char_width;
+				if (d < dd)
+				{
+					dd = d;
+					cd = f;
+				}
+			}
+		}
+	} 
+	while ( (f = f->next) );
+
+	if (cu && cd)
+		closest = cu; //dd < du ? cd : cu;
+	else if (cu)
+		closest = cu;
+	else if (cd)
+		closest = cd;
+
+	if (closest)
+	{
+		if (ret)
+			*ret = (long)closest;
+		return 2;
+	}
+	else
+		return 0;
+}
+
+static O_Int
+fntncmp(char *s, char *d)
+{
+	char ch1, ch2;
+
+	while (*s == 32){s++;}
+	while (*d == 32){d++;}
+
+	for (;;)
+	{
+		ch1 = *s++;
+		if (ch1 == 32)
+			while (*s == 32){s++;}
+		ch2 = *d++;
+		if (ch2 == 32)
+			while (*d == 32){d++;}
+		if (ch1 != ch2)
+		{
+			if (!ch1)
+				return 0;
+			else
+				return 1;
+		}
+		else if (!ch1)
+			return 0;
+	}
+}	
+		
+		
+/*
+ * Find a font by its name.
+ * Returns  0 if successful, and 'ret' is filled in with address of XGDF_HEAD.
+ * Returns -1 if not successful, and 'ret' is not modified.
+*/
+O_Int
+find_fontbyname( XGDF_HEAD *start, char *name, long *ret)
+{
+	XGDF_HEAD *p, *f;
+
+	f = start;
+
+	do
+	{
+		p = f;
+		if ( !fntncmp(name, (char *)&p->font_head->name) )
+			break;
+	}
+	while ((f = p->next));
+
+	if (f && ret)
+	{
+		*ret = (long)p;
+		return 0;
+	}
+	else
+		return 1;
+}
+
+/*
+ * Copy the full name of the font to buffer 'n'
+*/
+void
+get_font_fullname(XGDF_HEAD *f, char *n)
+{
+	char *s;
+	int i;
+
+	s = (char *)&f->font_head->name;
+	for (i = 32; i > 0 && (*n++ = *s++); i--){}
+	*n = 0;
+}
+void
+get_font_familyname(XGDF_HEAD *f, char *n)
+{
+	*n = 0;
+}
+void
+get_font_stylename(XGDF_HEAD *f, char *n)
+{
+	*n = 0;
+}
+void
+get_font_filename(XGDF_HEAD *f, char *n)
+{
+	char *s;
+	int i;
+	for (i = 200, s = (char *)&f->filename[0]; i > 0 && (*n++ = *s++); i--){}
+	*n = 0;
+}
 
 void
-get_font_chrfx_ofst( FONT_HEAD *f, short style, short *x_ofst, short *y_ofst )
+get_font_chrfx_ofst( FONT_HEAD *f, O_Int style, O_16 *x_ofst, O_16 *y_ofst )
 {
-	register short x, y;
+	O_16 x, y;
 
 	x = y = 0;
 
@@ -599,13 +855,13 @@ get_font_chrfx_ofst( FONT_HEAD *f, short style, short *x_ofst, short *y_ofst )
 /* if len < 0, it treats the string as a null-terminated string. Else it returns
  * after len characters.
 */
-short
-gdf_string_width(FONT_HEAD *f, short *str, short len)
+O_Int
+gdf_string_width(FONT_HEAD *f, O_16 *str, O_Int len)
 {
 	int i;
-	register short *offtab;
-	register char *hortab;
-	register short fade, lade, chr, width;
+	O_16 *offtab;
+	char *hortab;
+	O_Int fade, lade, chr, width;
 
 	offtab = f->off_table;
 	hortab = f->hor_table;
@@ -630,7 +886,7 @@ gdf_string_width(FONT_HEAD *f, short *str, short len)
 			width += offtab[chr + 1] - offtab[chr];
 
 			if (hortab)
-				width += (short)(hortab[chr] + hortab[chr + 1]);
+				width += (O_16)(hortab[chr] + hortab[chr + 1]);
 		}
 	}
 	else
@@ -645,19 +901,19 @@ gdf_string_width(FONT_HEAD *f, short *str, short len)
 			width += offtab[chr + 1] - offtab[chr];
 
 			if (hortab)
-				width += (short)(hortab[chr] + hortab[chr + 1]);
+				width += (O_16)(hortab[chr] + hortab[chr + 1]);
 		}
 	}
 
 	return width;
 }
 
-short
-gdf_get_so( FONT_HEAD *f, short *string, short len, short pixeloffset, short chrfx, GDFSO *inf)
+O_Int
+gdf_get_so( FONT_HEAD *f, O_16 *string, O_Int len, O_Pos pixeloffset, O_Pos chrfx, GDFSO *inf)
 {
-	int i;
-	short chr, coff, fade, lade, cwidth;
-	short *offtable;
+	O_Int i, chr, coff, fade, lade;
+	O_Pos cwidth;
+	O_16 *offtable;
 	char *hortable;
 
 	inf->str_coff = 0;

@@ -1,5 +1,7 @@
 #include "display.h"
 #include "line.h"
+#include "memory.h"
+#include "patattr.h"
 #include "vdi_globals.h"
 #include "v_attribs.h"
 #include "v_line.h"
@@ -14,7 +16,49 @@ void
 lvsl_initial(VIRTUAL *v)
 {
 	PatAttr *l = &v->line;
+	int i;
+
+	l->exp_data	= (O_u16 *)&v->linedata.edata;
+	l->mask		= (O_u16 *)&v->linedata.mask;
+
 	set_fill_params(FIS_SOLID, 0, l, &l->interior, 0);
+	l->t.l.index = -1;
+	l->wrmode = -1;
+	
+	for (i = 0; i < 4; i++)
+		l->color[i] = l->bgcol[i] = -1;
+}
+
+void
+v_set_app_buff(VDIPB *pb, VIRTUAL *v)
+{
+	void *buff = *(void **)&(pb->intin[0]);
+	long size = pb->intin[2] << 4;
+
+	lv_set_app_buff(v, buff, size);
+}
+
+void
+lv_set_app_buff(VIRTUAL *v, void *buff, long size)
+{
+	if (v->app_buff)
+	{
+		if (v->flags & V_OWN_APPBUFF)
+		{
+			free_mem(v->app_buff);
+			v->flags &= ~V_OWN_APPBUFF;
+		}
+		v->app_buff = 0;
+	}	
+	if (!buff)
+	{
+		buff = (void *)omalloc(size, MX_PREFTTRAM | MX_PRIVATE);
+		v->flags |= V_OWN_APPBUFF;
+	}
+	else
+		v->flags &= ~V_OWN_APPBUFF;
+
+	v->app_buff = buff;
 }
 
 void
@@ -26,46 +70,20 @@ vsl_color(VDIPB *pb, VIRTUAL *v)
 	pb->contrl[N_INTOUT] = 1;
 }
 void
-lvsl_color( VIRTUAL *v, short color)
+lvsl_color( VIRTUAL *v, O_Int color)
 {
-	register short maxcolor, planes;
-
-	planes = v->raster->planes;
-	maxcolor = v->colinf->pens;
-
-	if	(color < 0)
-		color = 0;
-	else if	(color >= maxcolor)
-		color = maxcolor - 1;
-
-	color = v->colinf->color_vdi2hw[color];
-
-	v->line.color[0] = v->line.color[1] = color;
-	v->line.color[2] = v->line.color[3] = planes > 8 ? 0x0 : 0xff;
+	set_pa_fgcolor(&v->line, v->colinf, color);
 }
 
 void
-lvsl_bgcolor( VIRTUAL *v, short color)
+lvsl_bgcolor( VIRTUAL *v, O_Int color)
 {
-	register short maxcolor, planes;
-
-	planes = v->raster->planes;
-	maxcolor = v->colinf->pens;
-
-	if	(color < 0)
-		color = 0;
-	else if	(color >= maxcolor)
-		color = maxcolor -1;
-
-	color = v->colinf->color_vdi2hw[color];
-
-	v->line.bgcol[0] = v->line.bgcol[1] = color;
-	v->line.bgcol[2] = v->line.bgcol[3] = planes > 8 ? 0xff : 0x0;
+	set_pa_bgcolor(&v->line, v->colinf, color);
 }
 void
-lvsl_wrmode( VIRTUAL *v, short wrmode)
+lvsl_wrmode( VIRTUAL *v, O_Int wrmode)
 {
-	set_writingmode( wrmode, &v->line.wrmode);
+	set_pa_writemode(&v->line, wrmode);
 }
 
 void
@@ -74,10 +92,9 @@ vsl_ends( VDIPB *pb, VIRTUAL *v)
 	lvsl_ends(v, pb->intin[0], pb->intin[1]);
 }
 void
-lvsl_ends( VIRTUAL *v, short begin, short end)
+lvsl_ends( VIRTUAL *v, O_Int begin, O_Int end)
 {
-	v->line.t.l.beg = begin <= MAX_LN_ENDS ? begin : MAX_LN_ENDS;
-	v->line.t.l.end = end <= MAX_LN_ENDS ? end : MAX_LN_ENDS;
+	set_pa_lineends(&v->line, begin, end);
 }
 
 void
@@ -90,27 +107,9 @@ vsl_type( VDIPB *pb, VIRTUAL *v)
 }
 
 void
-lvsl_type( VIRTUAL *v, short index)
+lvsl_type( VIRTUAL *v, O_Int index)
 {
-
-	if (index < 1)
-		index = 1;
-	else if (index > MAX_LN_STYLE)
-		index = 1;
-
-	if (index == LI_USER)
-		v->line.data = &v->line.ud;
-	else
-	{
-		v->line.data = (short *)&LINE_STYLE[index - 1];
-	}
-
-	v->line.t.l.index = index - 1;
-	v->line.expanded = 0;
-	v->line.width = 16;
-	v->line.height = 1;
-	v->line.wwidth = 1;
-	v->line.planes = 1;
+	set_pa_lineindex(&v->line, index);
 }
 
 void
@@ -119,9 +118,14 @@ vsl_udsty( VDIPB *pb, VIRTUAL *v)
 	lvsl_udsty( v, pb->intin[0]);
 }
 void
-lvsl_udsty( VIRTUAL *v, short pattern)
+lvsl_udsty( VIRTUAL *v, O_u16 pattern)
 {
-	v->line.ud = (unsigned short)pattern;
+	set_pa_udline( &v->line, pattern);
+#if 0
+	v->line.ud = (O_u16)pattern;
+	if (v->line.t.l.index == LI_USER-1)
+		v->line.expanded = 0;
+#endif
 }
 
 void
@@ -134,14 +138,17 @@ vsl_width( VDIPB *pb, VIRTUAL *v)
 }
 
 void
-lvsl_width( VIRTUAL *v, short width)
+lvsl_width( VIRTUAL *v, O_Int width)
 {
+	set_pa_linewidth(&v->line, width);
+#if 0
 	if (width < 1)
 		v->line.t.l.width = 1;
 	else if (width > MAX_L_WIDTH)
 		v->line.t.l.width = MAX_L_WIDTH | 1;
 	else
 		v->line.t.l.width = width | 1;
+#endif
 }
 
 void
@@ -150,8 +157,8 @@ v_pline( VDIPB *pb, VIRTUAL *v)
 	RASTER *r = v->raster;
 	COLINF *c = v->colinf;
 	VDIRECT *clip;
-	short count;
-	POINT *in_pts;
+	int count;
+	POINT16 *in_pts;
 	VDIRECT points;
 	Fpline dl;
 
@@ -160,7 +167,8 @@ v_pline( VDIPB *pb, VIRTUAL *v)
 	if ((count -= 2) < 0)
 		return;
 
-	in_pts = (POINT *)&pb->ptsin[0];
+	in_pts = (POINT16 *)&pb->ptsin[0];
+
 	dl = v->line.t.l.width == 1 ? DRAW_PLINE_PTR(r) : DRAW_WIDELINE_PTR(r);
 
 	clip = v->clip.flag ? (VDIRECT *)&v->clip.x1 : (VDIRECT *)&r->x1;
@@ -172,8 +180,7 @@ v_pline( VDIPB *pb, VIRTUAL *v)
 		in_pts++;
 		points.x2 = in_pts->x;
 		points.y2 = in_pts->y;
-
-		(*dl)(r, c, (short *)&points, 2, clip, (short *)&v->spanbuff, v->spanbuffsiz, &v->line);
+		(*dl)(r, c, (O_Pos *)&points, 2, clip, (O_Pos *)&v->spanbuff, v->spanbuffsiz, &v->line);
 		count--;
 	}
 }

@@ -15,4 +15,7 @@ void vq_extnd	( VDIPB *pb, VIRTUAL *v );
 
 void lv_clrwk	( VIRTUAL *v);
 
+void copy_common_virtual_vars(VIRTUAL *new, VIRTUAL *root);
+void get_MiNT_info(VIRTUAL *);
+
 #endif	/* _WORKSTATION_H */

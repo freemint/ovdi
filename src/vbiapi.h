@@ -1,20 +1,22 @@
 #ifndef _VBI_H
 #define _VBI_H
 
-//#include "ovdi_defs.h"
+#include "ovdi_types.h"
 
 struct vbiapi
 {
 	struct vbiapi	*nxtapi;
-	long		version;
+	O_32		version;
 	char		*sname;
 	char		*lname;
+	char		*filename;
+	char		*pathname;
 	
-	short		(*install)(void);
+	O_Int		(*install)(void);
 
-	short		(*get_tics)(void);
-	short		(*add_func)(unsigned long func, unsigned long tics);
-	void		(*del_func)(unsigned long func);
+	O_Int		(*get_tics)(void);
+	O_Int		(*add_func)(O_u32 func, O_u32 tics);
+	void		(*del_func)(O_u32 func);
 	void		(*reset)(void);
 	void		(*enable)(void);
 	void		(*disable)(void);

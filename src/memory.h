@@ -1,6 +1,7 @@
 #ifndef	_oMEMORY_C
 #define _oMEMORY_C
 
+#include "ovdi_types.h"
 #include "libkern.h"
 
 #define	MX_STRAM	0
@@ -14,8 +15,8 @@
 #define MX_SUPER	MX_MPSEL | (3 << 4)
 #define MX_READABLE	MX_MPSEL | (4 << 4)
 
-void *	_cdecl	omalloc		(unsigned long amount, short type);
+void *	_cdecl	omalloc		(O_u32 amount, O_Int type);
 void 	_cdecl	free_mem	(void *loc);
-void *	_cdecl	vrmalloc	(unsigned long amount);
+void *	_cdecl	vrmalloc	(O_u32 amount);
 
 #endif	/* _oMEMORY_C */

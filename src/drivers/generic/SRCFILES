@@ -9,9 +9,45 @@ HEADER = \
 	
 COBJS = \
 	1b_generic.c \
+	1b_data.c \
+	rb_ALL_WHITE_1b.c \
+	rb_S_AND_D_1b.c \
+	rb_S_AND_NOTD_1b.c \
+	rb_S_ONLY_1b.c \
+	rb_NOTS_AND_D_1b.c\
+	rb_S_XOR_D_1b.c \
+	rb_S_OR_D_1b.c \
+	rb_NOT_SORD_1b.c \
+	rb_NOT_SXORD_1b.c \
+	rb_NOT_D_1b.c \
+	rb_S_OR_NOTD_1b.c \
+	rb_NOT_S_1b.c \
+	rb_NOTS_OR_D_1b.c \
+	rb_NOT_SANDD_1b.c \
+	rb_ALL_BLACK_1b.c \
 	fill_16x_1b.c \
+	spans_16x_1b.c \
+\
 	4b_generic.c \
+	4b_data.c \
+	rb_ALL_WHITE_4b.c \
+	rb_S_AND_D_4b.c \
+	rb_S_AND_NOTD_4b.c \
+	rb_S_ONLY_4b.c \
+	rb_NOTS_AND_D_4b.c\
+	rb_S_XOR_D_4b.c \
+	rb_S_OR_D_4b.c \
+	rb_NOT_SORD_4b.c \
+	rb_NOT_SXORD_4b.c \
+	rb_NOT_D_4b.c \
+	rb_S_OR_NOTD_4b.c \
+	rb_NOT_S_4b.c \
+	rb_NOTS_OR_D_4b.c \
+	rb_NOT_SANDD_4b.c \
+	rb_ALL_BLACK_4b.c \
 	fill_16x_4b.c \
+	spans_16x_4b.c \
+\
 	8b_generic.c \
 	fill_16x_8b.c \
 	spans_16x_8b.c \

@@ -1,6 +1,7 @@
 #ifndef _OVDI_XBIOS_H
 #define _OVDI_XBIOS_H
 
+#include "ovdi_types.h"
 
 void install_xbios	(void);
 void uninstall_xbios	(void);

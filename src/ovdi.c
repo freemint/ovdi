@@ -1,4 +1,4 @@
-#include <osbind.h>
+#include <mint/osbind.h>
 #include <mint/mintbind.h>
 #include <mint/basepage.h>
 #include <mint/dcntl.h>
@@ -10,10 +10,14 @@
 #include "cnf.h"
 #include "console.h"
 #include "display.h"
+#include "eddi.h"
 
 #include "file.h"
 
 #include "fonts.h"
+
+#include "fontdrv_api.h"
+#include "gdf_driver.h"		// built in FNT font driver
 
 #include "ovdi.h"
 #include "ovdi_defs.h"
@@ -34,8 +38,6 @@
 #include "timerapi.h"
 #include "kbdapi.h"
 
-#include "std_driver.h"
-
 /* #include "styles.h" */
 #include "tables.h"	/* Contains the function jumptable, dev/siz/inq tabs amogst other things */
 
@@ -46,10 +48,13 @@
 extern	long old_trap2_vec;		/* in handler.s */
 extern	void New_Trap2(void);		/* in handler.s */
 
+long getstack(void);
+
 static void loadparse_ovdi_cnf(void);
 
 void v_nosys( VDIPB *, VIRTUAL *);
 
+long stackptr;
 /*
  * This array of functions is passed to each module/driver's
  * init code. 
@@ -77,11 +82,16 @@ static OVDI_LIB ovdilib =
 	oSupexec,
 };
 
-short	MiNT = 0;
+O_16	MiNT = 0;
+O_16	using_trap;
 char	bootdev;
 
-short	scrsizmm_x = 0;
-short	scrsizmm_y = 0;
+O_16	scrsizmm_x = 0;
+O_16	scrsizmm_y = 0;
+
+O_32	arc_split = 16384;
+O_16	arc_min = 16;
+O_16	arc_max = MAX_ARC_CT;
 
 LINEA_VARTAB	*linea_vars;
 OVDI_HWAPI	hw_api;
@@ -101,11 +111,11 @@ struct pattern_data BRdata;
  * Keep a 'root' color info structure
 */
 static COLINF colinf;
-static short vdi2hw[256];
-static short hw2vdi[256];
+static O_16 vdi2hw[256];
+static O_16 hw2vdi[256];
 static RGB_LIST request_rgb[256];
 static RGB_LIST actual_rgb[256];
-static unsigned long pixelvalues[256];
+static O_u32 pixelvalues[256];
 
 extern BASEPAGE *_base;
 char *vdi_fontlist = 0;
@@ -121,13 +131,27 @@ char sysf08_name[16]	= { "\0" };
 char sysf09_name[16]	= { "\0" };
 char sysf10_name[16]	= { "\0" };
 
+
+long
+getstack(void)
+{
+	register long ret;
+	__asm__ volatile
+	("
+		move.l sp,%0
+	"	:
+		: "d"(ret)
+	);
+	return ret;
+}
+
 long
 ovdi_init(void)
 {
 	OVDI_HWAPI *hw = &hw_api;
 	struct module_desc md;
 	long lavt, lafr, laft;
-	void (*init)(OVDI_LIB *, struct module_desc *);
+	void (*init)(OVDI_LIB *, struct module_desc *, char *, char *);
 
 	scrnlog("OVDI start adr %lx, ends at adr %lx\n", _base->p_tbase,
 		_base->p_tbase + _base->p_tlen + _base->p_blen + _base->p_dlen);
@@ -140,7 +164,7 @@ ovdi_init(void)
 	linea_vars = (LINEA_VARTAB *)lavt;
 
 	bootdev = Dgetdrv() + 'a';
-	ovdi_cnf_file[0] = bootdev;
+	//ovdi_cnf_file[0] = bootdev;
 	module_path[0] = bootdev;
 	gdf_path[0] = bootdev;
 	tmp_file[0] = bootdev;
@@ -149,14 +173,30 @@ ovdi_init(void)
 	 * Load and parse ovdi.cnf
 	*/
 	loadparse_ovdi_cnf();
-	//return -1;
 
+#if 0
+	init_gdfdrv(&ovdilib, &md, "built in", "built in");
+	hw->font = md.fnt;
+
+	(void)(*hw->font->load_fonts)(gdf_path, vdi_fontlist);
+
+	return -1;
+#endif
+
+	install_eddi();
 	{
 		BASEPAGE *b;
-		short olddrive;
+		int olddrive;
 		long err, r;
 		struct _dta *odta;
 		struct _dta ndta;
+
+	
+		/*
+		 * Install built in API's
+		*/
+		init_gdfdrv(&ovdilib, &md, "built in", "built in");
+		hw->font = md.fnt;
 
 		odta = Fgetdta();
 		Fsetdta(&ndta);
@@ -183,38 +223,61 @@ ovdi_init(void)
 			{
 				md.types = 0;
 				(long)init	= (long)b->p_tbase;
-				(*init)(&ovdilib, &md);
+				(*init)(&ovdilib, &md, (char *)&module_path, (char *)&ndta.dta_name);
+				/*
+				 * Video HardWare driver
+				 */
 				if (md.types & D_VHW)
 				{
 					OVDI_DEVICE *d = md.vhw;
 					d->nxtapi	= hw->device;
 					hw->device	= d;
 				}
+				/*
+				 * Vertical Blank Interrupt driver
+				 */
 				if (md.types & D_VBI)
 				{
 					VBIAPI *v = md.vbi;
 					v->nxtapi	= hw->vbi;
 					hw->vbi		= v;
 				}
+				/*
+				 * Pointing DeVice driver
+				 */
 				if (md.types & D_PDV)
 				{
 					PDVAPI	*p = md.pdv;
 					p->nxtapi	= hw->pointdev;
 					hw->pointdev	= p;
 				}
+				/*
+				 * KeyBoarD driver
+				 */
 				if (md.types & D_KBD)
 				{
 					KBDAPI *k = md.kbd;
 					k->nxtapi	= hw->keyboard;
 					hw->keyboard	= k;
 				}
+				/*
+				 * System TIMer driver
+				 */
 				if (md.types & D_TIM)
 				{
 					TIMEAPI *t = md.tim;
 					t->nxtapi	= hw->time;
 					hw->time	= t;
 				}
-
+				/*
+				 * FoNT driver
+				 */
+				if (md.types & D_FNT)
+				{
+					FONTAPI *f = md.fnt;
+					f->nxtapi	= hw->font;
+					hw->font	= f;
+				}
 				scrnlog("Module %s text %lx, data %lx, bss %lx\n", ndta.dta_name, b->p_tbase, b->p_dbase, b->p_bbase);
 			}
 			else
@@ -268,8 +331,11 @@ ovdi_init(void)
 	*/
 	init_systemfonts(&SIZ_TAB_rom, &DEV_TAB_rom);
 
-	scrnlog("\n\n oVDI: Hit a key to continue\n");
-	(void)Cnecin();
+	if ((Kbshift(-1) & 0x3))
+	{
+		scrnlog("\n\n oVDI: Hit a key to continue\n");
+		(void)Cnecin();
+	}
 
 /* ---------------------------- */
 	{
@@ -285,12 +351,38 @@ ovdi_init(void)
 		 * Open returns a OVDI_DRIVER pointer...
 		*/
 		dev = hw->device;
+#if 0
 		drv = (*dev->open)(dev);
 		if (!drv)
 		{
 			scrnlog("Could not open graphics device! oVDI not installed\n");
 			return -1;
 		}
+
+		{
+			long *mem;
+
+			mem = (char *)omalloc(  33*4 + /* Array of OVDI_DRAWERS table pointers */
+						(sizeof(OVDI_DRAWERS * 8) +
+						sizeof(OVDI_UTILS),
+						MX_PREFTTRAM | MX_SUPER );
+
+			if (mem)
+				init_device_jumptable(hw, drv, mem);
+			else
+			{
+				scrnlog("Could not get memory for jumptables! oVDI not installed\n");
+				return -1;
+			}
+		}
+#else
+		drv = open_device(hw);
+		if (!drv)
+		{
+			scrnlog("Error opening graphics device! oVDI not installed\n");
+			return -1;
+		}
+#endif
 
 		/*
 		 * Use raster setup by driver.
@@ -300,6 +392,7 @@ ovdi_init(void)
 
 		hw->driver = drv;
 		hw->colinf = c;
+
 		(*hw->vbi->install)();				/* Install VBI basics */
 		(*hw->keyboard->install)();			/* Install keyboard basics */
 		(*hw->time->install)(linea_vars);		/* Install timer basics */
@@ -309,16 +402,16 @@ ovdi_init(void)
 		 * setup the root colinf structure for this raster.
 		 * ALLOC MEM FOR THIS INSTEAD!
 		*/
-		c->color_vdi2hw = (short *)&vdi2hw;
-		c->color_hw2vdi = (short *)&hw2vdi;
-		c->pixelvalues = (unsigned long *)&pixelvalues;
+		c->color_vdi2hw = (O_16 *)&vdi2hw;
+		c->color_hw2vdi = (O_16 *)&hw2vdi;
+		c->pixelvalues = (O_u32 *)&pixelvalues;
 		c->request_rgb = (RGB_LIST *)&request_rgb;
 		c->actual_rgb = (RGB_LIST *)&actual_rgb;
 
 		/*
 		 * Setup vital stuff for the raster structure
 		*/
-		init_raster(drv, r);
+		init_raster(hw, r);
 		raster_reschange(r, c);
 
 		/*
@@ -354,7 +447,7 @@ ovdi_init(void)
 		 * Install console-drivers 'blink-cursor' VBI function - no blinking without it ;-)
 		 * Then enable VBI driver...
 		*/
-		(*hw->vbi->add_func)((unsigned long)hw->console->textcursor_blink, 25);
+		(*hw->vbi->add_func)((O_u32)hw->console->textcursor_blink, 25);
 		(*hw->vbi->enable)();
 
 		if (usp)
@@ -377,6 +470,7 @@ ovdi_init(void)
 	 * Install VDI trap handler
 	*/
 	old_trap2_vec = (long) Setexc(0x22, New_Trap2);
+	using_trap = 1;
 
 	scrnlog("OVDI start adr %lx, ends at adr %lx\n", _base->p_tbase, _base->p_tbase + _base->p_tlen + _base->p_blen + _base->p_dlen);
 	scrnlog("Linea vartab %lx, font ring %lx, func tab %lx", linea_vars, lafr, laft);
@@ -390,7 +484,7 @@ static void
 cnf_getpath( const char *src, char *dst)
 {
 	char c;
-	short slash = 0;
+	int slash = 0;
 
 	while ( (c = *src++) )
 	{
@@ -447,7 +541,7 @@ cnf_consolefnt(const char *line)
  * any more arguments is an error.
 */
 static void
-cnf_sysfonts(short num, char *fname)
+cnf_sysfonts(int num, char *fname)
 {
 	char *dst = 0;
 
@@ -473,7 +567,7 @@ cnf_sysfonts(short num, char *fname)
  * and keep the font-list there.
 */
 static void
-cnf_vdifonts(short num, char *path)
+cnf_vdifonts(int num, char *path)
 {
 	long fh = -1;
 
@@ -520,7 +614,7 @@ cnf_vdifonts(short num, char *path)
 		}
 		Fdelete( (char *)&tmp_file );
 		if (mem)
-			mem[fs + 1] = mem[fs + 2] = 0;
+			mem[fs] = mem[fs + 1] = 0;
 
 		//scrnlog("end of list %lx\n", vdi_fontlist);
 	}
@@ -559,6 +653,56 @@ cnf_logfile(const char *file)
 {
 	set_log_file(file);
 }
+static void
+cnf_arc_split(long split)
+{
+	if (split < 3)
+		split = 3;
+	else if (split > 100)
+		split = 100;
+	arc_split = (split * 65536L + 50) / 100;
+}
+static void
+cnf_arc_min(long val)
+{
+	if (val < 3)
+		val = 3;
+	arc_min = val;
+}
+static void
+cnf_arc_max(long val)
+{
+	if (val > 1000)
+		val = 1000;
+
+	arc_max = val;
+}
+static int
+chkscrsizval(int val)
+{
+	if (val > 0)
+	{
+		if (val < 100)
+			val = 100;
+	}
+	else
+	{
+		if (-val < 10)
+			val = -10;
+	}
+	return val;
+}
+
+static void
+cnf_screen_x(long val)
+{
+	scrsizmm_x = chkscrsizval((int)val);
+}
+static void
+cnf_screen_y(long val)
+{
+	scrsizmm_y = chkscrsizval((int)val);
+}
 
 static struct parser_item parstab_ovdicnf[] =
 {
@@ -569,26 +713,32 @@ static struct parser_item parstab_ovdicnf[] =
 	{ "VDI_FONTS",		PI_V_l, cnf_vdifonts	},
 	{ "GDF_CACHE",		PI_V_L, cnf_gdfcache	},
 	{ "LOGFILE",		PI_V_T, cnf_logfile	},
+	{ "ARC_SPLIT",		PI_V_L, cnf_arc_split	},
+	{ "ARC_MIN",		PI_V_L, cnf_arc_min	},
+	{ "ARC_MAX",		PI_V_L, cnf_arc_max	},
+	{ "SCREEN_X",		PI_V_L, cnf_screen_x	},
+	{ "SCREEN_Y",		PI_V_L, cnf_screen_y	},
 	{ NULL }
 };
 
 static void
 loadparse_ovdi_cnf(void)
 {
-	ovdi_cnf_file[0] = bootdev;
+	//ovdi_cnf_file[0] = bootdev;
 	load_config((char *)ovdi_cnf_file, &parstab_ovdicnf[0]);	
 }
 
 /* ====================================================================================== */
 /* ====================================================================================== */
-short logit = 0;
+int logit = 0;
+
 /*
  * The oVDI function dispatcher.
 */
 long
 oVDI( VDIPB *pb )
 {
-	short func;
+	int func;
 	VDI_function *f;
 	VIRTUAL *v;
 
@@ -597,7 +747,15 @@ oVDI( VDIPB *pb )
 	if (func == 241)	/* remove me! */
 		func = 8;
 
-	if (func > MAX_VDI_FUNCTIONS)
+	if (func < 0)
+	{
+		int nf = -func;
+
+		if (nf > MAX_VDI_NEGFUNCTIONS)
+			return -1L;
+		f = (VDI_function *)v_njmptab[nf];
+	}
+	else if (func > MAX_VDI_FUNCTIONS)
 	{
 
 #if 0
@@ -610,8 +768,8 @@ oVDI( VDIPB *pb )
 #endif
 		return -1L;
 	}
-
-	f = (VDI_function *)v_jmptab[func];
+	else
+		f = (VDI_function *)v_jmptab[func];
 
 	/*
 	 * Opening a physical is a special case
@@ -646,10 +804,19 @@ oVDI( VDIPB *pb )
 
 	v->func = func;		/* Store the actual VDI function */
 
-
 #if 0
-//	if ( !(strcmp("PROFILE2", v->procname)) )
-	if ( (Kbshift(-1) & 0x1) && !(strcmp("ATARICQ", v->procname)) )// && func == 121)
+	if ((Kbshift(-1) & 0x1) && !(strcmp("JINNEE", v->procname)) )
+		logit = 1;
+	else
+		logit = 0;
+#endif
+#if 0
+	stackptr = getstack();
+#endif
+
+#if 1
+	if ( !(strcmp("PORTHOS", v->procname)) )
+	//if ( (Kbshift(-1) & 0x1) && !(strcmp("JINNEE", v->procname)) )// && func == 121)
 		logit = 1;
 	else
 		logit = 0;
@@ -664,7 +831,15 @@ oVDI( VDIPB *pb )
 
 		log("%s (%d) - func %d, subfuc %d, ni %d, np %d\n",
 			v->procname, v->pid, func, pb->contrl[SUBFUNCTION], pb->contrl[N_INTIN], pb->contrl[N_PTSIN]);
-		log("  in %d, %d, %d, %d, %d, %d, %d, %d - %d, %d, %d, %d, %d, %d, %d, %d\n",
+
+		if (pb->contrl[N_INTIN] && pb->intin)
+		{
+			log("  in %d, %d, %d, %d, %d, %d, %d, %d -\n",
+				pb->intin[0], pb->intin[1], pb->intin[2], pb->intin[3],
+				pb->intin[4], pb->intin[5], pb->intin[6], pb->intin[7]);
+		}
+#if 0
+		scrnlog("  in %d, %d, %d, %d, %d, %d, %d, %d - %d, %d, %d, %d, %d, %d, %d, %d\n",
 			pb->intin[0], pb->intin[1], pb->intin[2], pb->intin[3],
 			pb->intin[4], pb->intin[5], pb->intin[6], pb->intin[7],
 			pb->ptsin[0], pb->ptsin[1], pb->ptsin[2], pb->ptsin[3],
@@ -675,13 +850,16 @@ oVDI( VDIPB *pb )
 			pb->intout[4], pb->intout[5], pb->intout[6], pb->intout[7],
 			pb->ptsout[0], pb->ptsout[1], pb->ptsout[2], pb->ptsout[3],
 			pb->ptsout[4], pb->ptsout[5], pb->ptsout[6], pb->ptsout[7]);
+#endif
 	}
 
 	(*f)(pb, v);
 
 	if (logit)// && func == 0)
 	{
-		log(" out %d, %d, %d, %d, %d, %d, %d, %d - %d, %d, %d, %d, %d, %d, %d, %d\n",
+
+#if 0
+		scrnlog(" out %d, %d, %d, %d, %d, %d, %d, %d - %d, %d, %d, %d, %d, %d, %d, %d\n",
 			pb->intin[0], pb->intin[1], pb->intin[2], pb->intin[3],
 			pb->intin[4], pb->intin[5], pb->intin[6], pb->intin[7],
 			pb->ptsin[0], pb->ptsin[1], pb->ptsin[2], pb->ptsin[3],
@@ -693,6 +871,7 @@ oVDI( VDIPB *pb )
 			pb->ptsout[0], pb->ptsout[1], pb->ptsout[2], pb->ptsout[3],
 			pb->ptsout[4], pb->ptsout[5], pb->ptsout[6], pb->ptsout[7]);
 
+#endif
 		log(" nio %d, npo %d - leave\n\n", pb->contrl[N_INTOUT], pb->contrl[N_PTSOUT]);
 	//	log("leave\n\n");
 	}
@@ -707,11 +886,11 @@ oVDI( VDIPB *pb )
 }
 
 
-int _cdecl
-get_cookie(long tag, long *ret)
+O_Int _cdecl
+get_cookie(O_32 tag, O_32 *ret)
 {
 	COOKIE *jar;
-	int r = 0;
+	O_Int r = 0;
 	long usp;
 
 	usp = Super(1);
@@ -742,6 +921,54 @@ get_cookie(long tag, long *ret)
 
 	return r;
 }
+
+O_Int _cdecl
+install_cookie(O_32 tag, O_32 value)
+{
+	COOKIE *jar;
+	O_Int ret = 0;
+	O_32 usp;
+	O_32 slot = 0;
+
+	usp = Super(1);
+	if (!usp)
+		usp = Super(0L);
+	else
+		usp = 0L;
+
+	jar = *CJAR;
+	if (!jar)
+		return -1;
+	while(jar->tag)
+	{
+		if (jar->tag == tag)
+		{
+			ret = -2;
+			goto done;
+		}
+		jar++;
+		slot++;
+	}
+	if (jar->value <= slot)
+	{
+		return -1;
+		goto done;
+	}
+	slot = jar->value;
+	jar->tag = tag;
+	jar->value = value;
+	jar++;
+	jar->tag = 0L;
+	jar->value = slot;
+
+done:
+	if (usp)
+		Super(usp);
+
+	return ret;
+}
+
+	
 
 /*
  * oVDI lib wrapper for Supexec

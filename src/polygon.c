@@ -4,26 +4,27 @@
 #include "ovdi_defs.h"
 #include "polygon.h"
 
+extern int logit;
+extern long stackptr;
+extern long getstack(void);
+
 void
-filled_poly(RASTER *r, COLINF *c, short *pts, short n, VDIRECT *clip, short *points, long pointasize, PatAttr *ptrn)
+filled_poly(RASTER *r, COLINF *c, O_Pos *pts, O_Int n, VDIRECT *clip, O_Pos *points, long pointasize, PatAttr *ptrn)
 {
 	int i, j;
-	short tmp, y;
-	short miny, maxy;
-	short x1, y1;
-	short x2, y2;
-	short ints;
+	O_Pos tmp, y;
+	O_Pos miny, maxy;
+	O_Pos x1, y1;
+	O_Pos x2, y2;
+	int ints;
 	long spans;
 	long max_spans;
-	short *coords;
-	Fspans s;
+	O_Pos *coords;
 
 	if (!n)
 		return;
 
-	s = DRAW_SPANS_PTR(r); //r->drawers->draw_spans;
-
-	max_spans = ((pointasize / 5)/2) - 1;
+	max_spans = (((pointasize - (n * sizeof(O_Pos))) / 3) >> 1) -  1;
 
 	if ((pts[0] == pts[(n << 1) - 2]) && (pts[1] == pts[(n << 1) - 1]))
 		n--;
@@ -57,14 +58,16 @@ filled_poly(RASTER *r, COLINF *c, short *pts, short n, VDIRECT *clip, short *poi
 
 	for(y = miny; y <= maxy; y++)
 	{
+		register O_Pos *p = pts;
+
 		ints = 0;
-		x1 = pts[(n << 1) - 2]; //p[n - 1][0];
-		y1 = pts[(n << 1) - 1]; //p[n - 1][1];
+		x1 = pts[(n << 1) - 2];
+		y1 = pts[(n << 1) - 1];
 
 		for(i = 0; i < n; i++)
 		{
-			x2 = pts[i << 1];	//p[i][0];
-			y2 = pts[(i << 1) + 1]; //p[i][1];
+			x2 = *p++; //pts[i << 1];
+			y2 = *p++; //pts[(i << 1) - 1];
 
 			if (y1 < y2)
 			{
@@ -97,27 +100,12 @@ filled_poly(RASTER *r, COLINF *c, short *pts, short n, VDIRECT *clip, short *poi
 			}
 		}
 
-#if 1
-		if (spans > max_spans)
-		{			/* Should really check against size of points array! */
-			if (SPANS_16X_PTR(r))
-				SPANS_16X(r, c, (short *)&points[n], spans, ptrn);
-			else
-			{
-				for (i = n; i < (n+(spans * 3)); i += 3)
-					(*s)(r, c, points[i+1], points[i+2], points[i], ptrn);
-			}
-			spans = 0;
-			coords = &points[n];
-		}
-#endif
-
 		x1 = clip->x1;
 		x2 = clip->x2;
 
 		for(i = 0; i < ints - 1; i += 2)
 		{
-			short x_1, x_2;
+			register O_Pos x_1, x_2;
 
 			x_1 = points[i];
 			x_2 = points[i + 1];
@@ -133,6 +121,13 @@ filled_poly(RASTER *r, COLINF *c, short *pts, short n, VDIRECT *clip, short *poi
 				*coords++ = x_1;
 				*coords++ = x_2;
 				spans++;
+				if (spans > max_spans)
+				{
+					if (SPANS_16X_PTR(r))
+						SPANS_16X(r, c, (O_Pos *)&points[n], spans, ptrn);
+					spans = 0;
+					coords = &points[n];
+				}
 			}
 		}
 	}
@@ -140,12 +135,14 @@ filled_poly(RASTER *r, COLINF *c, short *pts, short n, VDIRECT *clip, short *poi
 	if (spans)
 	{
 		if (SPANS_16X_PTR(r))
-			SPANS_16X(r, c, (short *)&points[n], spans, ptrn);
-		else
-		{
+			SPANS_16X(r, c, (O_Pos *)&points[n], spans, ptrn);
+#if 0
+		//else
+		//{
 			for (i = n; i < (n+(spans*3)); i += 3)
-				(*s)(r, c, points[i+1], points[i+2], points[i], ptrn);
-		}
+				(draw_spans)(r, c, points[i+1], points[i+2], points[i], ptrn);
+		//}
+#endif
 	}
 #endif
 }

@@ -13,13 +13,24 @@
 #include "v_line.h"
 #include "v_mouse.h"
 #include "v_opcode_5.h"
+#include "v_opcode_neg_1.h"
 #include "v_pmarker.h"
 #include "v_raster.h"
 #include "v_text.h"
 #include "v_time.h"
 #include "workstation.h"
 
+
 OVDI_VTAB v_vtab[MAX_VIRTUALS];
+
+void (*v_njmptab[])() = {
+
+	v_opcode_neg_1,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+};
+
 void (*v_jmptab[])() = {
 	v_nosys,	/*   00 */
 	v_opnwk,
@@ -176,7 +187,138 @@ void (*v_jmptab[])() = {
 	v_nosys,
 	v_nosys,
 
-	v_nosys		/* 140 */
+	v_nosys,	/* 140 */
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+
+	v_nosys,	/* 150 */
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+
+	v_nosys,	/* 160 */
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+
+	v_nosys,	/* 170 */
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+
+	v_nosys,	/* 180 */
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+
+	v_nosys,	/* 190 */
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+
+	v_nosys,	/* 200 */
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+
+	v_nosys,	/* 210 */
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+
+	v_nosys,	/* 220 */
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	vqt_xfntinfo,
+
+	vst_name,	/* 230 */
+	vst_width,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+
+	v_nosys,	/* 240 */
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+
+	v_nosys,	/* 250 */
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+	v_nosys,
+
 };
 
 DEV_TAB DEV_TAB_rom = 

@@ -8,28 +8,39 @@ HEADER = \
 	console.h \
 	display.h \
 	draw.h \
+	drawing.h \
+	eddi.h \
 	expand.h \
 	file.h \
+	fontdrv_api.h \
 	fonts.h \
 	funcdef.h \
 	gdf_defs.h \
+	gdf_driver.h \
 	gdf_text.h \
 	global.h \
 	kbdapi.h \
 	libkern.h \
+	line.h \
 	linea.h \
 	linea_vars.h \
 	math.h \
 	memory.h \
+	modinf.h \
 	module.h \
 	mouse.h \
+	mouseapi.h \
+	mousedrv.h \
 	ovdi.h \
 	ovdi_defs.h \
+	ovdi_lib.h \
 	ovdi_mouse.h \
 	ovdi_rasters.h \
 	ovdi_types.h \
 	parser.h \
+	patattr.h \
 	patch_gem.h \
+	pdvapi.h \
 	polygon.h \
 	rasters.h \
 	styles.h \
@@ -37,7 +48,9 @@ HEADER = \
 	timerapi.h \
 	vbiapi.h \
 	vdi_defs.h \
+	vdi_font.h \
 	vdi_globals.h \
+	vdi_printer.h \
 	v_attribs.h \
 	v_escape.h \
 	v_fill.h \
@@ -46,7 +59,10 @@ HEADER = \
 	v_line.h \
 	v_mouse.h \
 	v_opcode_5.h \
+	v_opcode_neg_1.h \
+	v_perimeter.h \
 	v_pmarker.h \
+	v_printer.h \
 	v_raster.h \
 	v_text.h \
 	v_time.h \
@@ -60,9 +76,11 @@ COBJS = \
 	crtinit.c \
 	display.c \
 	draw.c \
+	eddi.c \
 	expand.c \
 	file.c \
 	fonts.c \
+	gdf_driver.c \
 	gdf_text.c \
 	line.c \
 	linea.c \
@@ -70,9 +88,11 @@ COBJS = \
 	memory.c \
 	module.c \
 	mousedrv.c \
+	mouse_data.c \
 	ovdi.c \
 	ovdi_dev.c \
 	ovdi_rasters.c \
+	patattr.c \
 	patch_gem.c \
 	polygon.c \
 	rasters.c \
@@ -87,7 +107,10 @@ COBJS = \
 	v_line.c \
 	v_mouse.c \
 	v_opcode_5.c \
+	v_opcode_neg_1.c \
+	v_perimeter.c \
 	v_pmarker.c \
+	v_printer.c \
 	v_raster.c \
 	v_text.c \
 	v_time.c \

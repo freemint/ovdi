@@ -6,33 +6,46 @@
 #include "vdi_defs.h"
 #include "v_raster.h"
 #include "vdi_globals.h"
+#include "patch_gem.h"
+
+extern int logit;
 
 void
 vro_cpyfm( VDIPB *pb, VIRTUAL *v)
 {
+	int i;
 	MFDB *s, *d;
 	RASTER *r = v->raster;
+	O_Pos p[8];
 
-	s = (MFDB *)((((unsigned long)pb->contrl[7]) << 16) | (unsigned short)pb->contrl[8]);
-	d = (MFDB *)((((unsigned long)pb->contrl[9]) << 16) | (unsigned short)pb->contrl[10]);
-	RO_CPYFM( r, s, d, (short *)&pb->ptsin[0], v->clip.flag ? (VDIRECT *)&v->clip.x1 : (VDIRECT *)&r->x1, pb->intin[0]);
+	for (i = 0; i < 8; i++)
+		p[i] = pb->ptsin[i];
+
+	s = *(MFDB **)&(pb->contrl[7]); //(MFDB *)((((unsigned long)pb->contrl[7]) << 16) | (unsigned short)pb->contrl[8]);
+	d = *(MFDB **)&(pb->contrl[9]); //(MFDB *)((((unsigned long)pb->contrl[9]) << 16) | (unsigned short)pb->contrl[10]);
+	RO_CPYFM( r, s, d, (O_Pos *)&p, v->clip.flag ? (VDIRECT *)&v->clip.x1 : (VDIRECT *)&r->x1, pb->intin[0]);
 }
 
 void
 vrt_cpyfm( VDIPB *pb, VIRTUAL *v)
 {
+	int i;
 	MFDB *s, *d;
 	RASTER *r = v->raster;
-	short fgc, bgc, wrmode;
+	int fgc, bgc, wrmode;
+	O_Pos p[8];
+
+	for (i = 0; i < 8; i++)
+		p[i] = pb->ptsin[i];
 
 	wrmode = pb->intin[0] - 1;
 
 	fgc = v->colinf->color_vdi2hw[pb->intin[1]];
 	bgc = v->colinf->color_vdi2hw[pb->intin[2]];
 
-	s = (MFDB *)((((unsigned long)pb->contrl[7]) << 16) | (unsigned short)pb->contrl[8]);
-	d = (MFDB *)((((unsigned long)pb->contrl[9]) << 16) | (unsigned short)pb->contrl[10]);
-	RT_CPYFM( r, v->colinf, s, d, (short *)&pb->ptsin[0], v->clip.flag ? (VDIRECT *)&v->clip.x1 : (VDIRECT *)&r->x1, fgc, bgc, wrmode);
+	s = *(MFDB **)&(pb->contrl[7]); //(MFDB *)((((unsigned long)pb->contrl[7]) << 16) | (unsigned short)pb->contrl[8]);
+	d = *(MFDB **)&(pb->contrl[9]); //(MFDB *)((((unsigned long)pb->contrl[9]) << 16) | (unsigned short)pb->contrl[10]);
+	RT_CPYFM( r, v->colinf, s, d, (O_Pos *)&p, v->clip.flag ? (VDIRECT *)&v->clip.x1 : (VDIRECT *)&r->x1, fgc, bgc, wrmode);
 }
 
 void
@@ -40,27 +53,30 @@ vr_trnfm( VDIPB *pb, VIRTUAL *v)
 {
 	MFDB *s, *d;
 
-	s = (MFDB *)(unsigned long)(((unsigned long)pb->contrl[7] << 16) | (unsigned short)pb->contrl[8]);
-	d = (MFDB *)(unsigned long)(((unsigned long)pb->contrl[9] << 16) | (unsigned short)pb->contrl[10]);
-	trnfm( v, s, d);
+	s = *(MFDB **)&(pb->contrl[7]); //(MFDB *)(unsigned long)(((unsigned long)pb->contrl[7] << 16) | (unsigned short)pb->contrl[8]);
+	d = *(MFDB **)&(pb->contrl[9]); //(MFDB *)(unsigned long)(((unsigned long)pb->contrl[9] << 16) | (unsigned short)pb->contrl[10]);
+	//trnfm( v, s, d);
+	if (!MiNT && !(v->flags & V_OSBM))
+		patch_gem(v->raster->res.planes, v->raster->w - 1);
+	trnfm(s, d);
 }
 
 void
 v_get_pixel( VDIPB *pb, VIRTUAL *v)
 {
-	short planes = v->driver->r.planes;
+	int planes = v->driver->r.res.planes;
 	RASTER *r = v->raster;
-	unsigned long pixel;
+	O_u32 pixel;
 
 	pixel = (*r->drawers->get_pixel)(r->base, r->bypl, pb->ptsin[0], pb->ptsin[1]);
 
 	if (planes > 8)
 	{
-		short red, green, blue;
+		O_16 red, green, blue;
 
-		red = get_color_bits(r->pixelformat, pixel, 0);
-		green = get_color_bits(r->pixelformat, pixel, 1);
-		blue = get_color_bits(r->pixelformat, pixel, 2);
+		red = get_color_bits(r->res.pixelformat, pixel, 0);
+		green = get_color_bits(r->res.pixelformat, pixel, 1);
+		blue = get_color_bits(r->res.pixelformat, pixel, 2);
 
 		if (planes > 16)
 		{
@@ -75,8 +91,8 @@ v_get_pixel( VDIPB *pb, VIRTUAL *v)
 	}
 	else
 	{
-		pb->intout[0] = (unsigned short)pixel;
-		pb->intout[1] = v->colinf->color_hw2vdi[(unsigned short)pixel];
+		pb->intout[0] = (O_u16)pixel;
+		pb->intout[1] = v->colinf->color_hw2vdi[(O_u16)pixel];
 	}
 
 	pb->contrl[N_INTOUT] = 2;

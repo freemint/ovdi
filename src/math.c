@@ -40,7 +40,7 @@
 
 /* Sines of angles 1 - 90 degrees normalized between 0 and 32767. */
 
-static short sin_tbl[92] =
+static int sin_tbl[92] =
 {
 	    0,   572,  1144,  1716,  2286,  2856,  3425,  3993, 
 	 4560,  5126,  5690,  6252,  6813,  7371,  7927,  8481, 
@@ -62,12 +62,12 @@ static short sin_tbl[92] =
  * Expects angle in tenths of degree 0 - 3600.
  * Assumes positive angles only.
  */
-short Isin(unsigned short angle) 
+int Isin(unsigned int angle) 
 {
-	short index;
-	unsigned short remainder, tmpsin;	/* Holder for sin. */
-	short  half;			/* 0-1 = 1st/2nd, 3rd/4th. */
-	short *table;
+	int index;
+	unsigned int remainder, tmpsin;	/* Holder for sin. */
+	int  half;			/* 0-1 = 1st/2nd, 3rd/4th. */
+	int *table;
 
 	half = 0;
 	while (angle >= PI)
@@ -83,7 +83,7 @@ short Isin(unsigned short angle)
 	table = &sin_tbl[index];
 	tmpsin = *table++;
 	if (remainder)		/* Add interpolation. */
-		tmpsin += (unsigned short)((unsigned short)(*table - tmpsin) * remainder) / 10;
+		tmpsin += (unsigned int)((unsigned int)(*table - tmpsin) * remainder) / 10;
 
 	if (half > 0)
 		return -tmpsin;
@@ -95,7 +95,7 @@ short Isin(unsigned short angle)
 /*
  * Return integer cos between -32767 and 32767.
  */
-short Icos(short angle) 
+int Icos(int angle) 
 {
 	return Isin(angle + HALFPI);
 }
@@ -135,7 +135,7 @@ static ulong_t isqrt(ulong_t N)
 
 
 #if 1
-short isqrt(unsigned long x)
+int isqrt(unsigned long x)
 {
 	unsigned long s1, s2;
 
@@ -160,6 +160,6 @@ short isqrt(unsigned long x)
 	}
 	while (s1 > s2);
    
-	return (short)s1;
+	return (int)s1;
 }
 #endif

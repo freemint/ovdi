@@ -1,36 +1,37 @@
 #include "display.h"
 #include "line.h"
+#include "patattr.h"
 #include "ovdi_defs.h"
 #include "vdi_defs.h"
 #include "vdi_globals.h"
 #include "v_pmarker.h"
+#include "v_fill.h"
 
+void
+lvsm_initial(VIRTUAL *v)
+{
+	PatAttr *pm = &v->pmarker;
+	int i;
+
+	pm->exp_data	= (O_u16 *)&v->pmarkerdata.edata;
+	pm->mask	= (O_u16 *)&v->pmarkerdata.mask;
+
+	set_fill_params(FIS_SOLID, 0, pm, &pm->interior, 0);
+	pm->t.p.type = -1;
+	pm->wrmode = -1;
+
+	for (i = 0; i < 4; i++)
+		pm->color[i] = pm->bgcol[i] = -1;
+}
 /*
 *  New call - Select linetype by which to draw polymarkers
 *  This also initializes the PatAttr structure used to draw
 *  polymarkers
 */
 void
-lvsm_linetype( VIRTUAL *v, register short linetype )
+lvsm_linetype( VIRTUAL *v, O_Int linetype )
 {
-	if (linetype < 1)
-		linetype = 1;
-	else if (linetype > MAX_LN_STYLE)
-		linetype = MAX_LN_STYLE;
-
-	if (linetype == LI_USER)
-		v->pmarker.data = &v->line.ud;
-	else
-		v->pmarker.data = (unsigned short *)&LINE_STYLE[linetype - 1];
-
-	v->pmarker.t.p.index = linetype - 1;
-
-	v->pmarker.expanded = 0;
-	v->pmarker.width = 16;
-	v->pmarker.height = 1;
-	v->pmarker.wwidth = 1;
-	v->pmarker.planes = 1;
-	v->pmarker.data = &v->pmarker.data;
+	set_pa_pmrk_lineindex(&v->pmarker, linetype);
 }
 
 void
@@ -62,69 +63,40 @@ vsm_type( VDIPB *pb, VIRTUAL *v)
 }
 
 void
-lvsm_color( VIRTUAL *v, short color)
+lvsm_color( VIRTUAL *v, O_Int color)
 {
-	register short maxcolor, planes;
-
-	planes = v->raster->planes;
-	maxcolor = v->colinf->pens;
-
-	if (color < 0)
-		color = 0;
-	else if (color >= maxcolor)
-		color = maxcolor - 1;
-
-	color = v->colinf->color_vdi2hw[color];
-
-	v->pmarker.color[0] = v->pmarker.color[1] = color;
-	v->pmarker.color[2] = v->pmarker.color[3] = planes > 8 ? 0x0 : 0xff;
+	set_pa_fgcolor(&v->pmarker, v->colinf, color);
 }
 void
-lvsm_bgcolor( VIRTUAL *v, short color)
+lvsm_bgcolor( VIRTUAL *v, O_Int color)
 {
-	register short maxcolor, planes;
-
-	planes = v->raster->planes;
-	maxcolor = v->colinf->pens;
-
-	if (color < 0)
-		color = 0;
-	else if (color >= maxcolor)
-		color = maxcolor - 1;
-
-	color = v->colinf->color_vdi2hw[color];
-
-	v->pmarker.bgcol[0] = v->pmarker.bgcol[1] = color;
-	v->pmarker.bgcol[2] = v->pmarker.bgcol[3] = planes > 8 ? 0x0 : 0xff;
+	set_pa_bgcolor(&v->pmarker, v->colinf, color);
 }
 
 
 void
-lvsm_height( VIRTUAL *v, short height)
+lvsm_height( VIRTUAL *v, O_Int height)
 {
-	v->pmarker.t.p.height = height;
-	v->pmarker.t.p.width = height;
+	set_pa_pmrk_size(&v->pmarker, 0, height);
 }
 
 void
-lvsm_type( VIRTUAL *v, short type)
+lvsm_type( VIRTUAL *v, O_Int type)
 {
-
-	if (type < MIN_PMARKERTYPE)
-		type = MIN_PMARKERTYPE;
-	else if (type > MAX_PMARKERTYPE)
-		type = MAX_PMARKERTYPE;
-
-	v->pmarker.t.p.type = type - 1;
+	set_pa_pmrk_type(&v->pmarker, type);
 }
-
+void
+lvsm_wrmode( VIRTUAL *v, O_Int wrmode)
+{
+	set_pa_writemode(&v->pmarker, wrmode);
+}
 void
 v_pmarker( VDIPB *pb, VIRTUAL *v)
 {
 	RASTER *r;
 	VDIRECT *clip;
-	register short count, type, height, width;
-	POINT *inpts;
+	O_Int count, type, height, width;
+	O_16 *inpts;
 	POINT pts;
 	Fpmarker f;
 
@@ -137,14 +109,15 @@ v_pmarker( VDIPB *pb, VIRTUAL *v)
 	f	= DRAW_PMARKER_PTR(r);
 	clip	= v->clip.flag ? (VDIRECT *)&v->clip.x1 : (VDIRECT *)&r->x1;
 
-	inpts	= (POINT *)&pb->ptsin[0];
+	inpts	= (O_16 *)&pb->ptsin[0];
 	width	= v->pmarker.t.p.width;
 	height	= v->pmarker.t.p.height;
 	type	= v->pmarker.t.p.type;
 
 	while (count >= 0)
 	{
-		pts = *inpts++;
+		pts.x = *inpts++;
+		pts.y = *inpts++;
 		(*f)( r, v->colinf, &pts, clip, type, 0, width, height, &v->pmarker);
 		count--;
 	}

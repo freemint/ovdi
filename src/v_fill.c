@@ -7,9 +7,30 @@
 #include "vdi_globals.h"
 #include "v_attribs.h"
 #include "v_fill.h"
+#include "v_perimeter.h"
+#include "patattr.h"
 #include "styles.h"
 
 //short UDPAT_BUFF[ (2*16) * 16];
+void
+lvsf_initial( VIRTUAL *v )
+{
+	PatAttr *f = &v->fill, *u = &v->udfill;
+	int i;
+
+	f->exp_data	= (O_u16 *)&v->filldata.edata;
+	f->mask		= (O_u16 *)&v->filldata.mask;
+
+	u->data		= (O_u16 *)&v->udfilldata.data;
+	u->mask		= (O_u16 *)&v->udfilldata.mask;
+	u->exp_data	= (O_u16 *)&v->udfilldata.edata;
+
+	for (i = 0; i < 4; i++)
+		f->color[i] = f->bgcol[i] = u->color[i] = u->bgcol[i] = -1;
+
+	f->interior = f->wrmode = u->interior = u->wrmode = -1;
+	f->t.f.style = -1;
+}
 
 void
 vsf_color ( VDIPB *pb, VIRTUAL *v )
@@ -22,101 +43,29 @@ vsf_color ( VDIPB *pb, VIRTUAL *v )
 }
 
 void
-lvsf_color( VIRTUAL *v, short color )
+lvsf_color( VIRTUAL *v, O_Int color )
 {
-	register short maxcolor, planes;
-
-	planes = v->raster->planes;
-	maxcolor = v->colinf->pens;
-
-	if (color < 0)
-		color = 0;
-	else if (color >= maxcolor)
-		color = maxcolor - 1;
-
-	color = v->colinf->color_vdi2hw[color];
-
-	v->fill.color[0] = v->fill.color[1] = v->udfill.color[0] = v->udfill.color[1] = color;
-	v->fill.color[2] = v->fill.color[3] = v->udfill.color[2] = v->udfill.color[3] = planes > 8 ? 0x0 : 0xff;
-	v->fill.expanded = v->udfill.expanded = 0;
+	set_pa_fgcolor(&v->fill, v->colinf, color);
+	set_pa_fgcolor(&v->udfill, v->colinf, color);
 }
 
 void
-lvsf_bgcolor( VIRTUAL *v, short color )
+lvsf_bgcolor( VIRTUAL *v, O_Int color )
 {
-	register short maxcolor, planes;
-
-	planes = v->raster->planes;
-	maxcolor = v->colinf->pens;
-
-	if (color < 0)
-		color = 0;
-	else if (color >= maxcolor)
-		color = maxcolor - 1;
-
-	color = v->colinf->color_vdi2hw[color];
-
-	v->fill.bgcol[0] = v->fill.bgcol[1] = v->udfill.bgcol[0] = v->udfill.bgcol[1] = color;
-	v->fill.bgcol[2] = v->fill.bgcol[3] = v->udfill.bgcol[2] = v->udfill.bgcol[3] = planes > 8 ? 0xff : 0x0;
-	v->fill.expanded = v->udfill.expanded = 0;
+	set_pa_bgcolor(&v->fill, v->colinf, color);
+	set_pa_bgcolor(&v->udfill, v->colinf, color);
 }
 
 void
-lvsprm_color( VIRTUAL *v, short color )
+lvsf_wrmode( VIRTUAL *v, O_Int wrmode )
 {
-	register short maxcolor, planes;
-
-	planes = v->raster->planes;
-	maxcolor = v->colinf->pens;
-
-	if (color < 0)
-		color = 0;
-	else if (color >= maxcolor)
-		color = maxcolor - 1;
-
-	color = v->colinf->color_vdi2hw[color];
-
-	v->perimeter.color[0] = v->perimeter.color[1] = color;
-	v->perimeter.color[2] = v->perimeter.color[3] = planes > 8 ? 0x0 : 0xff;
+	set_pa_writemode(&v->fill, wrmode);
 }
 
 void
-lvsprm_bgcolor( VIRTUAL *v, short color )
+lvsudf_wrmode( VIRTUAL *v, O_Int wrmode )
 {
-	register short maxcolor, planes;
-
-	planes = v->raster->planes;
-	maxcolor = v->colinf->pens;
-
-	if (color < 0)
-		color = 0;
-	else if (color >= maxcolor)
-		color = maxcolor - 1;
-
-	color = v->colinf->color_vdi2hw[color];
-
-	v->perimeter.bgcol[0] = v->perimeter.bgcol[1] = color;
-	v->perimeter.bgcol[2] = v->perimeter.bgcol[3] = planes > 8 ? 0xff : 0x0;
-}
-
-void
-lvsf_wrmode( VIRTUAL *v, short wrmode )
-{
-	set_writingmode( wrmode, &v->fill.wrmode);
-	v->fill.expanded = 0;
-}
-
-void
-lvsprm_wrmode( VIRTUAL *v, short wrmode )
-{
-	set_writingmode( wrmode, &v->perimeter.wrmode);
-}
-
-void
-lvsudf_wrmode( VIRTUAL *v, short wrmode )
-{
-	set_writingmode( wrmode, &v->udfill.wrmode);
-	v->udfill.expanded = 0;
+	set_pa_writemode(&v->udfill, wrmode);
 }
 
 void
@@ -130,7 +79,7 @@ vsf_interior ( VDIPB *pb, VIRTUAL *v )
 }
 
 void
-lvsf_interior(VIRTUAL *v, short interior)
+lvsf_interior(VIRTUAL *v, O_Int interior)
 {
 
 	if (interior == FIS_USER)
@@ -155,7 +104,7 @@ vsf_perimeter( VDIPB *pb, VIRTUAL *v )
 }
 
 void
-lvsf_perimeter( VIRTUAL *v, short flag)
+lvsf_perimeter( VIRTUAL *v, O_Int flag)
 {
 	if (flag)
 		v->fill.t.f.perimeter = v->udfill.t.f.perimeter = &v->perimeter;
@@ -166,7 +115,12 @@ lvsf_perimeter( VIRTUAL *v, short flag)
 void
 vsf_style( VDIPB *pb, VIRTUAL *v)
 {
-	set_fill_params( v->fill.interior, pb->intin[0], &v->fill, &v->fill.interior, &v->fill.t.f.style );
+	int style = pb->intin[0];
+
+	if (v->fill.t.f.style != style)
+	{
+		set_fill_params( v->fill.interior, pb->intin[0], &v->fill, &v->fill.interior, &v->fill.t.f.style );
+	}
 	pb->intout[0] = v->fill.t.f.style;
 
 	pb->contrl[N_INTOUT] = 1;
@@ -175,7 +129,7 @@ vsf_style( VDIPB *pb, VIRTUAL *v)
 void
 vsf_udpat( VDIPB *pb, VIRTUAL *v )
 {
-	set_udfill( v, pb->contrl[N_INTIN] / 16, (short *)&pb->intin[0], 16, 16 );
+	set_udfill( v, pb->contrl[N_INTIN] / 16, (O_u16 *)&pb->intin[0], 16, 16 );
 }
 
 void
@@ -188,7 +142,7 @@ v_fillarea( VDIPB *pb, VIRTUAL *v)
 		return;
 
 	clip = v->clip.flag ? (VDIRECT *)&v->clip.x1 : (VDIRECT *)&r->x1;
-	DRAW_FILLEDPOLY(r, v->colinf, &pb->ptsin[0], pb->contrl[N_PTSIN], clip, (short *)&v->spanbuff, v->spanbuffsiz,
+	DRAW_FILLEDPOLY(r, v->colinf, (O_Pos *)&pb->ptsin[0], pb->contrl[N_PTSIN], clip, (O_Pos *)&v->spanbuff, v->spanbuffsiz,
 			v->currfill );
 }
 
@@ -196,15 +150,15 @@ void
 vr_recfl( VDIPB *pb, VIRTUAL *v)
 {
 	RASTER *r = v->raster;
-	short coords[4];
+	O_Pos coords[4];
 
-	sortcpy_corners(&pb->ptsin[0], &coords[0]);
+	sortcpy_corners((O_16 *)&pb->ptsin[0], &coords[0]);
 	DRAW_FILLEDRECT( r, v->colinf, (VDIRECT *)&coords[0], v->clip.flag ? (VDIRECT *)&v->clip.x1 : (VDIRECT *)&r->x1,
 			v->currfill );
 }
 
 void
-set_fill_params(short interior, short style, PatAttr *ptrn, short *iout, short *sout)
+set_fill_params(O_Int interior, O_Int style, PatAttr *ptrn, O_16 *iout, O_16 *sout)
 {
 
 	if (interior > MAX_FIS)
@@ -293,9 +247,9 @@ set_fill_params(short interior, short style, PatAttr *ptrn, short *iout, short *
 }
 
 void
-set_udfill( VIRTUAL *v, short planes, short *ud, short width, short height)
+set_udfill( VIRTUAL *v, O_Int planes, O_u16 *ud, O_Int width, O_Int height)
 {
-	short *src, *dst;
+	O_u16 *src, *dst;
 	int i;
 
 	if (ud)
@@ -303,11 +257,11 @@ set_udfill( VIRTUAL *v, short planes, short *ud, short width, short height)
 		//log("Setting udfill for %s. Planes %d, width %d, height %d\n", v->procname, planes, width, height);
 
 		src = ud;
-		dst = (short *)v->udfill.data;
+		dst = (O_u16 *)v->udfill.data;
 
 		if (planes == 1)
 			v->udfill.expanded = 0;
-		else if (planes == v->raster->planes)
+		else if (planes == v->raster->res.planes)
 		{
 			//log("set_udfill: Multiplane fill for pid %d - %s\n", v->pid, v->procname);
 			v->udfill.expanded = 0;
@@ -315,7 +269,7 @@ set_udfill( VIRTUAL *v, short planes, short *ud, short width, short height)
 		else
 		{
 			//log("set_udfill: Forcing ROM pattern for '%s'\n", v->procname);
-			src = (short *)&ROM_UD_PATRN;
+			src = (O_u16 *)&ROM_UD_PATRN;
 			v->udfill.expanded = 0;
 			width = 16;
 			height = 16;
@@ -332,8 +286,8 @@ set_udfill( VIRTUAL *v, short planes, short *ud, short width, short height)
 	}
 	else
 	{
-		src = (short *)&ROM_UD_PATRN;
-		dst = (short *)v->udfill.data;
+		src = (O_u16 *)&ROM_UD_PATRN;
+		dst = (O_u16 *)v->udfill.data;
 
 		v->udfill.expanded = 0;
 		v->udfill.width = 16;

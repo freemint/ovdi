@@ -2,18 +2,21 @@
 
 #include <osbind.h>
 
+#include "ovdi_types.h"
 #include "modinf.h"
 #include "ovdi_lib.h"
 #include "pdvapi.h"
 
 #define ON 1
 
-void init(OVDI_LIB *l, struct module_desc *ret);
+void init(OVDI_LIB *l, struct module_desc *ret, char *p, char *f);
 
 static char sname[] = "Atari IKBD Mouse\0";
 static char lname[] = "Atari IKBD Mouse pointing device driver for oVDI\0";
+static char fpath[128] = { "0" };
+static char fname[64] = { "0" };
 
-static short install(MDRV_CB *, PDVINFO *);
+static O_Int install(MDRV_CB *, PDVINFO *);
 
 static void exit(void);
 
@@ -30,6 +33,8 @@ static PDVAPI pdvapi =
 	0x00000001,
 	sname,
 	lname,
+	fpath,
+	fname,
 
 	install,
 	exit,
@@ -37,9 +42,9 @@ static PDVAPI pdvapi =
 	end_reporting,
 };
 
-static short flags = 0;
+static O_16 flags = 0;
 
-static unsigned char mparams[] =
+static O_u8 mparams[] =
 {
 	0,	/* topmode	*/
 	0,	/* buttons	*/
@@ -48,15 +53,26 @@ static unsigned char mparams[] =
 };
 
 void
-init(OVDI_LIB *l, struct module_desc *ret)
+init(OVDI_LIB *l, struct module_desc *ret, char *path, char *file)
 {
 	PDVAPI *p = &pdvapi;
+	char *t;
 
 	ret->types	= D_PDV;
 	ret->pdv	= (void *)p;
+
+	t = p->pathname;
+	while (*path)
+		*t++ = *path++;
+	*t = 0;
+	t = p->filename;
+	while (*file)
+		*t++ = *file++;
+	*t = 0;
+
 }
 
-static short
+static O_Int
 install(MDRV_CB *cb, PDVINFO *pdi)
 {
 	CB = cb;
@@ -95,8 +111,8 @@ end_reporting()
 void
 IKBD_Mouse(char *pkt)
 {
-	register unsigned short buts;
-	register short x, y;
+	register O_uInt buts;
+	register O_Int x, y;
 	char head;
 
 	if (flags & ON)
@@ -105,7 +121,7 @@ IKBD_Mouse(char *pkt)
 
 		if ((head & 0xf8) == 0xf8)
 		{
-			buts = (short)head & 3;
+			buts = (O_uInt)head & 3;
 			if (buts & 1)
 				buts = (buts >> 1) | 2;
 			else

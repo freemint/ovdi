@@ -1,6 +1,9 @@
 #ifndef _vdi_defs_h
 #define _vdi_defs_h
 
+#include "ovdi_types.h"
+#include "vdi_printer.h"
+
 #define PTSBUFF_SIZ		1024*4			/* Size of PTSBUFF */
 #define SPANBUFF_SIZ		(400*5*2) << 1		/* Buffer used by polygon drawers */
 #define MAX_COLOR		16
@@ -26,6 +29,12 @@
 #define MAX_MD_MODE	4
 
 /* Line definitions */
+#define LI_SOLID	1
+#define LI_LDASHED	2
+#define LI_DOTTED	3
+#define LI_DASHDOT	4
+#define LI_DASH		5
+#define LI_DASHDOTDOT	6
 #define LI_USER		7
 #define MAX_L_WIDTH	64
 
@@ -81,27 +90,6 @@ typedef struct vdipb VDIPB;
 
 
 
-/* font header defs */
-
-#define F_DEFAULT	1	/* this is the default font (face and size) */
-#define F_HORZ_OFF	2	/* there are left and right offset tables */
-#define F_STDFORM	4	/* is the font in standard format */
-#define F_MONOSPACE	8	/* is the font monospaced */
-
-/* style bits */
-
-#define F_THICKEN	1
-#define F_LIGHT		2
-#define F_SKEW		4
-#define F_UNDER		8
-#define F_OUTLINE	16
-#define F_SHADOW	32
-
-#define F_SUPPORTED	0
-
-#define MAX_HALIGN	2
-#define MAX_VALIGN	5
-
 /* VDI Memory Form Definition Block */
 struct mfdb
 {
@@ -119,26 +107,43 @@ typedef struct mfdb MFDB;
 
 struct vdirect
 {
-	short x1;
-	short y1;
-	short x2;
-	short y2;
+	O_Pos x1;
+	O_Pos y1;
+	O_Pos x2;
+	O_Pos y2;
 };
 typedef struct vdirect VDIRECT;
 
+struct vdirect16
+{
+	O_16 x1;
+	O_16 y1;
+	O_16 x2;
+	O_16 y2;
+};
+typedef struct vdirect16 VDIRECT16;
+
 struct cliprect
 {
-	short 	flag;
-	short	x1, y1, x2, y2;
+	O_16 	flag;
+	O_Pos	x1, y1, x2, y2;
 };
 typedef struct cliprect CLIPRECT;
 
 struct point
 {
-	short x;
-	short y;
+	O_Pos x;
+	O_Pos y;
 };
 typedef struct point POINT;
+
+struct point16
+{
+	O_16 x;
+	O_16 y;
+};
+typedef struct point16 POINT16;
+
 
 struct rgb
 {
@@ -275,16 +280,29 @@ struct opnwk_input
 	short	fillcolor;
 	short	coordflag;
 
-	/* Since EdDI v1.00 */
-	short	max_x;
-	short	max_y;
-	short	wpixel, hpixel;
+	union
+	{
+		struct
+		{	
+			/* Since EdDI v1.00 */
+			short	max_x;
+			short	max_y;
+			short	wpixel, hpixel;
 
-	/* Since EdDI v1.10 */
-	long	colors;
-	short	planes;
-	short	pixelformat;
-	short	endian;
+			/* Since EdDI v1.10 */
+			long	colors;
+			short	planes;
+			short	pixelformat;
+			short	endian;
+		} eddi;
+
+		struct
+		{
+			int		size_id;
+			char		*device;
+			PRN_SETTINGS	*pset;
+		} prn;
+	} dev;
 };
 
 struct vscr

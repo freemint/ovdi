@@ -3,11 +3,12 @@
 */
 #include <osbind.h>
 
+#include "timerapi.h"
+
 #include "modinf.h"
 #include "ovdi_lib.h"
 #include "linea_vars.h"
 #include "ovdi_types.h"
-#include "timerapi.h"
 #include "../../sys/mint/arch/asm_spl.h"
 
 #define TPS	50
@@ -17,26 +18,26 @@
 
 struct timedrv
 {
-	volatile short	flags;
+	volatile O_16	flags;
 	LINEA_VARTAB	*la;
 	void		(*user_tim)(void);
 	void		(*next_tim)(void);
 };
 
-void	init	(OVDI_LIB *l, struct module_desc *ret);
+void	init	(OVDI_LIB *l, struct module_desc *ret, char *p, char *f);
 
-extern unsigned long old_timeint;
+extern O_u32 old_timeint;
 extern void time_interruptw(void);
 static void donothing(void);
 
 void time_interrupt(void);
 
-static short install(LINEA_VARTAB *la);
-static short get_tics_per_sec(void);
-static short add_time_interrupt(unsigned long function, unsigned long tics);
-static void delete_time_interrupt(unsigned long func);
-static unsigned long set_user_tim(unsigned long func);
-static unsigned long set_next_tim(unsigned long func);
+static O_Int install(LINEA_VARTAB *la);
+static O_Int get_tics_per_sec(void);
+static O_Int add_time_interrupt(O_u32 function, O_u32 tics);
+static void delete_time_interrupt(O_u32 func);
+static O_u32 set_user_tim(O_u32 func);
+static O_u32 set_next_tim(O_u32 func);
 
 static void enable_tint(void);
 static void disable_tint(void);
@@ -47,6 +48,8 @@ static void reset_next_tim(void);
 static char sname[] =	"'etv_timer' time device driver";
 static char lname[] =	"Time device driver using standard\n" \
 			"Atari 'etv_timer' for oVDI";
+static char fpath[128] = { "0" };
+static char fname[64] = { "0" };
 
 static struct timedrv tdrv;
 static struct timeapi tapi =
@@ -55,7 +58,8 @@ static struct timeapi tapi =
 	0x00000001,
 	sname,
 	lname,
-
+	fpath,
+	fname,
 	install,
 	get_tics_per_sec,
 	add_time_interrupt,
@@ -71,7 +75,7 @@ static struct timeapi tapi =
 };
 
 #define MAX_TINTS	10
-static unsigned long timeints[] =
+static O_u32 timeints[] =
 {
 	0, 0, 0,
 	0, 0, 0,
@@ -90,14 +94,28 @@ static unsigned long timeints[] =
 *  own things.
 */
 void
-init(OVDI_LIB *l, struct module_desc *ret)
+init(OVDI_LIB *l, struct module_desc *ret, char *path, char *file)
 {
+	struct timeapi *ta = &tapi;
+
 	old_timeint	= 0;
 	ret->types	= D_TIM;
-	ret->tim	= &tapi; //ta;
+	ret->tim	= (void *)ta;
+	{
+		char *t;
+
+		t = ta->pathname;
+		while (*path)
+			*t++ = *path++;
+		*t = 0;
+		t = ta->filename;
+		while (*file)
+			*t++ = *file++;
+		*t = 0;
+	}
 }
 
-static short
+static O_Int
 install(LINEA_VARTAB *la)
 {
 	short sr;
@@ -152,9 +170,9 @@ disable_tint(void)
 static void
 reset_time(void)
 {
-	short	i;
-	short	sr;
-	unsigned long *tints = timeints;
+	int	i;
+	O_16	sr;
+	O_u32 *tints = timeints;
 
 	sr = spl7();
 	disable_tint();
@@ -171,7 +189,7 @@ reset_time(void)
 	return;
 }
 
-static short
+static O_Int
 get_tics_per_sec(void)
 {
 	return (1000/TPS);
@@ -181,7 +199,7 @@ get_tics_per_sec(void)
 void
 time_interrupt(void)
 {
-	register unsigned long *tints = (unsigned long *)&timeints;
+	register O_u32 *tints = (O_u32 *)&timeints;
 	register void (*func)(void);
 	register struct timedrv *td = &tdrv;
 
@@ -223,11 +241,11 @@ time_interrupt(void)
 /* Installs a function that is called each timer tick	*/
 /* Returns the 'handle' of the function or a negative	*/
 /* number on error.					*/
-static short
-add_time_interrupt(unsigned long function, unsigned long tics)
+static O_Int
+add_time_interrupt(O_u32 function, O_u32 tics)
 {
-	short i;
-	register unsigned long *tints = (unsigned long *)&timeints;
+	O_Int i;
+	register O_u32 *tints = (O_u32 *)&timeints;
 
 	for (i = 0; i < MAX_TINTS; i++)
 	{
@@ -251,11 +269,11 @@ add_time_interrupt(unsigned long function, unsigned long tics)
 }
 
 static void
-delete_time_interrupt(unsigned long function)
+delete_time_interrupt(O_u32 function)
 {
-	short sr;
-	short i;
-	register unsigned long *tints = (unsigned long *)&timeints;
+	O_16 sr;
+	int i;
+	register O_u32 *tints = (O_u32 *)&timeints;
 
 	for (i = 0; i < MAX_TINTS; i++)
 	{
@@ -282,42 +300,42 @@ delete_time_interrupt(unsigned long function)
 static void
 reset_user_tim(void)
 {
-	(void)set_user_tim((unsigned long)&donothing);
+	(void)set_user_tim((O_u32)&donothing);
 	return;
 }
 static void
 reset_next_tim(void)
 {
-	(void)set_next_tim((unsigned long)&donothing);
+	(void)set_next_tim((O_u32)&donothing);
 	return;
 }
 
-static unsigned long
-set_user_tim(unsigned long function)
+static O_u32
+set_user_tim(O_u32 function)
 {
-	short sr;
+	O_16 sr;
 	register struct timedrv *td = &tdrv;
-	unsigned long old;
+	O_u32 old;
 
 	sr = spl7();
-	old = (unsigned long)td->user_tim;
-	(unsigned long)td->user_tim = function;
-	(unsigned long)td->la->user_tim = function;
+	old = (O_u32)td->user_tim;
+	(O_u32)td->user_tim = function;
+	(O_u32)td->la->user_tim = function;
 	spl(sr);
 	return old;
 }
 
-static unsigned long
-set_next_tim(unsigned long function)
+static O_u32
+set_next_tim(O_u32 function)
 {
-	short sr;
+	O_16 sr;
 	register struct timedrv *td = &tdrv;
-	unsigned long old;
+	O_u32 old;
 
 	sr = spl7();
-	old = (unsigned long)td->next_tim;
-	(unsigned long)td->next_tim = function;
-	(unsigned long)td->la->next_tim = function;
+	old = (O_u32)td->next_tim;
+	(O_u32)td->next_tim = function;
+	(O_u32)td->la->next_tim = function;
 	spl(sr);
 	return old;
 }

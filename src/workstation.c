@@ -3,6 +3,7 @@
 //#include <osbind.h>
 #include <fcntl.h>
 
+#include "ovdi.h"
 #include "colors.h"
 #include "console.h"
 #include "display.h"
@@ -14,9 +15,11 @@
 #include "line.h"
 #include "linea.h"
 #include "memory.h"
+#include "rasters.h"
 #include "ovdi_defs.h"
 #include "ovdi_rasters.h"
 #include "vdi_defs.h"
+#include "vdi_font.h"
 #include "vdi_globals.h"
 #include "workstation.h"
 #include "xbios.h"
@@ -25,6 +28,7 @@
 #include "v_fill.h"
 #include "v_input.h"
 #include "v_line.h"
+#include "v_perimeter.h"
 #include "v_pmarker.h"
 #include "v_text.h"
 
@@ -39,20 +43,36 @@ static void update_siztab(SIZ_TAB *, VIRTUAL *);
 static void prepare_stdreturn( VDIPB *, VIRTUAL *);
 static void prepare_extreturn( VDIPB *, VIRTUAL *);
 static void prepare_scrninfreturn( VDIPB *, VIRTUAL *);
-static void get_MiNT_info(VIRTUAL *);
 static void setup_virtual(VDIPB *, VIRTUAL *, VIRTUAL *);
 static void load_vdi_fonts(VIRTUAL *, SIZ_TAB *, DEV_TAB *);
 static void unload_vdi_fonts(VIRTUAL *v);
 
+extern O_16 using_trap;
+
 void
 v_opnwk(VDIPB *pb, VIRTUAL *wk, VIRTUAL *lawk, OVDI_HWAPI *hwapi) //struct ovdi_device *dev)
 {
-	short i, vdidev_id;
+	int i, vdidev_id;
 	OVDI_DRIVER *drv;
 	OVDI_DEVICE *dev;
 	RASTER *r;
 	register struct opnwk_input *wkin;
 
+	if (using_trap)
+	{
+		(void)Ssystem( 3000, oVDI, 0x1L);
+		using_trap = 0;
+	}
+
+#if 0
+	if (contrl[SUBFUNCTION] == 1)
+	{
+		
+		v_opnprn(
+		return;
+	}
+#endif
+	
 	wkin = (struct opnwk_input *)&pb->intin[0];
 
 	vdidev_id = wkin->id;
@@ -62,7 +82,7 @@ v_opnwk(VDIPB *pb, VIRTUAL *wk, VIRTUAL *lawk, OVDI_HWAPI *hwapi) //struct ovdi_
 	*/
 	if (vdidev_id < 1 || vdidev_id > 10)
 	{
-		//log("Only support for screen drivers!\n");
+		scrnlog("Cannot open dev %d, (SUBFUNC %d). Only support for screen drivers!\n", vdidev_id, pb->contrl[SUBFUNCTION]);
 		if (v_vtab[1].v)
 			prepare_stdreturn(pb, wk);
 		goto error;
@@ -73,6 +93,7 @@ v_opnwk(VDIPB *pb, VIRTUAL *wk, VIRTUAL *lawk, OVDI_HWAPI *hwapi) //struct ovdi_
 	/*
 	 * Hmm.. how to react when an v_opnwk() call happens on an already opened
 	 * physical workstation? 
+	 * For now actually prepare valid return-values and return NULL for handle.
 	*/
 	if (v_vtab[1].v)
 	{
@@ -96,16 +117,15 @@ v_opnwk(VDIPB *pb, VIRTUAL *wk, VIRTUAL *lawk, OVDI_HWAPI *hwapi) //struct ovdi_
 		 *
 		*/
 		dev = hwapi->device;
-		drv = (*dev->open)(dev);
+		drv = open_device(hwapi);
 		if (!drv)
 		{
-			scrnlog("v_openwk: Could not open graphics hardware device!");
+			scrnlog("v_opnwk: Could not open graphics hardware device!");
 			goto error;
 		}
-
 		hwapi->driver = drv;
 		r = &drv->r;
-		init_raster(drv, r);
+		init_raster(hwapi, r);
 	}
 	else
 	{
@@ -115,7 +135,7 @@ v_opnwk(VDIPB *pb, VIRTUAL *wk, VIRTUAL *lawk, OVDI_HWAPI *hwapi) //struct ovdi_
 		exit_console(hwapi->console);
 	}
 	{
-		short vdipen;
+		int vdipen;
 		COLINF *c;
 
 		dev = drv->dev;		
@@ -123,12 +143,16 @@ v_opnwk(VDIPB *pb, VIRTUAL *wk, VIRTUAL *lawk, OVDI_HWAPI *hwapi) //struct ovdi_
 		/*
 		 * Ask driver to change to the specified video-mode.
 		*/
+		if (!MiNT)
+			vdidev_id = 1;
+
 		(void)(*dev->set_vdires)(drv, vdidev_id);
 
 		r = &drv->r;
 		wk->driver = drv;
 		wk->physical = drv;
 		wk->raster = r;
+		wk->hw = hwapi;
 
 		c = hwapi->colinf;
 
@@ -155,7 +179,7 @@ v_opnwk(VDIPB *pb, VIRTUAL *wk, VIRTUAL *lawk, OVDI_HWAPI *hwapi) //struct ovdi_
 		/*
 		 * Set initial hardware palette registers, if we're in clut mode.
 		*/
-		if (r->clut)
+		if (r->res.clut)
 		{
 			for (i = 0; i <= c->pens; i++)
 			{
@@ -180,6 +204,7 @@ v_opnwk(VDIPB *pb, VIRTUAL *wk, VIRTUAL *lawk, OVDI_HWAPI *hwapi) //struct ovdi_
 		wk->timeapi	= hwapi->time;
 		wk->vbiapi	= hwapi->vbi;
 		wk->con		= hwapi->console;
+		wk->fontapi	= hwapi->font;
 
 		/*
 		 * Load the VDI fonts. This will load fonts specified with the
@@ -216,7 +241,7 @@ v_opnwk(VDIPB *pb, VIRTUAL *wk, VIRTUAL *lawk, OVDI_HWAPI *hwapi) //struct ovdi_
 		/*
 		 * Add the mousecursor rendering function to VBI
 		*/
-		(*wk->vbiapi->add_func)((unsigned long)wk->mouseapi->housekeep, 0);
+		(*wk->vbiapi->add_func)((O_u32)wk->mouseapi->housekeep, 0);
 
 		/*
 		 * Enable things ...
@@ -270,7 +295,7 @@ change_resolution(VIRTUAL *v)
 	ptrn->interior = FIS_HOLLOW;
 	ptrn->color[0] = ptrn->color[1] = c->color_vdi2hw[0];
 	ptrn->bgcol[0] = ptrn->bgcol[1] = c->color_vdi2hw[1];
-	if (r->planes > 8)
+	if (r->res.planes > 8)
 	{
 		ptrn->color[2] = ptrn->color[3] = 0x0;
 		ptrn->bgcol[2] = ptrn->bgcol[3] = 0xff;
@@ -286,8 +311,8 @@ change_resolution(VIRTUAL *v)
 	ptrn->planes = 1;
 	ptrn->wrmode = 0;
 	ptrn->data = &SOLID;
-	ptrn->exp_data = (unsigned short *)&WRdata.edata;
-	ptrn->mask = (unsigned short *)&WRdata.mask;
+	ptrn->exp_data = ( O_u16 *)&WRdata.edata;
+	ptrn->mask = ( O_u16 *)&WRdata.mask;
 
 	/* BLACK rectangle */
 	ptrn = &BlackRect;
@@ -295,7 +320,7 @@ change_resolution(VIRTUAL *v)
 	ptrn->interior = FIS_SOLID;
 	ptrn->color[0] = ptrn->color[1] = c->color_vdi2hw[1];
 	ptrn->bgcol[0] = ptrn->bgcol[1] = c->color_vdi2hw[0];
-	if (r->planes > 8)
+	if (r->res.planes > 8)
 	{
 		ptrn->color[2] = ptrn->color[3] = 0x00;
 		ptrn->bgcol[2] = ptrn->bgcol[3] = 0xff;
@@ -311,8 +336,8 @@ change_resolution(VIRTUAL *v)
 	ptrn->planes = 1;
 	ptrn->wrmode = 0;
 	ptrn->data = &SOLID;
-	ptrn->exp_data = (unsigned short *)&BRdata.edata;
-	ptrn->mask = (unsigned short *)&BRdata.mask;
+	ptrn->exp_data = ( O_u16 *)&BRdata.edata;
+	ptrn->mask = ( O_u16 *)&BRdata.mask;
 }
 
 static void
@@ -336,7 +361,7 @@ update_inqtab(INQ_TAB *it, VIRTUAL *v)
  * Get name and pid of the process opening the workstation.
  * This only works with MiNT 1.16 and above, I think.
 */
-static void
+void
 get_MiNT_info(VIRTUAL *v)
 {
 	if (MiNT)
@@ -381,13 +406,33 @@ get_MiNT_info(VIRTUAL *v)
 		v->procname[0] = 0;
 	}
 }
+void
+copy_common_virtual_vars(VIRTUAL *new, VIRTUAL *root)
+{
+	/*
+	 * Things the virtual inherit from the root raster (the physical device)...
+	*/
+	new->root	= root;
+	new->lawk	= root->lawk;
+	new->con	= root->con;
+	new->driver	= root->driver;
+	new->physical	= root->physical;
+	/*
+	 * Hardware driver API's ...
+	*/
+	new->kbdapi	= root->kbdapi;
+	new->mouseapi	= root->mouseapi;
+	new->timeapi	= root->timeapi;
+	new->vbiapi	= root->vbiapi;
+	new->fontapi	= root->fontapi;
+}
 
 void
 v_opnvwk(VDIPB *pb, VIRTUAL *v)
 {
 	VIRTUAL *root, *new;
 	OVDI_VTAB *entry;
-	short i, handle, pid;
+	int i, handle, pid;
 
 	handle = 0;
 	pid = -1;
@@ -412,54 +457,148 @@ v_opnvwk(VDIPB *pb, VIRTUAL *v)
 			bzero(new, sizeof(VIRTUAL));
 			get_MiNT_info(new);
 
-			entry[handle].v = new;
-			entry[handle].pid = new->pid;
-
 			root = v->root ? v->root : v;
 
 			new->handle = handle;
 
-			/*
-			 * Things the virtual inherit from the root raster (the physical device)...
-			*/
-			new->root	= root;
-			new->lawk	= root->lawk;
-			new->con	= root->con;
-			new->driver	= root->driver;
-			new->physical	= root->physical;
-			new->raster	= root->raster;
+			copy_common_virtual_vars(new, root);
 
-			/*
-			 * Hardware driver API's ...
-			*/
-			new->kbdapi	= root->kbdapi;
-			new->mouseapi	= root->mouseapi;
-			new->timeapi	= root->timeapi;
-			new->vbiapi	= root->vbiapi;
+			if (pb->contrl[SUBFUNCTION] == 1)
+			{
+				O_Pos x2, y2;
+				long colors;
+				RASTER *r = root->raster;
+				RASTER *nr;
+				OVDI_HWAPI *hw = root->hw;
+				OVDI_DRAWERS *drawers;
+				MFDB *bm;
+				struct opnwk_input *wkin = (struct opnwk_input *)&pb->intin[0];
+				RESFMT resfmt;
 
-			/*
-			 * If we are using TC/HC, (or a non-clut mode) we let every virtual
-			 * workstation get its own colinf structure, making color related
-			 * things work indipendantly. I dont know how other VDI's do this,
-			 * but I WANT it to stay this way :)
-			*/
-			if (root->raster->clut)
-				new->colinf	= root->colinf;
+				scrnlog("Open offscreen for %s\n", new->procname);
+
+				bm = *(MFDB **)&(pb->contrl[7]);
+
+				if ((x2 = wkin->dev.eddi.max_x) == 0)
+					x2 = r->x2;
+				if ((y2 = wkin->dev.eddi.max_y) == 0)
+					y2 = r->y2;
+
+				x2 |= 15;
+
+				resfmt.format = 0;
+
+				if (wkin->dev.eddi.planes)
+				{
+					resfmt.planes = wkin->dev.eddi.planes;
+					if (wkin->dev.eddi.pixelformat == 0)
+						resfmt.format = PF_ATARI;
+					else if (wkin->dev.eddi.pixelformat == 1)
+						resfmt.format = PF_PLANES;
+					else if (wkin->dev.eddi.pixelformat == 2)
+						resfmt.format = PF_PACKED;
+
+					if (wkin->dev.eddi.endian & 2)
+						resfmt.format |= PF_FALCON;
+					if (wkin->dev.eddi.endian & 128)
+						resfmt.format |= PF_BS;
+
+					colors = wkin->dev.eddi.colors;
+				}
+				else if (bm->fd_nplanes)
+				{
+					resfmt.planes = bm->fd_nplanes;
+				}
+				else
+				{
+					resfmt.planes = r->res.planes;
+				}
+				drawers = hw->odrawers[resfmt.planes];
+
+				if (!resfmt.format)
+					resfmt.format = drawers->res->format;
+
+				resfmt.clut = drawers->res->clut;
+				resfmt.pixlen = drawers->res->pixlen;
+				resfmt.pixelformat = drawers->res->pixelformat;
+
+				if ( !(nr = new_raster(root->hw, bm->fd_addr, x2, y2, &resfmt)) )
+					goto error;
+
+				nr->wpixel = wkin->dev.eddi.wpixel;
+				nr->hpixel = wkin->dev.eddi.hpixel;
+
+				init_raster(root->hw, nr);
+				init_raster_rgb(nr);
+				nr->drawers = hw->odrawers[r->res.planes];
+				{
+					COLINF *c;
+					c = new_colinf(nr->res.pixelformat);
+					if (!c)
+					{
+						free_raster(nr);
+						free_mem(new);
+						goto error;
+					}
+					new->colinf = c;
+				}
+				init_colinf(nr, new->colinf);
+
+				bm->fd_w	= nr->w;
+				bm->fd_h	= nr->h;
+				bm->fd_wdwidth	= (nr->w + 15) >> 4;
+				bm->fd_nplanes	= nr->res.planes;
+				bm->fd_r1 	= 0;
+				bm->fd_r2	= 0;
+				bm->fd_r3	= 0;
+
+				if (bm->fd_addr)
+				{
+					if (bm->fd_stand == 1)
+						trnfm(bm, bm);
+				}
+				bm->fd_addr = nr->base;
+
+				scrnlog(" fd_adr %lx, w %d, h %d, wdw %d, planes %d \n",
+						bm->fd_addr, bm->fd_w, bm->fd_h, bm->fd_wdwidth, bm->fd_nplanes);
+
+				new->raster = nr;
+
+				new->flags |= V_OSBM;
+			}
 			else
 			{
-				new->colinf = new_colinf(root->raster);
-				if (new->colinf)
-					clone_colinf(new->colinf, root->colinf);
+				new->raster	= root->raster;
+
+				/*
+				 * If we are using TC/HC, (or a non-clut mode) we let every virtual
+				 * workstation get its own colinf structure, making color related
+				 * things work indipendantly. I dont know how other VDI's do this,
+				 * but I WANT it to stay this way :)
+				*/
+				if (root->raster->res.clut)
+					new->colinf	= root->colinf;
 				else
-					new->colinf = root->colinf;
+				{
+					new->colinf = new_colinf(root->raster->res.pixelformat);
+					if (new->colinf)
+						clone_colinf(new->colinf, root->colinf);
+					else
+						new->colinf = root->colinf;
+				}
 			}
 
 			setup_virtual(pb, new, root);
 			lvst_load_fonts(new);
 			prepare_stdreturn(pb, new);
+
+			entry[handle].v = new;
+			entry[handle].pid = new->pid;
 		}
 		else
 		{
+error:
+			handle = 0;
 			free_mem(new);
 		}
 	}
@@ -473,7 +612,7 @@ v_opnvwk(VDIPB *pb, VIRTUAL *v)
 void
 v_clswk( VDIPB *pb, VIRTUAL *root)
 {
-	short i;
+	int i;
 	RASTER *r;
 	COLINF *c;
 
@@ -527,9 +666,9 @@ v_clswk( VDIPB *pb, VIRTUAL *root)
 		(*root->timeapi->reset_user_tim)();
 		(*root->timeapi->reset_next_tim)();
 	/* remove consoles textcursor blinker from VBI */
-	//	(*root->vbiapi->del_func)((unsigned long)root->con->textcursor_blink);
+	//	(*root->vbiapi->del_func)((O_u32)root->con->textcursor_blink);
 	/* remove the mousecursor rendering function from VBI */
-		(*root->vbiapi->del_func)((unsigned long)root->mouseapi->housekeep);
+		(*root->vbiapi->del_func)((O_u32)root->mouseapi->housekeep);
 
 
 	lvst_exit(root);
@@ -572,7 +711,7 @@ void
 v_clsvwk( VDIPB *pb, VIRTUAL *v)
 {
 	OVDI_VTAB *entry;
-	short handle;
+	int handle;
 
 	handle = v->handle;
 	entry = v_vtab;
@@ -592,6 +731,14 @@ v_clsvwk( VDIPB *pb, VIRTUAL *v)
 		if (v->colinf != v->root->colinf)
 			free_mem(v->colinf);
 
+		if (v->flags & V_OSBM)
+		{
+			free_raster(v->raster);
+		}
+
+		if (v->flags & V_OWN_APPBUFF && v->app_buff)
+			free_mem(v->app_buff);
+
 		free_mem(v);
 		entry[handle].v = 0;
 		entry[handle].pid = -1;
@@ -609,7 +756,7 @@ v_updwk( VDIPB *pb, VIRTUAL *v)
 void
 vq_extnd( VDIPB *pb, VIRTUAL *v)
 {
-	short flag = pb->intin[0];
+	int flag = pb->intin[0];
 
 	switch (flag)
 	{
@@ -636,15 +783,15 @@ vq_extnd( VDIPB *pb, VIRTUAL *v)
 static void
 prepare_scrninfreturn( VDIPB *pb, VIRTUAL *v)
 {
-	short i, pfmt, planes;
-	unsigned long palettesize;
-	short *misc;
+	int i, pfmt, planes;
+	O_u32 palettesize;
+	O_16 *misc;
 	RASTER *r;
 
 	r = v->raster;
 
-	pfmt = r->format; //v->driver->format;
-	planes = r->planes; //v->driver->planes;
+	pfmt = r->res.format; //v->driver->format;
+	planes = r->res.planes; //v->driver->planes;
 
 	if (pfmt & PF_ATARI)
 		pb->intout[0] = 0;
@@ -655,7 +802,7 @@ prepare_scrninfreturn( VDIPB *pb, VIRTUAL *v)
 
 	if (planes == 1)
 		pb->intout[1] = 0;
-	else if (r->clut)
+	else if (r->res.clut)
 		pb->intout[1] = 1;
 	else
 		pb->intout[1] = 2;
@@ -664,11 +811,11 @@ prepare_scrninfreturn( VDIPB *pb, VIRTUAL *v)
 
 	if (planes > 8)
 	{
-		palettesize =	(unsigned long)r->rgb_levels.red *
-				(unsigned long)r->rgb_levels.green *
-				(unsigned long)r->rgb_levels.blue;
-		pb->intout[3] = (unsigned short)((unsigned long)palettesize >> 16);
-		pb->intout[4] = (unsigned short)((unsigned long)palettesize & 0xffff);
+		palettesize =	(O_u32)r->rgb_levels.red *
+				(O_u32)r->rgb_levels.green *
+				(O_u32)r->rgb_levels.blue;
+		pb->intout[3] = (O_u16)((O_u32)palettesize >> 16);
+		pb->intout[4] = (O_u16)((O_u32)palettesize & 0xffff);
 	}
 	else
 	{
@@ -678,8 +825,8 @@ prepare_scrninfreturn( VDIPB *pb, VIRTUAL *v)
 
 	pb->intout[5]	= r->bypl;
 
-	pb->intout[6]	= (unsigned short)((unsigned long)r->base >> 16);
-	pb->intout[7]	= (unsigned short)((unsigned long)r->base & 0xffff);
+	pb->intout[6]	= (O_u16)((O_u32)r->base >> 16);
+	pb->intout[7]	= (O_u16)((O_u32)r->base & 0xffff);
 	
 	pb->intout[8]	= r->rgb_bits.red;
 	pb->intout[9]	= r->rgb_bits.green;
@@ -703,33 +850,33 @@ prepare_scrninfreturn( VDIPB *pb, VIRTUAL *v)
 			case 16:
 			{
 				if (pfmt & PF_FALCON)
-					pb->intout[14] = 1;
+					pb->intout[14] = 2;
 				else if (pfmt & PF_BS)
-					pb->intout[14] = 7;
+					pb->intout[14] = 128;
 				else
-					pb->intout[14] = 0;
+					pb->intout[14] = 1;
 				break;
 			}
 			case 24:
 			{
 				if (pfmt & PF_BS)
-					pb->intout[14] = 7;
+					pb->intout[14] = 128;
 				else
-					pb->intout[14] = 0;
+					pb->intout[14] = 1;
 				break;
 			}
 			case 32:
 			{
 				if (pfmt & PF_BS)
-					pb->intout[14] = 7;
+					pb->intout[14] = 128;
 				else
-					pb->intout[14] = 0;
+					pb->intout[14] = 1;
 				break;
 			}
 		}
 
-		pf = r->pixelformat;
-		misc = (short *)&pb->intout[16];
+		pf = r->res.pixelformat;
+		misc = (O_16 *)&pb->intout[16];
 		while (pf[0])
 		{
 			while ( pf[2] )
@@ -744,7 +891,7 @@ prepare_scrninfreturn( VDIPB *pb, VIRTUAL *v)
 			pf += 3;
 		}
 
-		misc = (short *)&pb->intout[128];
+		misc = (O_16 *)&pb->intout[128];
 		for (i = 128; i < 271; i++)
 			*misc++ = 0;
 		
@@ -752,13 +899,13 @@ prepare_scrninfreturn( VDIPB *pb, VIRTUAL *v)
 	else
 	{
 		//long *pxls = v->pixelvalues;
-		short ncols;
+		int ncols;
 
 		ncols = Planes2Pens[planes];
 
 		pb->intout[13] = 0;
 		pb->intout[14] = 0;
-		misc = (short *)&pb->intout[16];
+		misc = (O_16 *)&pb->intout[16];
 		for (i = 0; i < ncols; i++)
 			*misc++ = v->colinf->color_vdi2hw[i];
 
@@ -780,8 +927,12 @@ prepare_extreturn( VDIPB *pb, VIRTUAL *v)
 {
 	//short i;
 	//short *src, *dst;
+	INQ_TAB *it = (INQ_TAB *)&pb->intout[0];
+	RASTER *r = v->raster;
 
 	memcpy( &pb->intout[0], &INQ_TAB_rom, sizeof(INQ_TAB));
+
+	reschange_inqtab(it, r);
 
 	pb->intout[19] = v->clip.flag;
 
@@ -814,7 +965,11 @@ prepare_extreturn( VDIPB *pb, VIRTUAL *v)
 static void
 prepare_stdreturn( VDIPB *pb, VIRTUAL *v)
 {
+	DEV_TAB *dt = (DEV_TAB *)&pb->intout[0];
+	RASTER *r = v->raster;
+
 	memcpy((void *)&pb->intout[0], (void *)&DEV_TAB_rom, sizeof(DEV_TAB));
+	reschange_devtab(dt, r);
 	memcpy((void *)&pb->ptsout[0], (void *)&SIZ_TAB_rom, sizeof(SIZ_TAB));
 	pb->contrl[N_INTOUT] = 45;
 	pb->contrl[N_PTSOUT] = 6;
@@ -851,14 +1006,14 @@ setup_virtual(VDIPB *pb, VIRTUAL *v, VIRTUAL *root)
 	v->scratchs	= SCRATCH_BUFFER_SIZE;
 
 	v->ptsbuffsiz	= PTSBUFF_SIZ;
-/* **** wrmode */
-	lvswr_mode( v, 1);
+	v->spanbuffsiz	= SPANBUFF_SIZ;
 
 /* **** Clipping */
 	lvs_clip( v, 0, 0);
 
 /* **** Line settings */ 
 	lvsl_initial( v );
+	lvsl_wrmode( v, MD_REPLACE );
 	lvsl_type( v, wkin->linetype);
 	lvsl_color( v, wkin->linecolor);
 	lvsl_bgcolor( v, 0);
@@ -867,6 +1022,8 @@ setup_virtual(VDIPB *pb, VIRTUAL *v, VIRTUAL *root)
 	lvsl_udsty( v, 0xffff);
 
 /* **** Marker settings */
+	lvsm_initial( v );
+	lvsm_wrmode( v, MD_REPLACE );
 	lvsm_linetype( v, 0);
 	lvsm_type( v, wkin->markertype);
 	lvsm_color( v, wkin->markercolor);
@@ -875,23 +1032,31 @@ setup_virtual(VDIPB *pb, VIRTUAL *v, VIRTUAL *root)
 	v->pmarker.t.p.scale = 0;
 
 /* **** Fill stuff ... */
-	v->fill.exp_data	= (unsigned short *)&v->filldata.edata;
-	v->fill.mask		= (unsigned short *)&v->filldata.mask;
+#if 0
+	v->fill.exp_data	= (O_u16 *)&v->filldata.edata;
+	v->fill.mask		= (O_u16 *)&v->filldata.mask;
 
-	v->udfill.data		= (unsigned short *)&v->udfilldata.data;
-	v->udfill.mask		= (unsigned short *)&v->udfilldata.mask;
-	v->udfill.exp_data	= (unsigned short *)&v->udfilldata.edata;
-
+	v->udfill.data		= (O_u16 *)&v->udfilldata.data;
+	v->udfill.mask		= (O_u16 *)&v->udfilldata.mask;
+	v->udfill.exp_data	= (O_u16 *)&v->udfilldata.edata;
+#endif
+/* **** Perimeter-line attribs ... */
+	lvsprm_initial( v );
+	lvsprm_wrmode( v, MD_REPLACE );
+	lvsprm_type( v, 0);
 	lvsprm_color( v, wkin->fillcolor);
 	lvsprm_bgcolor( v, 0);
-	set_fill_params( FIS_SOLID, 0, &v->perimeter, 0, 0);
+	lvsprm_width( v, 1);
+	lvsprm_ends( v, 0, 0);
+	lvsprm_udsty( v, 0xffff);
 
+	lvsf_initial( v );
+	lvsf_wrmode( v, MD_REPLACE );
+	lvsudf_wrmode( v, MD_REPLACE );
 	lvsf_color ( v, wkin->fillcolor);
 	lvsf_bgcolor ( v, 0);
-
 	/* Potential bug - what if fillinterior is set to FIS_USER here?? */
 	/* Not a problem anylonger */
-
 	if (wkin->fillinterior == FIS_USER)
 		v->currfill = &v->udfill;
 	else
@@ -934,12 +1099,15 @@ setup_virtual(VDIPB *pb, VIRTUAL *v, VIRTUAL *root)
 	(void)lvsin_mode( v, 2, 1);
 	(void)lvsin_mode( v, 3, 1);
 	(void)lvsin_mode( v, 4, 1);
+
+/* **** wrmode */
+	lvswr_mode( v, 1);
 }
 
 /* Only to be executed for the physical workstation. Also updates the
  * INQ tab associated with that physical workstation.
 */
-static short fonts_are_loaded = 0;
+static int fonts_are_loaded = 0;
 
 static void
 load_vdi_fonts(VIRTUAL *v, SIZ_TAB *st, DEV_TAB *dt)
@@ -1002,7 +1170,7 @@ load_vdi_fonts(VIRTUAL *v, SIZ_TAB *st, DEV_TAB *dt)
 			{
 				long mem;
 
-				mem = (long)omalloc(size, MX_PREFTTRAM | MX_READABLE);
+				mem = (long)omalloc(size, MX_PREFTTRAM | MX_SUPER); //READABLE);
 				if (!mem)
 					return;
 				m->base	= (char *)mem;

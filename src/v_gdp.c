@@ -32,7 +32,7 @@ vdi_function gdps[] =
 void
 v_gdp( VDIPB *pb, VIRTUAL *v)
 {
-	short sub;
+	int sub;
 	vdi_function gdp;
 
 	sub = pb->contrl[SUBFUNCTION];
@@ -55,23 +55,23 @@ v_bar( VDIPB *pb, VIRTUAL *v)
 	COLINF *c = v->colinf;
 	PatAttr *ptrn = v->currfill;
 	VDIRECT *clip;
-	short coords[10];
+	O_Pos coords[10];
 
 	clip = v->clip.flag ? (VDIRECT *)&v->clip.x1 : (VDIRECT *)&r->x1;
 
-	sortcpy_corners(&pb->ptsin[0], &coords[0]);
+	sortcpy_corners((O_16 *)&pb->ptsin[0], &coords[0]);
 	DRAW_FILLEDRECT( r, c, (VDIRECT *)&coords[0], clip, ptrn);
 
 	if (ptrn->t.f.perimeter)
 	{
-		short ptsbuff[10*5*2];
+		O_Pos ptsbuff[10*5*2];
 
 		coords[4] = coords[2];
 		coords[5] = coords[7] = coords[3];
 		coords[6] = coords[8] = coords[0];
 		coords[3] = coords[9] = coords[1];
 
-		DRAW_PLINE( r, c, (short *)&coords, 5, clip, (short *)&ptsbuff, sizeof(ptsbuff), ptrn->t.f.perimeter);
+		DRAW_PLINE( r, c, (O_Pos *)&coords, 5, clip, (O_Pos *)&ptsbuff, sizeof(ptsbuff), ptrn->t.f.perimeter);
 	}
 }
 
@@ -81,7 +81,7 @@ v_arc( VDIPB *pb, VIRTUAL *v)
 {
 	DRAW_ARC( v,  pb->ptsin[0], pb->ptsin[1], pb->ptsin[6], 
 			pb->intin[0], pb->intin[1],
-			(short *)&v->ptsbuff, v->currfill );
+			(O_Pos *)&v->ptsbuff, v->currfill );
 }
 
 /* Sub opcode 3 */
@@ -90,7 +90,7 @@ v_pieslice( VDIPB *pb, VIRTUAL *v)
 {
 	DRAW_PIESLICE( v, pb->ptsin[0], pb->ptsin[1], pb->ptsin[6],
 			  pb->intin[0], pb->intin[1],
-			  (short *)&v->ptsbuff, v->currfill );
+			  (O_Pos *)&v->ptsbuff, v->currfill );
 }
 			  
 /* Sub opcode 4 */
@@ -98,7 +98,7 @@ void
 v_circle( VDIPB *pb, VIRTUAL *v)
 {
 	DRAW_CIRCLE( v, pb->ptsin[0], pb->ptsin[1], pb->ptsin[4],
-			(short *)&v->ptsbuff, v->currfill );
+			(O_Pos *)&v->ptsbuff, v->currfill );
 }
 
 /* Sup opcode 5 */
@@ -106,7 +106,7 @@ void
 v_ellipse( VDIPB *pb, VIRTUAL *v)
 {
 	DRAW_ELLIPSE( v, pb->ptsin[0], pb->ptsin[1], pb->ptsin[2], pb->ptsin[3],
-			(short *)&v->ptsbuff, v->currfill );
+			(O_Pos *)&v->ptsbuff, v->currfill );
 }
 
 /* Sub opcode 6 */
@@ -115,7 +115,7 @@ v_ellarc( VDIPB *pb, VIRTUAL *v)
 {
 	DRAW_ELLIPSEARC( v, pb->ptsin[0], pb->ptsin[1], pb->ptsin[2], pb->ptsin[3],
 				pb->intin[0], pb->intin[1],
-				(short *)&v->ptsbuff, v->currfill );
+				(O_Pos *)&v->ptsbuff, v->currfill );
 }
 
 /* Sub opcode 7 */
@@ -124,16 +124,16 @@ v_ellpie( VDIPB *pb, VIRTUAL *v)
 {
 	DRAW_ELLIPSEPIE( v, pb->ptsin[0], pb->ptsin[1], pb->ptsin[2], pb->ptsin[3],
 				pb->intin[0], pb->intin[1],
-				(short *)&v->ptsbuff, v->currfill );
+				(O_Pos *)&v->ptsbuff, v->currfill );
 }
 
 /* Sub opcode 8 */
 void
 v_rbox( VDIPB *pb, VIRTUAL *v)
 {
-	short corners[4];
+	O_Pos corners[4];
 
-	sortcpy_corners((short *)&pb->ptsin[0], (short *)&corners);
+	sortcpy_corners((O_16 *)&pb->ptsin[0], (O_Pos *)&corners);
 	DRAW_RBOX( v, 8, (VDIRECT *)&corners, v->currfill );
 }
 
@@ -141,27 +141,32 @@ v_rbox( VDIPB *pb, VIRTUAL *v)
 void
 v_rfbox( VDIPB *pb, VIRTUAL *v)
 {
-	short corners[4];
-	sortcpy_corners((short *)&pb->ptsin[0], (short *)&corners);
+	O_Pos corners[4];
+
+	sortcpy_corners((O_16 *)&pb->ptsin[0], (O_Pos *)&corners);
 	DRAW_RBOX( v, 9, (VDIRECT *)&corners, v->currfill );
 }
 
 void
 v_justified( VDIPB *pb, VIRTUAL *v)
 {
-	short slen, plen;
+	int slen, plen;
+	POINT p;
+
+	p.x = pb->ptsin[0];
+	p.y = pb->ptsin[1];
 
 	if ((slen = pb->contrl[N_INTIN] - 2) <= 0)
 		return;
 
 	if (!(plen = pb->ptsin[2]))
 	{
-		output_gdftext( v, (POINT *)&pb->ptsin[0], (short *)&pb->intin[2], slen,
+		output_gdftext( v, (POINT *)&p, (O_16 *)&pb->intin[2], slen,
 				0, 0, 0);
 	}
 	else
 	{
-		output_gdftext( v, (POINT *)&pb->ptsin[0], (short *)&pb->intin[2], slen,
+		output_gdftext( v, (POINT *)&p, (O_16 *)&pb->intin[2], slen,
 				   plen, pb->intin[0], pb->intin[1]);
 	}
 }

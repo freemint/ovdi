@@ -8,7 +8,7 @@
 #include "atarivideo.h"
 #include "includes/pf_tt.h"
 
-void init (OVDI_LIB *, struct module_desc *ret);
+void init (OVDI_LIB *, struct module_desc *ret, char *p, char *f);
 
 static OVDI_DRIVER *	dev_open		(OVDI_DEVICE *dev);
 static long		dev_close		(OVDI_DRIVER *drv);
@@ -27,13 +27,17 @@ static OVDI_LIB	*l;
 
 static char sname[] =	"Atari TT";
 static char lname[] =	"Atari TT graphics driver for oVDI";
+static char pn[128] = { "0" };
+static char fn[64] = { "0" };
 
-static OVDI_DEVICE ovdidev =
+static OVDI_DEVICE device =
 {
 	0,
 	0x00000001,
 	sname,
 	lname,
+	pn,
+	fn,
 
 	dev_open,
 	dev_close,
@@ -46,6 +50,40 @@ static OVDI_DEVICE ovdidev =
 	dev_vreschk,
 	0		/* sync */
 };
+
+static RESFMT resfmt_1b =
+{
+	1,
+	1,
+	PF_ATARI,
+	-1,
+	pf_tt,
+};
+static RESFMT resfmt_2b =
+{
+	2,
+	1,
+	PF_ATARI,
+	-2,
+	pf_tt,
+};
+static RESFMT resfmt_4b =
+{
+	4,
+	1,
+	PF_ATARI,
+	-4,
+	pf_tt,
+};
+static RESFMT resfmt_8b =
+{
+	8,
+	1,
+	PF_ATARI,
+	-8,
+	pf_tt,
+};
+
 
 static OVDI_DRIVER driver;
 
@@ -140,28 +178,46 @@ do_set_res(OVDI_DRIVER *drv, short res_id)
 }
 
 void
-init(OVDI_LIB *lib, struct module_desc *ret)
+init(OVDI_LIB *lib, struct module_desc *ret, char *path, char *file)
 {
 	OVDI_DRIVER *drv = &driver;
+	OVDI_DEVICE *dev = &device;
 
 	boot_drive = Dgetdrv() + 'a';
 
 	l	= lib;
+
+	{
+		char *t;
+
+		t = dev->pathname;
+		while (*path)
+			*t++ = *path++;
+		*t = 0;
+		t = dev->filename;
+		while (*file)
+			*t++ = *file++;
+		*t = 0;
+	}
 
 /* Since things not implemented or provided are NULL, we clear all our structures */
 	(*l->bzero)(&driver, sizeof(OVDI_DRIVER));
 
 	(*l->bzero)(&drw_1b, sizeof(OVDI_DRAWERS));
 	drv->drawers_1b = &drw_1b;
+	drv->drawers_1b->res = &resfmt_1b;
 
 	(*l->bzero)(&drw_2b, sizeof(OVDI_DRAWERS));
 	drv->drawers_2b = &drw_2b;
+	drv->drawers_2b->res = &resfmt_2b;
 
 	(*l->bzero)(&drw_4b, sizeof(OVDI_DRAWERS));
 	drv->drawers_4b = &drw_4b;
+	drv->drawers_4b->res = &resfmt_4b;
 
 	(*l->bzero)(&drw_8b, sizeof(OVDI_DRAWERS));
 	drv->drawers_8b = &drw_8b;
+	drv->drawers_8b->res = &resfmt_8b;
 
 	(*l->bzero)(&drw_15b, sizeof(OVDI_DRAWERS));
 	drv->drawers_15b = &drw_15b;
@@ -176,7 +232,7 @@ init(OVDI_LIB *lib, struct module_desc *ret)
 	drv->drawers_32b = &drw_32b;
 
 	ret->types	= D_VHW;
-	ret->vhw	= (void *)&ovdidev;
+	ret->vhw	= dev; //(void *)&ovdidev;
 };
 
 static OVDI_DRIVER *
@@ -260,7 +316,7 @@ dev_get_res_info(OVDI_DRIVER *drv)
 	{
 		case VMODE_LOW:		/* 320x200 4bpp */
 		{
-			drv->r.planes	= 4;
+			//drv->r.planes	= 4;
 			drv->r.bypl	= (320 >> 4) << 3;
 			drv->palette	= 4096;
 			drv->r.w	= 320;
@@ -275,15 +331,16 @@ dev_get_res_info(OVDI_DRIVER *drv)
 			drv->vram_size	= (long)drv->r.h * drv->r.bypl;
 			drv->scr_size	= drv->vram_size;
 
-			drv->r.format		= PF_ATARI;
-			drv->r.pixelformat	= pf_tt;
-			drv->r.clut		= 1;
-			drv->r.pixlen		= -4;
+			drv->r.res	= *drv->drawers_1b->res;
+			//drv->r.format		= PF_ATARI;
+			//drv->r.pixelformat	= pf_tt;
+			//drv->r.clut		= 1;
+			//drv->r.pixlen		= -4;
 			break;
 		}
 		case VMODE_MED:		/* 640x200 2bpp */
 		{
-			drv->r.planes	= 2;
+			//drv->r.planes	= 2;
 			drv->r.bypl	= 80;
 			drv->palette	= 4096;
 			drv->r.w	= 640;
@@ -298,15 +355,15 @@ dev_get_res_info(OVDI_DRIVER *drv)
 			drv->vram_size	= (long)drv->r.h * drv->r.bypl;
 			drv->scr_size	= drv->vram_size;
 
-			drv->r.format		= PF_ATARI;
-			drv->r.pixelformat	= pf_tt;
-			drv->r.clut		= 1;
-			drv->r.pixlen		= -2;
+			drv->r.res	= *drv->drawers_2b->res;
+			//drv->r.format		= PF_ATARI;
+			//drv->r.pixelformat	= pf_tt;
+			//drv->r.clut		= 1;
+			//drv->r.pixlen		= -2;
 			break;
 		}
 		case VMODE_HI: 		/* 640x400 mono */
 		{
-			drv->r.planes	= 1;
 			drv->r.bypl	= 80;
 			drv->palette	= 2;
 			drv->r.w	= 640;
@@ -321,15 +378,11 @@ dev_get_res_info(OVDI_DRIVER *drv)
 			drv->vram_size	= (long)drv->r.h * drv->r.bypl;
 			drv->scr_size	= drv->vram_size;
 
-			drv->r.format		= PF_ATARI;
-			drv->r.pixelformat	= pf_tt;
-			drv->r.clut		= 1;
-			drv->r.pixlen		= -1;
+			drv->r.res	= *drv->drawers_1b->res;
 			break;
 		}
 		case VMODE_TT_LOW:	/* 320x480 8bpp */
 		{
-			drv->r.planes	= 8;
 			drv->r.bypl	= 320;
 			drv->palette	= 4096;
 			drv->r.w	= 320;
@@ -344,15 +397,11 @@ dev_get_res_info(OVDI_DRIVER *drv)
 			drv->vram_size	= (long)drv->r.h * drv->r.bypl;
 			drv->scr_size	= drv->vram_size;
 
-			drv->r.format		= PF_ATARI;
-			drv->r.pixelformat	= pf_tt;
-			drv->r.clut		= 1;
-			drv->r.pixlen		= 1;
+			drv->r.res	= *drv->drawers_8b->res;
 			break;
 		}
 		case VMODE_TT_MED:	/* 640x480 4bpp */
 		{
-			drv->r.planes	= 4;
 			drv->r.bypl	= 320;
 			drv->palette	= 4096;
 			drv->r.w	= 640;
@@ -367,15 +416,11 @@ dev_get_res_info(OVDI_DRIVER *drv)
 			drv->vram_size	= (long)drv->r.h * drv->r.bypl;
 			drv->scr_size	= drv->vram_size;
 
-			drv->r.format		= PF_ATARI;
-			drv->r.pixelformat	= pf_tt;
-			drv->r.clut		= 1;
-			drv->r.pixlen		= -4;
+			drv->r.res	= *drv->drawers_4b->res;
 			break;
 		}
 		case VMODE_TT_HI:	/* 1280x960 mono */
 		{
-			drv->r.planes	= 1;
 			drv->r.bypl	= 160;
 			drv->palette	= 2;
 			drv->r.w	= 1280;
@@ -390,10 +435,7 @@ dev_get_res_info(OVDI_DRIVER *drv)
 			drv->vram_size	= drv->r.bypl * drv->r.h;
 			drv->scr_size	= drv->vram_size;
 
-			drv->r.format		= PF_ATARI;
-			drv->r.pixelformat	= pf_tt;
-			drv->r.clut		= 1;
-			drv->r.pixlen		= -1;
+			drv->r.res	= *drv->drawers_1b->res;
 			break;
 		}
 	}

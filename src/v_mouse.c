@@ -11,7 +11,7 @@ vsc_form( VDIPB *pb, VIRTUAL *v)
 }
 
 void
-lvsc_form( VIRTUAL *v, short index, MFORM *mf)
+lvsc_form( VIRTUAL *v, O_Int index, MFORM *mf)
 {
 	(*v->mouseapi->setnewmform)(mf);
 }
@@ -48,12 +48,12 @@ v_rmcur( VDIPB *pb, VIRTUAL *v)
 void
 vq_mouse( VDIPB *pb, VIRTUAL *v)
 {
-	unsigned long bs;
+	O_u32 bs;
 
 	bs = (*v->mouseapi->getbutstat)();
-	(*v->mouseapi->getmcoords)((short *)&pb->ptsout[0]);
+	(*v->mouseapi->getmcoords)((O_16 *)&pb->ptsout[0]);
 
-	pb->intout[0] = (unsigned short)(bs & 0xffffUL);
+	pb->intout[0] = (O_u16)(bs & 0xffffUL);
 
 	pb->contrl[N_INTOUT] = 1;
 	pb->contrl[N_PTSOUT] = 1;
@@ -62,32 +62,17 @@ vq_mouse( VDIPB *pb, VIRTUAL *v)
 void
 vex_butv( VDIPB *pb, VIRTUAL *v)
 {
-	unsigned long oldvec;
-	
-	oldvec = (*v->mouseapi->setvector)( MVEC_BUT, (unsigned long)(((unsigned long)pb->contrl[7]<<16) | (unsigned short)pb->contrl[8]));
-
-	pb->contrl[9] = (unsigned short)((unsigned long)oldvec >> 16);
-	pb->contrl[10] = (unsigned short)((unsigned long)oldvec & 0xffffUL);
+	*(O_u32 *)&pb->contrl[9] = (*v->mouseapi->setvector)( MVEC_BUT, *(O_u32 *)&pb->contrl[7]);
 }
 
 void
 vex_curv( VDIPB *pb, VIRTUAL *v)
 {
-	unsigned long oldvec;
-	
-	oldvec = (*v->mouseapi->setvector)( MVEC_CUR, (unsigned long)(((unsigned long)pb->contrl[7]<<16) | (unsigned short)pb->contrl[8]));
-
-	pb->contrl[9] = (unsigned short)((unsigned long)oldvec >> 16);
-	pb->contrl[10] = (unsigned short)((unsigned long)oldvec & 0xffffUL);
+	*(O_u32 *)&pb->contrl[9] = (*v->mouseapi->setvector)( MVEC_CUR, *(O_u32 *)&pb->contrl[7]);
 }
 	
 void
 vex_motv( VDIPB *pb, VIRTUAL *v)
 {
-	unsigned long oldvec;
-	
-	oldvec = (*v->mouseapi->setvector)( MVEC_MOV, (unsigned long)(((unsigned long)pb->contrl[7]<<16) | (unsigned short)pb->contrl[8]));
-
-	pb->contrl[9] = (unsigned short)((unsigned long)oldvec >> 16);
-	pb->contrl[10] = (unsigned short)((unsigned long)oldvec & 0xffffUL);
+	*(O_u32 *)&pb->contrl[9] = (*v->mouseapi->setvector)( MVEC_MOV, *(O_u32 *)&pb->contrl[7]);
 }

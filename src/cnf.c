@@ -102,7 +102,7 @@ typedef union
 
 typedef struct
 {
-	short a, b;
+	int a, b;
 }RANGE;
 
 #define Range( a, b )   (((long)(a)<<16)|(int)(b))
@@ -163,8 +163,8 @@ typedef PCB_TTx	 PCB_TAx                                            ;
 typedef void	(PCB_0TT) (int,          const char *, const char *);
 typedef void	(PCB_ATK) (const char *, const char *, long        );
 
-typedef void	(PCB_l)   (short, const char *);
-typedef void	(PCB_lx)   (short, const char *, PARSINF *);
+typedef void	(PCB_l)   (int, const char *);
+typedef void	(PCB_lx)   (int, const char *, PARSINF *);
 
 /* and */
 # define _NOT_SUPPORTED_  NULL
@@ -788,7 +788,7 @@ parser (long fh, PARSINF *inf, long f_size, struct parser_item *items)
 				PCB_ATK *ccl;
 				PCB_lx	*lst;
 			} cb;
-			short	itemtype;
+			int	itemtype;
 
 			cb._v = item->cb;
 
@@ -827,7 +827,7 @@ parser (long fh, PARSINF *inf, long f_size, struct parser_item *items)
 
 				case PI_V_l:
 				{
-					short num = 0;
+					int num = 0;
 
 					do
 					{

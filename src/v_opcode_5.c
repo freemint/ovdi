@@ -245,7 +245,7 @@ vdi_function v5_subops[] =
 void
 v_opcode_5(VDIPB *pb, VIRTUAL *v)
 {
-	short sub;
+	int sub;
 	vdi_function func;
 
 	sub = pb->contrl[SUBFUNCTION];

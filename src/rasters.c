@@ -4,25 +4,24 @@
 #include "draw.h"
 #include "libkern.h"
 #include "ovdi_defs.h"
-#include "patch_gem.h"
 #include "rasters.h"
 #include "vdi_defs.h"
 #include "vdi_globals.h"
 
-extern short logit;
+extern O_16 logit;
 
-unsigned long clc_plen(MFDB *r);
-unsigned long clc_rlen(MFDB *r);
-void conv_vdi2dev( unsigned short *src, unsigned short *dst, unsigned long splen, unsigned long dplen, short planes);
-void conv_dev2vdi( unsigned short *src, unsigned short *dst, unsigned long splen, unsigned long dplen, short planes);
+O_u32 clc_plen(MFDB *r);
+O_u32 clc_rlen(MFDB *r);
+void conv_vdi2dev( O_u16 *src, O_u16 *dst, O_u32 splen, O_u32 dplen, O_Int planes);
+void conv_dev2vdi( O_u16 *src, O_u16 *dst, O_u32 splen, O_u32 dplen, O_Int planes);
 
-short
-fix_raster_coords(short *spts, short *dpts, short *c)
+O_Int
+fix_raster_coords(O_Pos *spts, O_Pos *dpts, O_Pos *c)
 {
-	short *p;
-	short sx1, sy1, sx2, sy2;
-	short dx1, dy1, dx2, dy2;
-	short min_x, min_y, max_x, max_y;
+	O_Pos *p;
+	O_Pos sx1, sy1, sx2, sy2;
+	O_Pos dx1, dy1, dx2, dy2;
+	O_Pos min_x, min_y, max_x, max_y;
 
 	p = spts;
 
@@ -135,24 +134,25 @@ frc_fail:
 	return 0;
 }
 
-static short rt2ro[] = { 3, 0, 0, 0 };
+static O_16 rt2ro[] = { 3, 0, 0, 0 };
 
 /* if wrmode has bit 15 set, wrmode is interpreted to be a vdi writing mode, not a blitblt */
 void
-rt_cpyfm(RASTER *r, COLINF *c, MFDB *src, MFDB *dst, short *pnts, VDIRECT *clip, short fgcol, short bgcol, short wrmode)
+rt_cpyfm(RASTER *r, COLINF *c, MFDB *src, MFDB *dst, O_Pos *pnts, VDIRECT *clip, O_Int fgcol, O_Int bgcol, O_Int wrmode)
 {
 	int i, j, k;
-	short dst_w, dst_h, dst_x1, dst_y1, planes, bypl, width, height, startbit, headbits, groups, tailbits;
-	short xinc;
-	short d_is_screen;
+	O_Pos dst_w, dst_h, dst_x1, dst_y1, width, height;
+	int planes, bypl, startbit, headbits, groups, tailbits;
+	int xinc;
+	int d_is_screen;
 	unsigned char *addr, *adr;
-	unsigned short *srcptr, *sourceptr;
-	unsigned short data;
-	short *pts;
+	O_u16 *srcptr, *sourceptr;
+	O_u16 data;
+	O_Pos *pts;
 	struct ovdi_drawers *drawers;
 	pixel_blit dpf_fg, dpf_bg;
-	short clp[4];
-	short points[8];
+	O_Pos clp[4];
+	O_Pos points[8];
 
 	if (wrmode > 3 || src->fd_nplanes != 1)
 		return;
@@ -161,15 +161,13 @@ rt_cpyfm(RASTER *r, COLINF *c, MFDB *src, MFDB *dst, short *pnts, VDIRECT *clip,
 
 	if ( dst->fd_addr == 0)
 	{	/* destination screen! */
-
-		if (r->planes == 1 && !wrmode) //rt2ro[wrmode] != 0)
+		if (r->res.planes == 1 && !wrmode) //rt2ro[wrmode] != 0)
 		{
 			ro_cpyfm(r, src, dst, pnts, clip, rt2ro[wrmode]);
 			return;
 		}
-			
 		drawers 	= r->drawers;
-		planes		= r->planes;
+		planes		= r->res.planes;
 		bypl		= r->bypl;
 		addr		= r->base;
 		dst_w		= r->w;
@@ -196,7 +194,7 @@ rt_cpyfm(RASTER *r, COLINF *c, MFDB *src, MFDB *dst, short *pnts, VDIRECT *clip,
 		return;
 
 
-	pts = (short *)&clp;
+	pts = (O_Pos *)&clp;
 	if (d_is_screen)
 	{
 		*pts++	= clip->x1;
@@ -212,8 +210,8 @@ rt_cpyfm(RASTER *r, COLINF *c, MFDB *src, MFDB *dst, short *pnts, VDIRECT *clip,
 		*pts	= dst_h - 1;
 	}
 
-	pts = (short *)&points;
-	if ( !fix_raster_coords(pnts, pts, (short *)&clp[0]) )
+	pts = (O_Pos *)&points;
+	if ( !fix_raster_coords(pnts, pts, (O_Pos *)&clp[0]) )
 		return;
 
 	dst_x1 = pts[4];
@@ -222,7 +220,7 @@ rt_cpyfm(RASTER *r, COLINF *c, MFDB *src, MFDB *dst, short *pnts, VDIRECT *clip,
 	if (planes < 8)
 	{
 		/* OH god .. how slow can we go? hehe */
-		short shift, bitcount, shft, bc;
+		int shift, bitcount, shft, bc;
 
 
 		shft = dst_x1 & 0xf;
@@ -231,7 +229,7 @@ rt_cpyfm(RASTER *r, COLINF *c, MFDB *src, MFDB *dst, short *pnts, VDIRECT *clip,
 		xinc = planes << 1;
 		addr += (long)(dst_x1 >> 4) * xinc;
 		addr += (long)dst_y1 * bypl;
-		sourceptr = (unsigned short *)src->fd_addr;
+		sourceptr = (O_u16 *)src->fd_addr;
 		sourceptr += pts[0] >> 4;
 		sourceptr += (long)pts[1] * src->fd_wdwidth;
 
@@ -364,7 +362,7 @@ rt_cpyfm(RASTER *r, COLINF *c, MFDB *src, MFDB *dst, short *pnts, VDIRECT *clip,
 	{
 		register long fcol, bcol;
 
-		if (r->clut)
+		if (r->res.clut)
 		{
 			fcol = fgcol;
 			bcol = bgcol;
@@ -379,7 +377,7 @@ rt_cpyfm(RASTER *r, COLINF *c, MFDB *src, MFDB *dst, short *pnts, VDIRECT *clip,
 		xinc = Planes2xinc[planes - 8];
 		addr += (long)dst_x1 * xinc;
 		addr += (long)dst_y1 * bypl;
-		sourceptr = (unsigned short *)src->fd_addr;
+		sourceptr = (O_u16 *)src->fd_addr;
 		sourceptr += pts[0] >> 4;
 		sourceptr += (long)pts[1] * src->fd_wdwidth;
 
@@ -474,25 +472,24 @@ rt_cpyfm(RASTER *r, COLINF *c, MFDB *src, MFDB *dst, short *pnts, VDIRECT *clip,
 			addr += bypl;
 		}
 	}
-	return;
 }
 
 void
-ro_cpyfm(RASTER *r, MFDB *src, MFDB *dst, short *pts, VDIRECT *clip, short wrmode)
+ro_cpyfm(RASTER *r, MFDB *src, MFDB *dst, O_Pos *pts, VDIRECT *clip, O_Int wrmode)
 {
-	short	srcplanes, dstplanes;
-	short *p;
+	int srcplanes, dstplanes;
+	O_Pos *p;
 	raster_blit rop;
 	struct ovdi_drawers *drawers;
 	ROP_PB	*rpb;
 	ROP_PB	roppb;
-	short	clp[4];
+	O_Pos	clp[4];
 
 	rpb = &roppb;
 
-	if ( !dst->fd_addr || (unsigned long)dst->fd_addr == (unsigned long)r->base)
+	if ( !dst->fd_addr || (O_u32)dst->fd_addr == (O_u32)r->base)
 	{	/* destination screen! */
-		dstplanes	= r->planes;
+		dstplanes	= r->res.planes;
 		rpb->d_bypl	= r->bypl;
 		rpb->d_addr	= r->base;
 		rpb->d_w	= r->w;
@@ -510,9 +507,9 @@ ro_cpyfm(RASTER *r, MFDB *src, MFDB *dst, short *pts, VDIRECT *clip, short wrmod
 		
 	}
 
-	if ( !src->fd_addr || (unsigned long)src->fd_addr == (unsigned long)r->base)
+	if ( !src->fd_addr || (O_u32)src->fd_addr == (O_u32)r->base)
 	{	/* Source is screen */
-		srcplanes	= r->planes;
+		srcplanes	= r->res.planes;
 		rpb->s_bypl	= r->bypl;
 		rpb->s_addr	= r->base;
 		rpb->s_w	= r->w;
@@ -539,7 +536,7 @@ ro_cpyfm(RASTER *r, MFDB *src, MFDB *dst, short *pts, VDIRECT *clip, short wrmod
 	if (!drawers)
 		return;
 
-	p = (short *)&clp;
+	p = (O_Pos *)&clp;
 	if (rpb->d_is_scrn)
 	{
 		*p++	= clip->x1;
@@ -555,28 +552,29 @@ ro_cpyfm(RASTER *r, MFDB *src, MFDB *dst, short *pts, VDIRECT *clip, short wrmod
 		*p	= rpb->d_h - 1;
 	}
 	
-	p = (short *)&rpb->sx1;
-	if ( !fix_raster_coords(pts, p, (short *)&clp) )
+	p = (O_Pos *)&rpb->sx1;
+	if ( !fix_raster_coords(pts, p, (O_Pos *)&clp) )
 		return;
 
 	rop = drawers->raster_blits[wrmode];
 
+#if 0
 	if (rpb->d_is_scrn)
 		SYNC_RASTER(r);
-
+#endif
 	if (rop)
+	{
+		if (rpb->d_is_scrn)
+			SYNC_RASTER(r);
 		(*rop)(rpb);
+	}
 }
 
 void
-trnfm(VIRTUAL *v, MFDB *src, MFDB *dst)
+trnfm(MFDB *src, MFDB *dst)
 {
-	unsigned short *source, *dest;
-	unsigned long rlen, plen;
-
-
-	if (!MiNT)
-		patch_gem(v->raster->planes, v->raster->w - 1);
+	O_u16 *source, *dest;
+	O_u32 rlen, plen;
 
 	if (src->fd_nplanes == 1)
 	{
@@ -594,14 +592,14 @@ trnfm(VIRTUAL *v, MFDB *src, MFDB *dst)
 
 		if (src->fd_addr == dst->fd_addr)
 		{
-			dest = (unsigned short *)Malloc(rlen + 4);
+			dest = (O_u16 *)Malloc(rlen + 4);
 			if (!dest)
 				return;
 		}
 		else
 			dest = dst->fd_addr;
 
-		source = (unsigned short *)src->fd_addr;
+		source = (O_u16 *)src->fd_addr;
 
 		if (!src->fd_stand)		/* DEV_SPEC to VDI */
 		{
@@ -626,28 +624,27 @@ trnfm(VIRTUAL *v, MFDB *src, MFDB *dst)
 			Mfree(dest);
 		}
 	}
-	return;
 }
 
-unsigned long
+O_u32
 clc_plen( MFDB *r)
 {
-	return ((unsigned long) (((unsigned long)r->fd_wdwidth << 1) * (unsigned long)r->fd_h));
+	return ((O_u32) (((O_u32)r->fd_wdwidth << 1) * (O_u32)r->fd_h));
 }
 
-unsigned long
+O_u32
 clc_rlen( MFDB *r)
 {
-	return ((unsigned long)(((unsigned long)r->fd_wdwidth << 1) * (unsigned long)r->fd_h * (unsigned long)r->fd_nplanes));
+	return ((O_u32)(((O_u32)r->fd_wdwidth << 1) * (O_u32)r->fd_h * (O_u32)r->fd_nplanes));
 }
 
 
 void
-conv_vdi2dev( unsigned short *src, unsigned short *dst, unsigned long splen, unsigned long dplen, short planes)
+conv_vdi2dev( O_u16 *src, O_u16 *dst, O_u32 splen, O_u32 dplen, O_Int planes)
 {
-	short i, j;
-	long len;
-	unsigned long pixel;
+	int i, j;
+	O_32 len;
+	O_u32 pixel;
 
 	splen >>= 1;
 	len = splen;
@@ -671,8 +668,8 @@ conv_vdi2dev( unsigned short *src, unsigned short *dst, unsigned long splen, uns
 	{
 		while (len > 0)
 		{
-			*(long *)((long *)dst)++ = (unsigned long)((long)src[0] << 16) | src[splen];
-			*(long *)((long *)dst)++ = (unsigned long)((long)src[splen <<1 ] << 16) | src[splen * 3];
+			*(long *)((long *)dst)++ = (O_u32)((long)src[0] << 16) | src[splen];
+			*(long *)((long *)dst)++ = (O_u32)((long)src[splen <<1 ] << 16) | src[splen * 3];
 #if 0
 			*dst++ = src[0];
 			*dst++ = src[splen];
@@ -717,7 +714,7 @@ conv_vdi2dev( unsigned short *src, unsigned short *dst, unsigned long splen, uns
 					pixel >>= 1;
 					pixel |= ( (src[splen * i] & (1 << j)) << (15 - j) );
 				}
-				*dst++ = (unsigned short)pixel;
+				*dst++ = (O_u16)pixel;
 			}
 			len--;
 			src++;
@@ -735,8 +732,8 @@ conv_vdi2dev( unsigned short *src, unsigned short *dst, unsigned long splen, uns
 					pixel >>= 1;
 					pixel |= ( (src[splen * i] & (1 << j)) << (15 - j) );
 				}
-				*dst++ = (unsigned char)((unsigned long)pixel >> 16);
-				*dst++ = (unsigned char)((unsigned long)pixel >> 8);
+				*dst++ = (unsigned char)((O_u32)pixel >> 16);
+				*dst++ = (unsigned char)((O_u32)pixel >> 8);
 				*dst++ = (unsigned char)pixel;
 			}
 			len--;
@@ -755,7 +752,7 @@ conv_vdi2dev( unsigned short *src, unsigned short *dst, unsigned long splen, uns
 					pixel >>= 1;
 					pixel |= ( (src[splen * i] & (1 << j)) << (15 - j) );
 				}
-				*dst++ = (unsigned long)pixel;
+				*dst++ = (O_u32)pixel;
 			}
 			len--;
 			src++;
@@ -766,13 +763,13 @@ conv_vdi2dev( unsigned short *src, unsigned short *dst, unsigned long splen, uns
 /************************************************************************/
 /************************************************************************/
 void
-conv_vdi2dev_1b( unsigned short *src, unsigned short *dst, unsigned long splen)
+conv_vdi2dev_1b( O_u16 *src, O_u16 *dst, O_u32 splen)
 {
 	memcpy( dst, src, splen);
 	return;
 }
 void
-conv_vdi2dev_2b( unsigned short *src, unsigned short *dst, unsigned long splen)
+conv_vdi2dev_2b( O_u16 *src, O_u16 *dst, O_u32 splen)
 {
 	long len;
 
@@ -789,7 +786,7 @@ conv_vdi2dev_2b( unsigned short *src, unsigned short *dst, unsigned long splen)
 	return;
 }
 void
-conv_vdi2dev_4b( unsigned short *src, unsigned short *dst, unsigned long splen)
+conv_vdi2dev_4b( O_u16 *src, O_u16 *dst, O_u32 splen)
 {
 	long len;
 
@@ -808,11 +805,11 @@ conv_vdi2dev_4b( unsigned short *src, unsigned short *dst, unsigned long splen)
 	return;
 }
 void
-conv_vdi2dev_8b( unsigned short *src, unsigned short *dst, unsigned long splen)
+conv_vdi2dev_8b( O_u16 *src, O_u16 *dst, O_u32 splen)
 {
-	short i, j;
+	int i, j;
 	long len;
-	unsigned short pixel;
+	O_u16 pixel;
 	unsigned char *d;
 
 	splen >>= 1;
@@ -838,11 +835,11 @@ conv_vdi2dev_8b( unsigned short *src, unsigned short *dst, unsigned long splen)
 	return;
 }
 void
-conv_vdi2dev_16b( unsigned short *src, unsigned short *dst, unsigned long splen)
+conv_vdi2dev_16b( O_u16 *src, O_u16 *dst, O_u32 splen)
 {
-	short i, j;
+	int i, j;
 	long len;
-	unsigned short pixel;
+	O_u16 pixel;
 
 	splen >>= 1;
 	len = splen;
@@ -857,7 +854,7 @@ conv_vdi2dev_16b( unsigned short *src, unsigned short *dst, unsigned long splen)
 				pixel >>= 1;
 				pixel |= ( (src[splen * i] & (1 << j)) << (15 - j) );
 			}
-			*dst++ = (unsigned short)pixel;
+			*dst++ = (O_u16)pixel;
 		}
 		len--;
 		src++;
@@ -865,11 +862,11 @@ conv_vdi2dev_16b( unsigned short *src, unsigned short *dst, unsigned long splen)
 	return;
 }
 void
-conv_vdi2dev_24b( unsigned short *src, unsigned short *dst, unsigned long splen)
+conv_vdi2dev_24b( O_u16 *src, O_u16 *dst, O_u32 splen)
 {
-	short i, j;
+	int i, j;
 	long len;
-	unsigned long pixel;
+	O_u32 pixel;
 	unsigned char *d;
 
 	splen >>= 1;
@@ -887,8 +884,8 @@ conv_vdi2dev_24b( unsigned short *src, unsigned short *dst, unsigned long splen)
 				pixel >>= 1;
 				pixel |= ( (src[splen * i] & (1 << j)) << (15 - j) );
 			}
-			*d++ = (unsigned char)((unsigned long)pixel >> 16);
-			*d++ = (unsigned char)((unsigned long)pixel >> 8);
+			*d++ = (unsigned char)((O_u32)pixel >> 16);
+			*d++ = (unsigned char)((O_u32)pixel >> 8);
 			*d++ = (unsigned char)pixel;
 		}
 		len--;
@@ -897,17 +894,17 @@ conv_vdi2dev_24b( unsigned short *src, unsigned short *dst, unsigned long splen)
 	return;
 }
 void
-conv_vdi2dev_32b( unsigned short *src, unsigned short *dst, unsigned long splen)
+conv_vdi2dev_32b( O_u16 *src, O_u16 *dst, O_u32 splen)
 {
-	short i, j;
+	int i, j;
 	long len;
-	unsigned long pixel;
-	unsigned long *d;
+	O_u32 pixel;
+	O_u32 *d;
 
 	splen >>= 1;
 	len = splen;
 
-	d = (unsigned long *)dst;
+	d = (O_u32 *)dst;
 
 	while (len > 0)
 	{
@@ -929,12 +926,12 @@ conv_vdi2dev_32b( unsigned short *src, unsigned short *dst, unsigned long splen)
 /************************************************************************/
 /************************************************************************/
 void
-conv_dev2vdi( unsigned short *src, unsigned short *dst, unsigned long splen, unsigned long dplen, short planes)
+conv_dev2vdi( O_u16 *src, O_u16 *dst, O_u32 splen, O_u32 dplen, O_Int planes)
 {
 
-	short i, j;
+	int i, j;
 	long len;
-	unsigned long pixel;
+	O_u32 pixel;
 
 	splen >>= 1;
 	len = splen;
@@ -999,7 +996,7 @@ conv_dev2vdi( unsigned short *src, unsigned short *dst, unsigned long splen, uns
 
 			for (j = 15; j > -1; j--)
 			{
-				pixel = (unsigned short)*src++;
+				pixel = (O_u16)*src++;
 				for (i = 0; i < 16; i++)
 				{
 					dst[splen * i] |= (pixel & 1) << j;
@@ -1024,8 +1021,8 @@ conv_dev2vdi( unsigned short *src, unsigned short *dst, unsigned long splen, uns
 			for (j = 15; j > -1; j--)
 			{
 				pixel = (unsigned char)*s++;
-				pixel = (unsigned long)((pixel << 8) | (unsigned char)*s++);
-				pixel = (unsigned long)((pixel << 8) | (unsigned char)*s++);
+				pixel = (O_u32)((pixel << 8) | (unsigned char)*s++);
+				pixel = (O_u32)((pixel << 8) | (unsigned char)*s++);
 				for (i = 0; i < 24; i++)
 				{
 					dst[splen * i] |= (pixel & 1) << j;
@@ -1038,9 +1035,9 @@ conv_dev2vdi( unsigned short *src, unsigned short *dst, unsigned long splen, uns
 	}
 	else if (planes == 32)
 	{
-		unsigned long *s;
+		O_u32 *s;
 
-		s = (unsigned long *)src;
+		s = (O_u32 *)src;
 
 		while (len > 0)
 		{
@@ -1065,14 +1062,14 @@ conv_dev2vdi( unsigned short *src, unsigned short *dst, unsigned long splen, uns
 /************************************************************************/
 /************************************************************************/
 void
-conv_dev2vdi_1b( unsigned short *src, unsigned short *dst, unsigned long splen)
+conv_dev2vdi_1b( O_u16 *src, O_u16 *dst, O_u32 splen)
 {
 
 	memcpy( dst, src, splen << 1);
 	return;
 }
 void
-conv_dev2vdi_2b( unsigned short *src, unsigned short *dst, unsigned long splen)
+conv_dev2vdi_2b( O_u16 *src, O_u16 *dst, O_u32 splen)
 {
 	long len;
 
@@ -1089,7 +1086,7 @@ conv_dev2vdi_2b( unsigned short *src, unsigned short *dst, unsigned long splen)
 	return;
 }
 void
-conv_dev2vdi_4b( unsigned short *src, unsigned short *dst, unsigned long splen)
+conv_dev2vdi_4b( O_u16 *src, O_u16 *dst, O_u32 splen)
 {
 	long len;
 
@@ -1108,11 +1105,11 @@ conv_dev2vdi_4b( unsigned short *src, unsigned short *dst, unsigned long splen)
 	return;
 }
 void
-conv_dev2vdi_8b( unsigned short *src, unsigned short *dst, unsigned long splen)
+conv_dev2vdi_8b( O_u16 *src, O_u16 *dst, O_u32 splen)
 {
-	short i, j;
+	int i, j;
 	long len;
-	unsigned short pixel;
+	O_u16 pixel;
 	unsigned char *s;
 
 	splen >>= 1;
@@ -1140,11 +1137,11 @@ conv_dev2vdi_8b( unsigned short *src, unsigned short *dst, unsigned long splen)
 	return;
 }
 void
-conv_dev2vdi_16b( unsigned short *src, unsigned short *dst, unsigned long splen)
+conv_dev2vdi_16b( O_u16 *src, O_u16 *dst, O_u32 splen)
 {
-	short i, j;
+	int i, j;
 	long len;
-	unsigned short pixel;
+	O_u16 pixel;
 
 	splen >>= 1;
 	len = splen;
@@ -1169,11 +1166,11 @@ conv_dev2vdi_16b( unsigned short *src, unsigned short *dst, unsigned long splen)
 	return;
 }
 void
-conv_dev2vdi_24b( unsigned short *src, unsigned short *dst, unsigned long splen)
+conv_dev2vdi_24b( O_u16 *src, O_u16 *dst, O_u32 splen)
 {
-	short i, j;
+	int i, j;
 	long len;
-	unsigned long pixel;
+	O_u32 pixel;
 	unsigned char *s;
 
 	splen >>= 1;
@@ -1189,8 +1186,8 @@ conv_dev2vdi_24b( unsigned short *src, unsigned short *dst, unsigned long splen)
 		for (j = 15; j > -1; j--)
 		{
 			pixel = (unsigned char)*s++;
-			pixel = (unsigned long)((pixel << 8) | (unsigned char)*s++);
-			pixel = (unsigned long)((pixel << 8) | (unsigned char)*s++);
+			pixel = (O_u32)((pixel << 8) | (unsigned char)*s++);
+			pixel = (O_u32)((pixel << 8) | (unsigned char)*s++);
 			for (i = 0; i < 24; i++)
 			{
 				dst[splen * i] |= (pixel & 1) << j;
@@ -1203,17 +1200,17 @@ conv_dev2vdi_24b( unsigned short *src, unsigned short *dst, unsigned long splen)
 	return;
 }
 void
-conv_dev2vdi_32b( unsigned short *src, unsigned short *dst, unsigned long splen)
+conv_dev2vdi_32b( O_u16 *src, O_u16 *dst, O_u32 splen)
 {
-	short i, j;
+	int i, j;
 	long len;
-	unsigned long pixel;
-	unsigned long *s;
+	O_u32 pixel;
+	O_u32 *s;
 
 	splen >>= 1;
 	len = splen;
 
-	s = (unsigned long *)src;
+	s = (O_u32 *)src;
 
 	while (len > 0)
 	{

@@ -14,7 +14,7 @@
 
 #include "xcb.h"
 
-void init (OVDI_LIB *, struct module_desc *ret);
+void init (OVDI_LIB *, struct module_desc *ret, char *p, char *f);
 
 static OVDI_DRIVER *	dev_open		(OVDI_DEVICE *dev);
 static long		dev_close		(OVDI_DRIVER *drv);
@@ -38,14 +38,17 @@ static char sname[] =	"Nova Generic";
 static char lname[] =	"Nova Generic (using any version of\n" \
 			"emulator.prg from Nova VDI) graphics\n" \
 			"driver for oVDI";
+static char pn[128] = { "0" };
+static char fn[64] = { "0" };
 
-static OVDI_DEVICE ovdidev =
+static OVDI_DEVICE device =
 {
 	0,
 	0x00000001,
 	sname,
 	lname,
-
+	pn,
+	fn,
 	dev_open,
 	dev_close,
 	dev_set_vdi_res,
@@ -92,6 +95,56 @@ static char pf_nova[] =
 
 	  0
 };
+static RESFMT resfmt_1b =
+{
+	1,
+	1,
+	PF_ATARI,
+	-1,
+	pf_nova,
+};
+static RESFMT resfmt_8b =
+{
+	8,
+	1,
+	PF_PACKED,
+	1,
+	pf_nova,
+};
+static RESFMT resfmt_15b =
+{
+	15,
+	0,
+	PF_PACKED,
+	2,
+	pf_15bI,
+};
+static RESFMT resfmt_16b =
+{
+	16,
+	0,
+	PF_PACKED,
+	2,
+	pf_16bI,
+};
+
+static RESFMT resfmt_24b = 
+{
+	24,
+	0,
+	PF_PACKED,
+	3,
+	pf_24bI,
+};
+
+static RESFMT resfmt_32b =
+{
+	32,
+	0,
+	PF_PACKED,
+	4,
+	pf_32bI,
+};
 
 #if 0
 static int
@@ -131,9 +184,10 @@ Load_Resolution(char *fname, short res_index, RESOLUTION *res)
 
 //OVDI_DEVICE *
 void
-init(OVDI_LIB *l, struct module_desc *ret)
+init(OVDI_LIB *l, struct module_desc *ret, char *path, char *file)
 {
 	OVDI_DRIVER *drv = &driver;
+	OVDI_DEVICE *dev = &device;
 
 	if (!(*l->getcookie)((long)0x4e4f5641 /*"NOVA"*/, (long *)&xcb))
 	{
@@ -144,12 +198,25 @@ init(OVDI_LIB *l, struct module_desc *ret)
 	boot_drive = Dgetdrv() + 'a';
 
 	lib	= l;
+	{
+		char *t;
+
+		t = dev->pathname;
+		while (*path)
+			*t++ = *path++;
+		*t = 0;
+		t = dev->filename;
+		while (*file)
+			*t++ = *file++;
+		*t = 0;
+	}
 
 /* Since things not implemented or provided are NULL, we clear all our structures */
 	(*l->bzero)(&driver, sizeof(OVDI_DRIVER));
 
 	(*l->bzero)(&drw_1b, sizeof(OVDI_DRAWERS));
 	drv->drawers_1b = &drw_1b;
+	drv->drawers_1b->res = &resfmt_1b;
 
 	(*l->bzero)(&drw_2b, sizeof(OVDI_DRAWERS));
 	drv->drawers_2b = &drw_2b;
@@ -159,22 +226,26 @@ init(OVDI_LIB *l, struct module_desc *ret)
 
 	(*l->bzero)(&drw_8b, sizeof(OVDI_DRAWERS));
 	drv->drawers_8b = &drw_8b;
+	drv->drawers_8b->res = &resfmt_8b;
 
 	(*l->bzero)(&drw_15b, sizeof(OVDI_DRAWERS));
 	drv->drawers_15b = &drw_15b;
+	drv->drawers_15b->res = &resfmt_15b;
 
 	(*l->bzero)(&drw_16b, sizeof(OVDI_DRAWERS));
 	drv->drawers_16b = &drw_16b;
+	drv->drawers_16b->res = &resfmt_16b;
 
 	(*l->bzero)(&drw_24b, sizeof(OVDI_DRAWERS));
 	drv->drawers_24b = &drw_24b;
+	drv->drawers_24b->res = &resfmt_24b;
 
 	(*l->bzero)(&drw_32b, sizeof(OVDI_DRAWERS));
 	drv->drawers_32b = &drw_32b;
+	drv->drawers_32b->res = &resfmt_32b;
 
-	//return &ovdidev;
 	ret->types	= D_VHW;
-	ret->vhw	= (void *)&ovdidev;
+	ret->vhw	= dev;
 };
 
 static OVDI_DRIVER *
@@ -260,11 +331,15 @@ do_set_res(OVDI_DRIVER *drv, RESOLUTION *res)
 static short
 dev_get_res_info(OVDI_DRIVER *drv)
 {
-	short fmt;
+	short fmt, planes;
 	XCB *x = xcb;
 
-	drv->r.sync		= 0; 	/* sync */
-	drv->r.planes		= x->planes;
+	/*
+	 * Get information from the XCB cookie installed by Nova's EMULATOR.PRG
+	*/
+	drv->r.sync		= 0;
+	planes			= x->planes;
+	//drv->r.planes		= x->planes;
 	drv->r.bypl		= x->bypl;
 	drv->palette		= x->colors;
 	drv->r.x1 = drv->r.y1	= 0;
@@ -285,85 +360,111 @@ dev_get_res_info(OVDI_DRIVER *drv)
 
 	fmt = *(short *)x->hw_flags;
 
-	if (drv->r.planes == 1)
+	switch (planes) //(drv->r.planes)
 	{
-		drv->r.format		= PF_ATARI;
-		drv->r.pixelformat	= pf_nova;
-		drv->r.clut		= 1;
-		drv->r.pixlen		= -1;
-	}
-	else if (drv->r.planes == 4)
-	{
-		drv->r.format		= PF_ATARI;
-		drv->r.pixelformat	= pf_nova;
-		drv->r.clut		= 1;
-		drv->r.pixlen		= -4;
-	}
-	else if (drv->r.planes == 8)
-	{
-		drv->r.format		= PF_PACKED;
-		drv->r.pixelformat	= pf_nova;
-		drv->r.clut		= 1;
-		drv->r.pixlen		= 1;
-	}
-	else if (drv->r.planes == 15)
-	{
-		drv->r.format		= PF_PACKED;
-		drv->r.pixelformat	= pf_15bI;
-		drv->r.clut		= 0;
-		drv->r.pixlen		= 2;
-	}
-	else if (drv->r.planes == 16)
-	{
-		drv->r.format		= PF_PACKED;
-		drv->r.pixelformat	= pf_16bI;
-		drv->r.clut		= 0;
-		drv->r.pixlen		= 2;
-	}
-	else if (drv->r.planes == 24)
-	{
-		drv->r.clut	= 0;
-
-		if (!fmt & 1)
+		case 1:
 		{
-			drv->r.format		= PF_PACKED | PF_BE;
-			drv->r.pixelformat	= pf_24bM;
+			drv->r.res		= *drv->drawers_1b->res;
+#if 0
+			drv->r.format		= PF_ATARI;
+			drv->r.pixelformat	= pf_nova;
+			drv->r.clut		= 1;
+			drv->r.pixlen		= -1;
+#endif
+			break;
 		}
-		else
+#if 0
+		case 4:
 		{
+			drv->r.res		= *drv->drawers_b4->res;
+			drv->r.format		= PF_ATARI;
+			drv->r.pixelformat	= pf_nova;
+			drv->r.clut		= 1;
+			drv->r.pixlen		= -4;
+			break;
+		}
+#endif
+		case 8:
+		{
+			drv->r.res		= *drv->drawers_8b->res;
+#if 0
 			drv->r.format		= PF_PACKED;
-			drv->r.pixelformat	= pf_24bI;
+			drv->r.pixelformat	= pf_nova;
+			drv->r.clut		= 1;
+			drv->r.pixlen		= 1;
+#endif
+			break;
 		}
-		drv->r.pixlen	= 3;
-	}
-	else if (drv->r.planes == 32)
-	{
-		short format = ((fmt >> 1) & 3);
-
-		drv->r.clut		= 0;
-
-		if (!format)
+		case 15:
 		{
+			drv->r.res		= *drv->drawers_15b->res;
+#if 0
 			drv->r.format		= PF_PACKED;
-			drv->r.pixelformat	= pf_32bI;
+			drv->r.pixelformat	= pf_15bI;
+			drv->r.clut		= 0;
+			drv->r.pixlen		= 2;
+#endif
+			break;
 		}
-		else if (fmt == 1)
+		case 16:
 		{
-			drv->r.format		= PF_PACKED | PF_BE;
-			drv->r.pixelformat	= pf_32bM;
+			drv->r.res		= *drv->drawers_16b->res;
+#if 0
+			drv->r.format		= PF_PACKED;
+			drv->r.pixelformat	= pf_16bI;
+			drv->r.clut		= 0;
+			drv->r.pixlen		= 2;
+#endif
+			break;
 		}
-		else
+#if 0
+		case 24:
 		{
-			drv->r.format		= PF_PACKED | PF_BS;
-			drv->r.pixelformat	= pf_32bIbs;
-		}
-		drv->r.pixlen	= 4;
-	}
-	else
-	{
-		return -1;
-	}
+			drv->r.clut	= 0;
 
+			if (!fmt & 1)
+			{
+				drv->r.format		= PF_PACKED | PF_BE;
+				drv->r.pixelformat	= pf_24bM;
+			}
+			else
+			{
+				drv->r.format		= PF_PACKED;
+				drv->r.pixelformat	= pf_24bI;
+			}
+			drv->r.pixlen	= 3;
+			break;
+		}
+		case 32:
+		{
+			short format = ((fmt >> 1) & 3);
+
+			drv->r.clut		= 0;
+
+			if (!format)
+			{
+				drv->r.format		= PF_PACKED;
+				drv->r.pixelformat	= pf_32bI;
+			}
+			else if (fmt == 1)
+			{
+				drv->r.format		= PF_PACKED | PF_BE;
+				drv->r.pixelformat	= pf_32bM;
+			}
+			else
+			{
+				drv->r.format		= PF_PACKED | PF_BS;
+				drv->r.pixelformat	= pf_32bIbs;
+			}
+			drv->r.pixlen	= 4;
+			break;
+		}
+#endif
+		default:
+		{
+			return -1;
+		}
+	}
 	return 0;
 }
 

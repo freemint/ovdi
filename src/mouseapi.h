@@ -6,9 +6,9 @@
 
 struct mouseapi
 {
-	short		type;
-	short		buttons;
-	short		wheels;
+	O_16		type;
+	O_16		buttons;
+	O_16		wheels;
 	
 	void		(*enable)(void);
 	void		(*disable)(void);
@@ -18,20 +18,20 @@ struct mouseapi
 	void		(*resetmcurs)();
 	void		(*enablemcurs)();
 	void		(*disablemcurs)();
-	void		(*showmcurs)(short);
+	void		(*showmcurs)(O_Int);
 	void		(*hidemcurs)();
 
-	void		(*relmovmcurs)(register short x, register short y);
-	void		(*absmovmcurs)(register short x, register short y);
-	void		(*butchg)(register unsigned short bs);
+	void		(*relmovmcurs)(O_Int x, O_Int y);
+	void		(*absmovmcurs)(O_Int x, O_Int y);
+	void		(*butchg)(O_uInt bs);
 
-	unsigned long 	(*getbutstat)();
-	void		(*getmcoords)(short *xy);
+	O_u32 		(*getbutstat)();
+	void		(*getmcoords)(O_16 *xy);
 
 #define MVEC_BUT	0
 #define MVEC_CUR	1
 #define MVEC_MOV	2
-	unsigned long	(*setvector)(short vecnum, unsigned long vector);
+	O_u32		(*setvector)(O_Int vecnum, O_u32 vector);
 	void		(*housekeep)(void);
 };
 typedef struct mouseapi MOUSEAPI;

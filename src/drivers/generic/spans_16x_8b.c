@@ -2,13 +2,18 @@
 #include "memory.h"
 #include "ovdi_defs.h"
 #include "expand.h"
-
+#include "drawing.h"
 #include "8b_generic.h"
+
+void ds_REPLACE_8b	(struct fill16x_api *);
+void ds_TRANS_8b	(struct fill16x_api *);
+void ds_XOR_8b		(struct fill16x_api *);
+void ds_ERASE_8b	(struct fill16x_api *);
 
 static unsigned char fillbuff[16 * 16];
 static unsigned char maskbuff[16 * 16];
 
-unsigned long nib2long[] = 
+O_u32 nib2long[] = 
 {
 	0x00000000,
 	0x000000ff,
@@ -32,25 +37,257 @@ unsigned long nib2long[] =
 };
 
 void
-spans_16x_8b(RASTER *r, COLINF *c, short *spans, int n, PatAttr *ptrn)
+ds_REPLACE_8b(struct fill16x_api *f)
 {
-	int i, words, bypl, height, y, wrmode, sm, em, interior;
-	unsigned long lp0, lp1, lp2, lp3;
-	unsigned long *s, *d, *m;
-	unsigned long fill[4];
-	unsigned long mask[4];
+	int i;
+	register char *s = (char *)f->s;
+	register char *d = (char *)f->d;
+
+	if (f->words < 0)
+	{
+		if ((i = f->sm))
+			s += i, d += i;
+		for (i = f->em - i; i > 0; i--)
+			*d++ = *s++;
+	}
+	else
+	{
+		if ((i = f->sm))
+		{
+			register char *src = s + i;
+			d += i;
+			for (i = 16 - i; i > 0; i--)
+				*d++ = *src++;
+		}
+		if ((i = f->words) > 0)
+		{
+			register O_u32 *src = (long *)s;
+			register O_u32 lp0, lp1, lp2, lp3;
+			lp0 = *src++, lp1 = *src++, lp2 = *src++, lp3 = *src;
+			for (; i > 0; i--) {
+				*(long *)((long *)d)++ = lp0;
+				*(long *)((long *)d)++ = lp1;
+				*(long *)((long *)d)++ = lp2;
+				*(long *)((long *)d)++ = lp3; }
+		}
+		if ((i = f->em) > 0)
+		{
+			for (; i > 0; i--)
+				*d++ = *s++;
+		}
+	}
+}
+void
+ds_TRANS_8b(struct fill16x_api *f)
+{
+	int i;
+
+	if (f->words < 0)
+	{
+		register char *s = (char *)f->s;
+		register char *m = (char *)f->m;
+		register char *d = (char *)f->d;
+
+		i = f->sm;
+		if (i)
+			s += i, m += i, d += i;
+		for (i = f->em - i; i > 0; i--)
+		{
+			if (*m++)
+				*d++ = *s++;
+			else
+				d++, s++;
+		}
+	}
+	else
+	{
+		register char *d = (char *)f->d;
+		register char *m = (char *)f->m;
+
+		if ((i = f->sm))
+		{
+			register char *s = (char *)f->s + i;
+			register char *msk = m + i;
+			d += i;
+			for (i = 16 - i; i > 0; i--)
+			{
+				if (*msk++)
+					*d++ = *s++;
+				else
+					d++, s++;
+			}
+		}
+		if ((i = f->words) > 0)
+		{
+			register long *s = (long *)f->s, *msk = (long *)f->m;
+			register long lp0, lp1, lp2, lp3, t0, t1;
+			lp0 = *s++, lp1 = *s++, lp2 = *s++, lp3 = *s;
+			for (; i > 0; i--)
+			{
+#if 1
+				t0 = *msk;
+				t1 = ~t0;
+				t1 &= *(long *)d;
+				t1 |= t0 & lp0;
+				*(long *)((long *)d)++ = t1;
+				
+				t0 = msk[1];
+				t1 = ~t0;
+				t1 &= *(long *)d;
+				t1 |= t0 & lp1;
+				*(long *)((long *)d)++ = t1;
+
+				t0 = msk[2];
+				t1 = ~t0;
+				t1 &= *(long *)d;
+				t1 |= t0 & lp2;
+				*(long *)((long *)d)++ = t1;
+
+				t0 = msk[3];
+				t1 = ~t0;
+				t1 &= *(long *)d;
+				t1 |= t0 & lp3;
+				*(long *)((long *)d)++ = t1;
+#else
+				msk = (long *)m;
+				*(long *)((long *)d)++ = (*(long *)d & ~*msk) | (lp0 & *msk), msk++;
+				*(long *)((long *)d)++ = (*(long *)d & ~*msk) | (lp1 & *msk), msk++;
+				*(long *)((long *)d)++ = (*(long *)d & ~*msk) | (lp2 & *msk), msk++;
+				*(long *)((long *)d)++ = (*(long *)d & ~*msk) | (lp3 & *msk), msk++;
+#endif
+			}
+		}
+		if ((i = f->em))
+		{
+			register char *s = (char *)f->s, *msk = m;
+			for (; i > 0; i--)
+			{
+				if (*msk++)
+					*d++ = *s++;
+				else
+					d++, s++;
+			}
+		}
+	}
+}
+
+void
+ds_XOR_8b(struct fill16x_api *f)
+{
+	int i;
+	register O_u32 lp0 = 0xffffffffL;
+	register char *d = (char *)f->d;
+
+	if (f->words < 0)
+	{
+		if ((i = f->sm))
+			d += i;
+		for (i = f->em - i; i > 0; i--)
+				*d++ ^= (char)lp0;
+	}
+	else
+	{
+		if ((i = f->sm))
+		{
+			d += i;
+			for (i = 16 - i; i > 0; i--)
+				*d++ ^= (char)lp0;
+		}
+		if ((i = f->words) > 0)
+		{
+			for (; i > 0; i--) {
+				*(long *)((long *)d)++ ^= lp0;
+				*(long *)((long *)d)++ ^= lp0;
+				*(long *)((long *)d)++ ^= lp0;
+				*(long *)((long *)d)++ ^= lp0; }
+		}
+		if ((i = f->em))
+		{
+			for (; i > 0; i--)
+				*d++ ^= (char)lp0;
+		}
+	}
+}
+void
+ds_ERASE_8b(struct fill16x_api *f)
+{
+	int i;
+	register O_u32 lp0 = 0xffffffffL;
+	register char *d = (char *)f->d;
+	register char *m = (char *)f->m;
+
+	if (f->words < 0)
+	{
+		if ((i = f->sm))
+			m += i, d += i;
+		for (i = f->em - i; i > 0; i--)
+		{
+			if (*m++)
+				d++;
+			else
+				*d++ ^= (char)lp0;
+		}
+	}
+	else
+	{
+		if ((i = f->sm))
+		{
+			char *msk = m + i;
+
+			d += i;
+			for (i = 16 - i; i > 0; i--)
+			{
+				if (*msk++)
+					d++;
+				else
+					*d++ ^= (char)lp0;
+			}
+		}
+		if ((i = f->words) > 0)
+		{
+			register O_u32 lp1, lp2, lp3;
+			register O_u32 *msk = (long *)m;
+			lp0 = *msk++, lp1 = *msk++, lp2 = *msk++, lp3 = *msk;
+			for (; i > 0; i--)
+			{
+				*(long *)((long *)d)++ = (*(long *)d & lp0) | (*(long *)d ^ ~lp0);
+				*(long *)((long *)d)++ = (*(long *)d & lp1) | (*(long *)d ^ ~lp1);
+				*(long *)((long *)d)++ = (*(long *)d & lp2) | (*(long *)d ^ ~lp2);
+				*(long *)((long *)d)++ = (*(long *)d & lp3) | (*(long *)d ^ ~lp3);
+			}
+		}
+		if ((i = f->em))
+		{
+			(char)lp0 = (char)0xff;
+			for (; i > 0; i--)
+			{
+				if (*m++)
+					d++;
+				else
+					*d++ ^= lp0;
+			}
+		}
+	}
+}
+
+void
+spans_16x_8b(RASTER *r, COLINF *c, O_Pos *spans, O_Int n, PatAttr *ptrn)
+{
+	int y, wrmode;
+	struct fill16x_api f;
+	O_u32 fill[4];
+	O_u32 mask[4];
 
 	/*
 	 * check if pattern is expanded and do expand it if it isnt
 	*/
-	wrmode = ptrn->wrmode;
-	interior = ptrn->interior;
-
-	if (ptrn->expanded != 8 && interior > FIS_SOLID)
+	wrmode = ptrn->wrmode & 0x3;
+	if (ptrn->expanded != 8 && ptrn->interior > FIS_SOLID)
 	{
-		//short col[2];
-		unsigned short data;
-		//unsigned long m0, m1, m2, m3; //p0, p1;
+		int height;
+		O_u16 data;
+		O_u32 *s, *d, *m;
+		O_u32 lp0, lp1, lp2;
 
 		/*
 		 * If there is no pointer to expanded data buffer,
@@ -70,20 +307,18 @@ spans_16x_8b(RASTER *r, COLINF *c, short *spans, int n, PatAttr *ptrn)
 		}
 		else
 			ptrn->expanded = 8;
-			
-		
-#if 1
-		s = (unsigned long *)ptrn->data;
-		d = (unsigned long *)ptrn->exp_data;
-		m = (unsigned long *)ptrn->mask;
-		lp0 = (unsigned long)ptrn->color[wrmode];
+
+		s = (O_u32 *)ptrn->data;
+		d = (O_u32 *)ptrn->exp_data;
+		m = (O_u32 *)ptrn->mask;
+		lp0 = (O_u32)ptrn->color[wrmode];
 		lp0 = (lp0 << 24) | (lp0 << 16) | (lp0 << 8) | lp0;
-		lp1 = (unsigned long)ptrn->bgcol[wrmode];
+		lp1 = (O_u32)ptrn->bgcol[wrmode];
 		lp1 = (lp1 << 24) | (lp1 << 16) | (lp1 << 8) | lp1;
 		
 		for (height = ptrn->height; height > 0; height--)
 		{
-			data = *(unsigned short *)((short *)s)++;
+			data = *(O_u16 *)((short *)s)++;
 
 			lp2 = nib2long[data & 0xf];
 			d[3] = (lp0 & lp2) | (lp1 & ~lp2);
@@ -107,33 +342,27 @@ spans_16x_8b(RASTER *r, COLINF *c, short *spans, int n, PatAttr *ptrn)
 			d += 4;
 			m += 4;
 		}
-#else
-
-		col[1] = ptrn->color[wrmode] & 0xff;
-		col[0] = ptrn->bgcol[wrmode] & 0xff;
-
-		expand( ptrn->width, ptrn->height,
-			ptrn->planes, PF_ATARI, ptrn->data,
-			8, PF_PACKED, ptrn->exp_data, (short *)&col, ptrn->mask);
-#endif
 	}
+
+	f.dbpl = r->bypl;
 
 	/*
 	 * If interior is hollow or solid, we can do things faster,
 	 * without expanding pattern.
 	*/
-	if (interior <= FIS_SOLID)
+	if (ptrn->interior <= FIS_SOLID)
 	{
-		if (interior == FIS_HOLLOW) {
+		if (ptrn->interior == FIS_HOLLOW) {
 			fill[0] = fill[1] = fill[2] = fill[3] = 0;
 			mask[0] = mask[1] = mask[2] = mask[3] = 0;
 			wrmode = 0;
 		} else {
 			short fc = ptrn->color[wrmode];
 			fill[0] = fill[1] = fill[2] = fill[3] = ((long)fc << 24) | ((long)fc << 16) | ((long)fc << 8) | fc;
-			mask[0] = mask[1] = mask[2] = mask[3] = 0xffffffffL; }
-		s = (unsigned long *)&fill;
-		m = (unsigned long *)&mask;
+			mask[0] = mask[1] = mask[2] = mask[3] = 0xffffffffL;
+		}
+		f.s = &fill;
+		f.m = &mask;
 		goto singleline;
 	}
 
@@ -142,549 +371,74 @@ spans_16x_8b(RASTER *r, COLINF *c, short *spans, int n, PatAttr *ptrn)
 	*/
 	if (ptrn->height == 1)
 	{
-		s = (unsigned long *)ptrn->exp_data;
-		m = (unsigned long *)ptrn->mask;
+		f.s = ptrn->exp_data;
+		f.m = ptrn->mask;
 		goto singleline;
+	}
+
+	switch (wrmode)
+	{
+		case 0: f.drawspan = ds_REPLACE_8b;	break;
+		case 1: f.drawspan = ds_TRANS_8b;	break;
+		case 2: f.drawspan = ds_XOR_8b;		break;
+		case 3: f.drawspan = ds_ERASE_8b;	break;
+		default: return;
 	}
 
 	SYNC_RASTER(r);
 
-	while (n > 0)
+	for (; n > 0; n--)
 	{
-		
-		y = spans[0] % ptrn->height;
-		bypl = r->bypl;
-		words = (((spans[1] & 0xf) + (spans[2] - spans[1]) + 16) >> 4);
-		height = 1;
+		register O_Pos y1,x1,x2;
+		register int sb;
 
-		sm = spans[1] & 0xf;
-		em = (spans[2] + 1) & 0xf;
-
-		(char *)d = (char *)r->base + (long)((spans[1] >> 4) << 4) + ((long)spans[0] * bypl);
-
-		bypl -= ((words << 4) - ((16 - em) & 0xf));
-
-		if (sm) words--;
-		if (em) words--;
-
-
-		s = (unsigned long *)ptrn->exp_data + ((long)y << 2);
-		m = (unsigned long *)ptrn->mask + ((long)y << 2);
-
-		switch (wrmode)
-		{
-			case 0:
-			{
-				if (words < 0)
-				{
-					for (; height > 0; height--)
-					{
-						char *src = (char *)s;
-
-						if (sm)
-							src += sm; (char *)d += sm;
-						for (i = em - sm; i > 0; i--)
-							*(char *)((char *)d)++ = *src++;
-						y++;
-						if (y >= ptrn->height)
-							y = 0, s = (unsigned long *)ptrn->exp_data;
-						else
-							(char *)s += 16;
-						(char *)d += bypl;
-					}
-				}
-				else
-				{
-					for (; height > 0; height--)
-					{
-						if (sm)
-						{
-							char *src = (char *)s + sm;
-							(char *)d += sm;
-							for (i = 16 - sm; i > 0; i--)
-								*(char *)((char *)d)++ = *src++;
-						}
-						if (words > 0)
-						{
-							unsigned long *src = s;
-							lp0 = *src++, lp1 = *src++, lp2 = *src++, lp3 = *src;
-							for (i = words; i > 0; i--)
-								*d++ = lp0, *d++ = lp1, *d++ = lp2, *d++ = lp3;
-						}
-						if (em)
-						{
-							char *src = (char *)s;
-							for (i = em; i > 0; i--)
-								*(char *)((char *)d)++ = *src++;
-						}
-						y++;
-						if (y >= ptrn->height)
-							y = 0, s = (unsigned long *)ptrn->exp_data;
-						else
-							(char *)s += 16;
-						(char *)d += bypl;
-					}
-				}
-				break;
-			}
-			case 1:
-			{
-				if (words < 0)
-				{
-					for (; height > 0; height--)
-					{
-						char *src = (char *)s;
-						char *msk = (char *)m;
-
-						if (sm)
-							src += sm, msk += sm, (char *)d += sm;
-						for (i = em - sm; i > 0; i--)
-						{
-								if (*msk++)
-									*(char *)((char *)d)++ = *src++;
-								else
-									((char *)d)++, src++;
-						}
-						y++;
-						if (y >= ptrn->height)
-							y = 0, s = (unsigned long *)ptrn->exp_data, m = (unsigned long *)ptrn->mask;
-						else
-							(char *)s += 16, (char *)m += 16;
-						(char *)d += bypl;
-					}
-				}
-				else
-				{
-					for (; height > 0; height--)
-					{
-						if (sm)
-						{
-							char *src = (char *)s + sm;
-							char *msk = (char *)m + sm;
-							(char *)d += sm;
-							for (i = 16 - sm; i > 0; i--)
-							{
-								if (*msk++)
-									*(char *)((char *)d)++ = *src++;
-								else
-									((char *)d)++, src++;
-							}
-						}
-						if (words > 0)
-						{
-							unsigned long *src = s, *msk;
-							lp0 = *src++, lp1 = *src++, lp2 = *src++, lp3 = *src;
-							for (i = words; i > 0; i--)
-							{
-								msk = m;
-								*d++ = (*d & ~*msk) | (lp0 & *msk), msk++;
-								*d++ = (*d & ~*msk) | (lp1 & *msk), msk++;
-								*d++ = (*d & ~*msk) | (lp2 & *msk), msk++;
-								*d++ = (*d & ~*msk) | (lp3 & *msk);
-							}
-						}
-						if (em)
-						{
-							char *src = (char *)s, *msk = (char *)m;
-							for (i = em; i > 0; i--)
-							{
-								if (*msk++)
-									*(char *)((char *)d)++ = *src++;
-								else
-									((char *)d)++, src++;
-							}
-						}
-						y++;
-						if (y >= ptrn->height)
-							y = 0, s = (unsigned long *)ptrn->exp_data, m = (unsigned long *)ptrn->mask;
-						else
-							(char *)s += 16, (char *)m += 16;
-						(char *)d += bypl;
-					}
-				}
-				break;
-			}
-			case 2:
-			{
-				lp0 = 0xffffffffL;
-
-				if (words < 0)
-				{
-					for (; height > 0; height--)
-					{
-						if (sm)
-							(char *)d += sm;
-						for (i = em - sm; i > 0; i--)
-								*(char *)((char *)d)++ ^= (char)lp0;
-						(char *)d += bypl;
-					}
-				}
-				else
-				{
-					for (; height > 0; height--)
-					{
-						if (sm)
-						{
-							(char *)d += sm;
-							for (i = 16 - sm; i > 0; i--)
-								*(char *)((char *)d)++ ^= (char)lp0;
-						}
-						if (words > 0)
-						{
-							for (i = words; i > 0; i--)
-								*d++ ^= lp0, *d++ ^= lp0, *d++ ^= lp0, *d++ ^= lp0;
-						}
-						if (em)
-						{
-							for (i = em; i > 0; i--)
-								*(char *)((char *)d)++ ^= (char)lp0;
-						}
-						(char *)d += bypl;
-					}
-				}
-				break;
-			}
-			case 3:
-			{
-				lp0 = 0xffffffffL;
-
-				if (words < 0)
-				{
-					for (; height > 0; height--)
-					{
-						char *msk = (char *)m;
-
-						if (sm)
-							msk += sm, (char *)d += sm;
-						for (i = em - sm; i > 0; i--)
-						{
-								if (!*msk++)
-									*(char *)((char *)d)++ ^= (char)lp0;
-								else
-									((char *)d)++;
-						}
-						y++;
-						if (y >= ptrn->height)
-							y = 0, m = (unsigned long *)ptrn->mask;
-						else
-							(char *)m += 16;
-						(char *)d += bypl;
-					}
-				}
-				else
-				{
-					for (; height > 0; height--)
-					{
-						if (sm)
-						{
-							char *msk = (char *)m + sm;
-
-							(char)lp0 = (char)0xff;
-							(char *)d += sm;
-							for (i = 16 - sm; i > 0; i--)
-							{
-								if (!*msk++)
-									*(char *)((char *)d)++ ^= (char)lp0;
-								else
-									((char *)d)++;
-							}
-						}
-						if (words > 0)
-						{
-							unsigned long *msk = m;
-							lp0 = *msk++, lp1 = *msk++, lp2 = *msk++, lp3 = *msk;
-							for (i = words; i > 0; i--)
-							{
-								*d++ = (*d & lp0) | (*d ^ ~lp0);
-								*d++ = (*d & lp1) | (*d ^ ~lp1);
-								*d++ = (*d & lp2) | (*d ^ ~lp2);
-								*d++ = (*d & lp3) | (*d ^ ~lp3);
-							}
-						}
-						if (em)
-						{
-							char *msk = (char *)m;
-
-							(char)lp0 = (char)0xff;
-							for (i = em; i > 0; i--)
-							{
-								if (!*msk++)
-									*(char *)((char *)d)++ ^= lp0;
-								else
-									((char *)d)++;
-							}
-						}
-						y++;
-						if (y >= ptrn->height)
-							y = 0, m = (unsigned long *)ptrn->mask;
-						else
-							(char *)m += 16;
-						(char *)d += bypl;
-					}
-				}
-				break;
-			} /* case 3 */
-		} /* switch (wrmode) */
-		n--;
-		spans += 3;
-	} /* while (n > 0) */
+		y1 = *spans++;
+		x1 = *spans++;
+		x2 = *spans++;
+		sb = x1 & 0xf;
+		y = y1 % ptrn->height;
+		f.words = (((sb) + (x2 - x1) + 16) >> 4);
+		f.sm = sb;
+		f.em = (x2 + 1) & 0xf;
+		f.d = (char *)r->base + (long)((x1 >> 4) << 4) + ((long)y1 * f.dbpl);
+		if (f.sm) f.words--;
+		if (f.em) f.words--;
+		f.s = (O_u32 *)ptrn->exp_data + ((long)y << 2);
+		f.m = (O_u32 *)ptrn->mask + ((long)y << 2);
+		(*f.drawspan)(&f);
+	}
 	goto done;
 
 singleline:
+	switch (wrmode)
+	{
+		case 0: f.drawspan = ds_REPLACE_8b;	break;
+		case 1: f.drawspan = ds_TRANS_8b;	break;
+		case 2: f.drawspan = ds_XOR_8b;		break;
+		case 3: f.drawspan = ds_ERASE_8b;	break;
+		default: return;
+	}
+
 	SYNC_RASTER(r);
 
-	while (n > 0)
+	for (;n > 0; n--)
 	{
-		y = spans[0] % ptrn->height;
-		bypl = r->bypl;
-		words = (((spans[1] & 0xf) + (spans[2] - spans[1]) + 16) >> 4);
-		height = 1;
+		register O_Pos y1, x1, x2;
+		register int sb;
 
-		sm = spans[1] & 0xf;
-		em = (spans[2] + 1) & 0xf;
+		y1 = *spans++;
+		x1 = *spans++;
+		x2 = *spans++;
+		sb = x1 & 0xf;
 
-		(char *)d = (char *)r->base + (long)((spans[1] >> 4) << 4) + ((long)spans[0] * bypl);
-
-		bypl -= ((words << 4) - ((16 - em) & 0xf));
-
-		if (sm) words--;
-		if (em) words--;
-
-		//s = (unsigned long *)ptrn->exp_data + ((long)y << 2);
-		//m = (unsigned long *)ptrn->mask + ((long)y << 2);
-
-#if 0
-		while (n > 1 && spans[0] + 1 == spans[3] && spans[1] == spans[4] && spans[2] == spans[5])
-			height++, n--, spans += 3;
-#endif
-
-		switch (wrmode)
-		{
-			case 0:
-			{
-				if (words < 0)
-				{
-					for (; height > 0; height--)
-					{
-						char *src = (char *)s;
-
-						if (sm)
-							src += sm; (char *)d += sm;
-						for (i = em - sm; i > 0; i--)
-								*(char *)((char *)d)++ = *src++;
-						(char *)d += bypl;
-					}
-				}
-				else
-				{
-					unsigned long *src = s;
-					lp0 = *src++, lp1 = *src++, lp2 = *src++, lp3 = *src;
-					for (; height > 0; height--)
-					{
-						if (sm)
-						{
-							(char *)src = (char *)s + sm;
-							(char *)d += sm;
-							for (i = 16 - sm; i > 0; i--)
-								*(char *)((char *)d)++ = *(char *)((char *)src)++;
-						}
-						if (words > 0)
-						{
-							for (i = words; i > 0; i--)
-								*d++ = lp0, *d++ = lp1, *d++ = lp2, *d++ = lp3;
-						}
-						if (em)
-						{
-							(char *)src = (char *)s;
-							for (i = em; i > 0; i--)
-								*(char *)((char *)d)++ = *(char *)((char *)src)++;
-						}
-						(char *)d += bypl;
-					}
-				}
-				break;
-			}
-			case 1:
-			{
-				if (words < 0)
-				{
-					for (; height > 0; height--)
-					{
-						char *src = (char *)s;
-						char *msk = (char *)m;
-
-						if (sm)
-							src += sm, msk += sm, (char *)d += sm;
-						for (i = em - sm; i > 0; i--)
-						{
-								if (*msk++)
-									*(char *)((char *)d)++ = *src++;
-								else
-									((char *)d)++, src++;
-						}
-						(char *)d += bypl;
-					}
-				}
-				else
-				{
-					for (; height > 0; height--)
-					{
-						if (sm)
-						{
-							char *src = (char *)s + sm;
-							char *msk = (char *)m + sm;
-							(char *)d += sm;
-							for (i = 16 - sm; i > 0; i--)
-							{
-								if (*msk++)
-									*(char *)((char *)d)++ = *src++;
-								else
-									((char *)d)++, src++;
-							}
-						}
-						if (words > 0)
-						{
-							unsigned long *src = s, *msk;
-							lp0 = *src++, lp1 = *src++, lp2 = *src++, lp3 = *src;
-							for (i = words; i > 0; i--)
-							{
-								msk = m;
-								*d++ = (*d & ~*msk) | (lp0 & *msk), msk++;
-								*d++ = (*d & ~*msk) | (lp1 & *msk), msk++;
-								*d++ = (*d & ~*msk) | (lp2 & *msk), msk++;
-								*d++ = (*d & ~*msk) | (lp3 & *msk);
-							}
-						}
-						if (em)
-						{
-							char *src = (char *)s, *msk = (char *)m;
-							for (i = em; i > 0; i--)
-							{
-								if (*msk++)
-									*(char *)((char *)d)++ = *src++;
-								else
-									((char *)d)++, src++;
-							}
-						}
-						(char *)d += bypl;
-					}
-				}
-				break;
-			}
-			case 2:
-			{
-				lp0 = 0xffffffffL;
-
-				if (words < 0)
-				{
-					for (; height > 0; height--)
-					{
-						if (sm)
-							(char *)d += sm;
-						for (i = em - sm; i > 0; i--)
-								*(char *)((char *)d)++ ^= (char)lp0;
-						(char *)d += bypl;
-					}
-				}
-				else
-				{
-					for (; height > 0; height--)
-					{
-						if (sm)
-						{
-							(char *)d += sm;
-							for (i = 16 - sm; i > 0; i--)
-								*(char *)((char *)d)++ ^= (char)lp0;
-						}
-						if (words > 0)
-						{
-							for (i = words; i > 0; i--)
-								*d++ ^= lp0, *d++ ^= lp0, *d++ ^= lp0, *d++ ^= lp0;
-						}
-						if (em)
-						{
-							for (i = em; i > 0; i--)
-								*(char *)((char *)d)++ ^= (char)lp0;
-						}
-						(char *)d += bypl;
-					}
-				}
-				break;
-			}
-			case 3:
-			{
-				lp0 = 0xffffffffL;
-
-				if (words < 0)
-				{
-					for (; height > 0; height--)
-					{
-						char *msk = (char *)m;
-
-						if (sm)
-							msk += sm, (char *)d += sm;
-						for (i = em - sm; i > 0; i--)
-						{
-								if (!*msk++)
-									*(char *)((char *)d)++ ^= (char)lp0;
-								else
-									((char *)d)++;
-						}
-						(char *)d += bypl;
-					}
-				}
-				else
-				{
-					for (; height > 0; height--)
-					{
-						if (sm)
-						{
-							char *msk = (char *)m + sm;
-
-							(char)lp0 = (char)0xff;
-							(char *)d += sm;
-							for (i = 16 - sm; i > 0; i--)
-							{
-								if (!*msk++)
-									*(char *)((char *)d)++ ^= (char)lp0;
-								else
-									((char *)d)++;
-							}
-						}
-						if (words > 0)
-						{
-							unsigned long *msk = m;
-							lp0 = *msk++, lp1 = *msk++, lp2 = *msk++, lp3 = *msk;
-							for (i = words; i > 0; i--)
-							{
-								*d++ = (*d & lp0) | (*d ^ ~lp0);
-								*d++ = (*d & lp1) | (*d ^ ~lp1);
-								*d++ = (*d & lp2) | (*d ^ ~lp2);
-								*d++ = (*d & lp3) | (*d ^ ~lp3);
-							}
-						}
-						if (em)
-						{
-							char *msk = (char *)m;
-
-							(char)lp0 = (char)0xff;
-							for (i = em; i > 0; i--)
-							{
-								if (!*msk++)
-									*(char *)((char *)d)++ ^= lp0;
-							else
-								((char *)d)++;
-							}
-						}
-						(char *)d += bypl;
-					}
-				}
-				break;
-			} /* case 3: */
-		} /* switch (wrmode) */
-		n--;
-		spans += 3;
-	} /* while (n > 0) */
+		f.words = (((sb) + (x2 - x1) + 16) >> 4);
+		f.sm = sb;
+		f.em = (x2 + 1) & 0xf;
+		f.d = (char *)r->base + (long)((x1 >> 4) << 4) + ((long)y1 * f.dbpl);
+		if (f.sm) f.words--;
+		if (f.em) f.words--;
+		(*f.drawspan)(&f);
+	}
 
 done:	if (!ptrn->expanded)
 	{

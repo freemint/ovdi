@@ -6,6 +6,7 @@
 #define D_PDV	0x00000004	/* Poinding DeVice driver */
 #define D_KBD	0x00000008	/* Keyboard driver */
 #define D_TIM	0x00000010	/* Timer driver */
+#define D_FNT	0x00000020	/* Font driver */
 
 struct module_desc
 {
@@ -15,7 +16,8 @@ struct module_desc
 	void	*pdv;
 	void	*kbd;
 	void	*tim;
-	void	*res[32-5];
+	void	*fnt;
+	void	*res[32-6];
 };
 
 #endif	/* _MODINF_H */

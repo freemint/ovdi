@@ -2,6 +2,13 @@
 #define _GDF_DEFS_H
 
 #include "vdi_defs.h"
+
+/* font header defs */
+#define F_DEFAULT	1	/* this is the default font (face and size) */
+#define F_HORZ_OFF	2	/* there are left and right offset tables */
+#define F_STDFORM	4	/* is the font in standard format */
+#define F_MONOSPACE	8	/* is the font monospaced */
+
 	/* descibes a font */
 struct font_head
 {
@@ -22,7 +29,7 @@ struct font_head
 	unsigned short	thicken;	/* number of pixels to smear */
 	unsigned short	ul_size;	/* size of the underline */
 	unsigned short	lighten;	/* mask to and with to lighten  */
-	unsigned short	skew;	/* mask for skewing */
+	unsigned short	skew;		/* mask for skewing */
 	unsigned short	flags;
 	unsigned char	*hor_table;	/* horizontal offsets */
 	unsigned short	*off_table;	/* character offsets  */
@@ -48,6 +55,7 @@ struct	xgdf_head
 	short			links;
 	struct xgdf_head	*next;
 	FONT_HEAD		*font_head;
+	char			filename[200];
 	struct gdf_cached	*cache[256];
 };
 typedef struct xgdf_head XGDF_HEAD;

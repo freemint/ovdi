@@ -2,12 +2,13 @@
 #define _OVDI_MATH_H
 
 /* (x * y) / z */
-#define SMUL_DIV(x,y,z)	((short)(((short)(x)*(long)((short)(y)))/(short)(z)))
+//#define SMUL_DIV(x,y,z)	((short)(((short)(x)*(long)((short)(y)))/(short)(z)))
+#define SMUL_DIV(x,y,z)	((int)(((long)(x)*(y))/(z)))
 #define ABS(x) ((x) >= 0 ? (x) : -(x))
 
-short Isin(unsigned short angle);
-short Icos(short angle);
+int Isin(unsigned int angle);
+int Icos(int angle);
 
-short isqrt(unsigned long x);
+int isqrt(unsigned long x);
 
 #endif	/* _OVDI_MATH_H */

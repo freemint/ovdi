@@ -6,7 +6,7 @@
 
 void	vqin_mode	( VDIPB *pb, VIRTUAL *v);
 void	vsin_mode	( VDIPB *pb, VIRTUAL *v);
-short	lvsin_mode	( VIRTUAL *v, short dev, short mode);
+int	lvsin_mode	( VIRTUAL *v, int dev, int mode);
 
 void	vxx_locator	( VDIPB *pb, VIRTUAL *v);
 void	vxx_valuator	( VDIPB *pb, VIRTUAL *v);

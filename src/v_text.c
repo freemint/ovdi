@@ -4,6 +4,7 @@
 #include "vdi_defs.h"
 #include "vdi_globals.h"
 #include "fonts.h"
+#include "vdi_font.h"
 #include "v_text.h"
 #include "v_attribs.h"
 
@@ -36,7 +37,7 @@ vst_load_fonts( VDIPB *pb, VIRTUAL *v)
 	pb->contrl[N_INTOUT] = 1;
 }
 
-short
+O_Int
 lvst_load_fonts( VIRTUAL *v)
 {
 	if (!v->font.loaded)
@@ -58,7 +59,7 @@ vst_unload_fonts( VDIPB *pb, VIRTUAL *v)
 }
 
 void
-lvst_wrmode( VIRTUAL *v, short wrmode)
+lvst_wrmode( VIRTUAL *v, O_Int wrmode)
 {
 	set_writingmode( wrmode, &v->font.wrmode);
 }
@@ -75,7 +76,7 @@ vst_alignment( VDIPB *pb, VIRTUAL *v)
 }
 
 void
-lvst_alignment( VIRTUAL *v, short halign, short valign)
+lvst_alignment( VIRTUAL *v, O_Int halign, O_Int valign)
 {
 	v->font.halign = halign > MAX_HALIGN ? MAX_HALIGN : halign;
 	v->font.valign = valign > MAX_VALIGN ? MAX_VALIGN : valign;
@@ -90,9 +91,9 @@ vst_color( VDIPB *pb, VIRTUAL *v)
 }
 
 void
-lvst_color( VIRTUAL *v, register short color)
+lvst_color( VIRTUAL *v, O_Int color)
 {
-	register short maxcolor;
+	O_Int maxcolor;
 
 	maxcolor = v->colinf->pens;
 	if (color < 0)
@@ -113,7 +114,7 @@ vst_effects( VDIPB *pb, VIRTUAL *v)
 }
 
 void
-lvst_effects( VIRTUAL *v, register short style)
+lvst_effects( VIRTUAL *v, O_Int style)
 {
 	v->font.style = style & F_SUPPORTED;
 	get_font_chrfx_ofst(v->font.header, v->font.style, &v->font.fx_x_ofst, &v->font.fx_y_ofst);
@@ -151,11 +152,11 @@ setfont(VIRTUAL *v, XGDF_HEAD *xf)
 }
 
 
-int
-lvst_font( VIRTUAL *v, short id)
+O_Int
+lvst_font( VIRTUAL *v, O_Int id)
 {
 	XGDF_HEAD *sf, *lf, *cf;
-	short sr, lr;
+	int sr, lr;
 
 	lr = -1;
 	cf = v->font.current;
@@ -220,7 +221,7 @@ vst_point( VDIPB *pb, VIRTUAL *v )
 {
 	if ( (lvst_point( v, pb->intin[0] )) )
 	{
-		short hcell;
+		int hcell;
 
 		pb->intout[0] = v->font.size;
 		pb->ptsout[0] = v->font.header->max_char_width;
@@ -237,12 +238,12 @@ vst_point( VDIPB *pb, VIRTUAL *v )
 	pb->contrl[N_PTSOUT] = 2;
 }
 
-int
-lvst_point ( VIRTUAL *v, short point )
+O_Int
+lvst_point ( VIRTUAL *v, O_Int point )
 {
 	XGDF_HEAD *sf, *lf, *cf;
 	//FONT_HEAD *fnth;
-	short sr, lr;
+	int sr, lr;
 
 	cf = v->font.current;
 	lr = 0;
@@ -287,7 +288,7 @@ vst_height( VDIPB *pb, VIRTUAL *v )
 
 	if ( (lvst_height( v, pb->ptsin[1])) )
 	{
-		short hcell;
+		int hcell;
 
 		pb->ptsout[0] = v->font.header->max_char_width;
 		pb->ptsout[1] = hcell = v->font.header->top;
@@ -303,12 +304,12 @@ vst_height( VDIPB *pb, VIRTUAL *v )
 	pb->contrl[N_PTSOUT] = 2;
 }
 
-int
-lvst_height ( VIRTUAL *v, short height )
+O_Int
+lvst_height ( VIRTUAL *v, O_Int height )
 {
 	XGDF_HEAD *sf, *lf, *cf;
 	//FONT_HEAD *fnth;
-	short sr, lr;
+	int sr, lr;
 
 	lr = 0;
 	cf = v->font.current;
@@ -357,7 +358,7 @@ vst_rotation( VDIPB *pb, VIRTUAL *v)
 }
 
 void
-lvst_rotation( VIRTUAL *v, short angle)
+lvst_rotation( VIRTUAL *v, O_Int angle)
 {
 
 	v->font.angle = 0;
@@ -379,12 +380,12 @@ lvst_rotation( VIRTUAL *v, short angle)
 void
 v_gtext( VDIPB *pb, VIRTUAL *v)
 {
-	short slen;
+	int slen;
 
 	if (!(slen = pb->contrl[N_INTIN]))
 		return;
 
-	output_gdftext( v, (POINT *)&pb->ptsin[0], (short *)&pb->intin[0], slen,
+	output_gdftext( v, (POINT *)&pb->ptsin[0], (O_16 *)&pb->intin[0], slen,
 			0, 0, 0);
 }
 
@@ -392,7 +393,7 @@ void
 vqt_attributes( VDIPB *pb, VIRTUAL *v)
 {
 	FONT_HEAD *f;
-	short hcell;
+	int hcell;
 
 	f = v->font.header;
 
@@ -415,15 +416,15 @@ vqt_attributes( VDIPB *pb, VIRTUAL *v)
 void
 vqt_extent( VDIPB *pb, VIRTUAL *v)
 {
-	short angle, width, height;
-	register short *points;
+	int angle, width, height;
+	O_16 *points;
 	FONT_HEAD *f;
 
 	f = v->font.header;
-	width = gdf_string_width(f, (short *)&pb->intin[0], pb->contrl[N_INTIN]);
+	width = gdf_string_width(f, (O_16 *)&pb->intin[0], pb->contrl[N_INTIN]);
 	height = f->top + f->bottom + 1;
 	angle = v->font.angle;
-	points = (short *)&pb->ptsout[0];
+	points = (O_16 *)&pb->ptsout[0];
 
 	switch (angle)
 	{
@@ -521,13 +522,17 @@ vqt_fontinfo( VDIPB *pb, VIRTUAL *v)
 	pb->contrl[N_INTOUT] = 2;
 }
 
+/*
+ * vqt_name()		function 130, subfunction 0	TOS
+ * vqt_ext_name()	function 130, subfunction 1	NVDI 3.00
+*/
 void
 vqt_name( VDIPB *pb, VIRTUAL *v)
 {
 	int i;
 	unsigned char *sfname;
-	short *dfname;
-	short index;
+	O_16 *dfname;
+	int index;
 	FONT_HEAD *f;
 	XGDF_HEAD *xf;
 
@@ -546,21 +551,38 @@ vqt_name( VDIPB *pb, VIRTUAL *v)
 	}
 
 	f = xf->font_head;
-	dfname = (short *)&pb->intout[1];
-	for (i = 0, sfname = (unsigned char *)&f->name, dfname = (short *)&pb->intout[1]; (*dfname++ = *sfname++); i++){}
+	dfname = (O_16 *)&pb->intout[1];
+	for (i = 0, sfname = (unsigned char *)&f->name, dfname = (O_16 *)&pb->intout[1]; (*dfname++ = *sfname++); i++){}
 	while ( i < 32 ) { *dfname++ = 0; i++; }
-	
-	pb->intout[0] = f->id;
-	pb->contrl[N_INTOUT] = 33;
-}
 
+	if (pb->contrl[SUBFUNCTION] == 1)
+	{
+		int flags = 0, ff = f->flags;
+
+		pb->intout[33] = 0;
+		if (ff & F_MONOSPACE)
+			flags |= FF_MONOSPACED << 8;
+
+		pb->intout[34] = flags;
+
+		pb->contrl[N_INTOUT] = 35;
+	}
+	else
+	{
+		pb->contrl[N_INTOUT] = 33;
+	}
+	pb->intout[0] = f->id;
+}
+/*
+ * vqt_width()		function 117, subfunction x	TOS
+*/
 void
 vqt_width( VDIPB *pb, VIRTUAL *v)
 {
-	register short chr;
-	register short *offtab;
-	register char *hortab;
-	register FONT_HEAD *f = v->font.header;
+	int chr;
+	short *offtab;
+	char *hortab;
+	FONT_HEAD *f = v->font.header;
 
 	chr = pb->intin[0] & 0xff;
 
@@ -587,4 +609,287 @@ vqt_width( VDIPB *pb, VIRTUAL *v)
 
 	pb->contrl[N_INTOUT] = 1;
 	pb->contrl[N_PTSOUT] = 3;
+}
+/*
+ * vqt_xfntinfo()	function 299, subfunction x	NVDI 3.02
+*/
+void
+vqt_xfntinfo( VDIPB *pb, VIRTUAL *v)
+{
+	struct in
+	{
+		short flags, id, index;
+		XFNT_INFO *info;
+	};
+	struct out
+	{
+		short fmt, id, index;
+	};
+	XGDF_HEAD *xf = 0;
+	FONT_HEAD *f;
+	struct in *i = (struct in *)&pb->intin[0];
+	struct out *o = (struct out *)&pb->intout[0];
+	short flags, index;
+	XFNT_INFO *xfi = i->info;
+
+	if (xfi->size != sizeof(XFNT_INFO))
+		return;
+	
+	if (i->index)
+	{
+		index = find_fontbyindex( v->fring, i->index, (long *)&xf);
+		if (index)
+		{
+			if (v->font.loaded)
+				index = find_fontbyindex( v->font.loaded, index, (long *)&xf);
+			if (index)
+			{
+				xf = v->fring;
+				index = 1;
+			}
+		}
+		if (!index)
+			index = i->index;
+	}
+	else if (i->id)
+	{
+		index = find_fontbyid( v->fring, i->id, (long *)&xf);
+		if (!index)
+		{
+			if (v->font.loaded)
+				index = find_fontbyid( v->font.loaded, i->id, (long *)&xf);
+
+			if (!index)
+			{
+				xf = v->fring;
+				index = 1;
+			}
+		}
+	}
+	else
+	{
+		index = 1;
+		xf = v->fring;
+	}
+
+	flags = i->flags;
+	f = xf->font_head;
+	xfi = i->info;
+	if (flags & XFNT_NAME)
+		get_font_fullname(xf, (char *)&xfi->font_name);
+	if (flags & XFNT_FAMILYNAME)
+		get_font_familyname(xf, (char *)&xfi->family_name);
+	if (flags & XFNT_STYLENAME)
+		get_font_stylename(xf, (char *)&xfi->style_name);
+	if (flags & XFNT_FILENAME1)
+		get_font_filename(xf, (char *)&xfi->file_name1);
+	if (flags & XFNT_FILENAME2)
+		get_font_filename(xf, (char *)&xfi->file_name2);
+	if (flags & XFNT_FILENAME2)
+		get_font_filename(xf, (char *)&xfi->file_name2);
+
+	if (flags & XFNT_HEIGHT)
+	{
+		XGDF_HEAD *xfnt;
+		int cnt, id = f->id;
+		
+		for (cnt = 0;cnt < 64; cnt++)
+		{
+			if ( find_fontbyidindex(v->fring, id, cnt + 1, (long *)&xfnt) )
+				xfi->pt_sizes[cnt++] = xfnt->font_head->point;
+			else
+				break;
+		}
+		xfi->pt_cnt = cnt;
+	}
+	else if (flags & XFNT_DHEIGHT)
+	{
+		xfi->pt_cnt = 0;
+	}
+
+	xfi->format = FT_BITMAP;
+
+	o->fmt = 1;
+	o->id = xf->font_head->id;
+	o->index = index;
+}
+
+/*
+ * Helper function
+*/
+static O_Int
+get_fontname(O_16 *src, char *dst, O_Int len)
+{
+	int chr, lchr = 0;
+	char *d = dst;
+
+	while (*src == 32 && len){src++; len--;}
+
+	while (len > 0)
+	{
+		chr = *src++;
+		*dst++ = chr;
+		if (!chr)
+		{
+			if (lchr == 32)
+				*--dst = 0;
+			break;
+		}
+		len--;
+		if (chr == 32)
+		{
+			while (*src == 32 && len){src++; len--;}
+		}
+		lchr = chr;
+	}
+	return (O_Int)(long)dst - (long)d;
+}
+
+/*
+ * Helper function
+*/
+static O_Int
+put_fontname(char *src, O_u16 *dst, O_Int len)
+{
+	O_u16 chr, lchr = 0;
+	O_u16 *d = dst;
+
+	while (*src == 32 && len){src++; len--;}
+
+	while (len > 0)
+	{
+		chr = *src++;
+		*dst++ = chr;
+		if (!chr)
+		{
+			if (lchr == 32)
+				*--dst = 0;
+			break;
+		}
+		len--;
+		if (chr == 32)
+		{
+			while (*src == 32 && len){src++; len--;}
+		}
+		lchr = chr;
+	}
+	return (O_Int)((long)dst - (long)d) >> 1;
+}
+
+/*
+ * vst_name()		function 230, subfunction 0	NVDI 3.02
+ * vqt_name_and_id()	function 230, subfunction 100	NVDI 3.02
+*/
+void
+vst_name( VDIPB *pb, VIRTUAL *v)
+{
+
+	int format = pb->intin[0], found = 0, nlen = pb->contrl[N_INTIN - 1];
+	char nameb[200];
+	char *name = (char *)&nameb[0];
+	O_16 *dname = (O_16 *)&pb->intin[1];
+	XGDF_HEAD *xf;
+
+	(void)get_fontname(dname, name, nlen);
+
+	if (format == FT_BITMAP)
+	{
+		if ( find_fontbyname(v->fring, name, (long *)&xf) )
+			xf = v->fring;
+		else
+			found = 1;
+	}
+	else if (format == FT_SPEEDO)
+		xf = v->fring;
+	else if (format == FT_TRUETYPE)
+		xf = v->fring;
+	else if (format == FT_TYPE1)
+		xf = v->fring;
+	else
+		xf = v->fring;
+
+	if (pb->contrl[SUBFUNCTION] == 100)
+	{
+		if (found)
+		{
+			pb->intout[0] = xf->font_head->id;
+			pb->contrl[N_INTOUT] = put_fontname((char *)&xf->font_head->name, (O_u16 *)dname, 200) + 1;
+		}
+		else
+			pb->intout[0] = 0;
+	}
+	else
+	{
+		lvst_font( v, xf->font_head->id);
+		pb->intout[0] = xf->font_head->id;
+		pb->contrl[N_INTOUT] = put_fontname((char *)&xf->font_head->name, (O_u16 *)dname, 200) + 1;
+	}
+}
+
+/*
+ * vst_width()		function 231, subfunction x	NVDI 3.00
+*/
+void
+vst_width( VDIPB *pb, VIRTUAL *v )
+{
+
+	if ( (lvst_width( v, pb->ptsin[0])) )
+	{
+		int hcell;
+
+		pb->ptsout[0] = v->font.header->max_char_width;
+		pb->ptsout[1] = hcell = v->font.header->top;
+		pb->ptsout[2] = v->font.header->max_cell_width;
+		pb->ptsout[3] = hcell + v->font.header->bottom + 1;
+	}
+	else
+	{
+		scrnlog("vst_width: This should never happen!");
+	}
+
+	pb->contrl[N_INTOUT] = 0;
+	pb->contrl[N_PTSOUT] = 2;
+}
+
+O_Int
+lvst_width ( VIRTUAL *v, O_Int width )
+{
+	XGDF_HEAD *sf, *lf, *cf;
+	int sr, lr;
+
+	lr = 0;
+	cf = v->font.current;
+
+	sr = find_fontbycharwidth(v->fring, v->font.header->id, width, (long *)&sf );
+	if (sr == 1)
+	{
+		setfont(v, sf);
+		v->font.size = v->font.header->top;
+		return 1;
+	}
+
+	if (v->font.loaded)
+		lr = find_fontbycharwidth(v->font.loaded, v->font.header->id, width, (long *)&lf);
+
+	if (lr == 1)
+	{
+		setfont(v, lf);
+		v->font.size = v->font.header->top;
+		return 1;
+	}
+
+	if (sr != 2 && lr == 2)
+	{
+		sr = lr;
+		sf = lf;
+	}
+
+	if (sr ==  2)
+	{
+		setfont(v, sf);
+		v->font.size = v->font.header->top;
+		return 1;
+	}
+
+	return 0;
 }

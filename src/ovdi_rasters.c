@@ -27,9 +27,16 @@
 #include "workstation.h"
 #include "xbios.h"
 
+#include "includes/pf_15b_intel.h"
+#include "includes/pf_16b_intel.h"
+#include "includes/pf_24b_intel.h"
+#include "includes/pf_32b_intel.h"
+#include "includes/pf_st.h"
+#include "includes/pf_8b.h"
+
 extern const short systempalette[];
 
-static short setup_drawers_jumptable(OVDI_DRAWERS *src, OVDI_DRAWERS *dst, short planes);
+static O_Int setup_drawers_jumptable(OVDI_DRAWERS *src, OVDI_DRAWERS *dst, O_Int planes);
 
 static OVDI_DRAWERS defdrawers = 
 {
@@ -58,7 +65,7 @@ static OVDI_DRAWERS defdrawers =
 		rt_cpyfm,
 		ro_cpyfm,
 	},
-
+	0,	/* RESFMT * */
 	0,	/* draw_pixel */
 	0,	/* read_pixel */
 	0,	/* put_pixel */
@@ -106,13 +113,13 @@ static OVDI_UTILS defutils =
 	{0,0,0,0}
 };
 
+#if 0
 static OVDI_DRAWERS *other_drawers[] =
 {
  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 };
 
-#if 0
 static OVDI_UTILS	root_utils;
 static OVDI_DRAWERS	root_drawers;
 static OVDI_DRAWERS	drawers_1b;
@@ -125,13 +132,154 @@ static OVDI_DRAWERS	drawers_24b;
 static OVDI_DRAWERS	drawers_32b;
 #endif
 
+static RESFMT res_1b =
+{
+	1,
+	1,
+	PF_ATARI,
+	-1,
+	pf_st,
+};
+static RESFMT res_2b =
+{
+	2,
+	1,
+	PF_ATARI,
+	-2,
+	pf_st,
+};
+static RESFMT res_4b =
+{
+	4,
+	1,
+	PF_ATARI,
+	-4,
+	pf_st,
+};
+static RESFMT res_8b =
+{
+	8,
+	1,
+	PF_PACKED,
+	1,
+	pf_st,
+};
+static RESFMT res_15b =
+{
+	15,
+	0,
+	PF_PACKED,
+	2,
+	pf_15bI,
+};
+static RESFMT res_16b =
+{
+	16,
+	0,
+	PF_PACKED,
+	2,
+	pf_16bI,
+};
+static RESFMT res_24b =
+{
+	24,
+	0,
+	PF_PACKED,
+	3,
+	pf_24bI,
+};
+static RESFMT res_32b =
+{
+	32,
+	0,
+	PF_PACKED,
+	4,
+	pf_32bI,
+};
+	
+void
+init_device_jumptable(OVDI_HWAPI *hw, OVDI_DRIVER *drv, char *mem)
+{
+
+	bzero(mem, 33*4);
+
+	(long)hw->odrawers = (long)mem;
+	mem	+= 33*4;
+
+	hw->odrawers[1] = (OVDI_DRAWERS *)mem;
+	mem	+= sizeof(OVDI_DRAWERS);
+
+	hw->odrawers[2] = (OVDI_DRAWERS *)mem;
+	mem	+= sizeof(OVDI_DRAWERS);
+
+	hw->odrawers[4] = (OVDI_DRAWERS *)mem;
+	mem	+= sizeof(OVDI_DRAWERS);
+
+	hw->odrawers[8] = (OVDI_DRAWERS *)mem;
+	mem	+= sizeof(OVDI_DRAWERS);
+
+	hw->odrawers[15] = (OVDI_DRAWERS *)mem;
+	mem	+= sizeof(OVDI_DRAWERS);
+
+	hw->odrawers[16] = (OVDI_DRAWERS *)mem;
+	mem	+= sizeof(OVDI_DRAWERS);
+
+	hw->odrawers[24] = (OVDI_DRAWERS *)mem;
+	mem	+= sizeof(OVDI_DRAWERS);
+
+	hw->odrawers[32] = (OVDI_DRAWERS *)mem;
+	mem	+= sizeof(OVDI_DRAWERS);
+
+	hw->utils = (OVDI_UTILS *)mem;
+	*hw->utils = defutils;
+
+	setup_drawers_jumptable(drv->drawers_1b,  hw->odrawers[1], 1);
+	setup_drawers_jumptable(drv->drawers_1b,  hw->odrawers[4], 4);
+	setup_drawers_jumptable(drv->drawers_8b,  hw->odrawers[8], 8);
+	setup_drawers_jumptable(drv->drawers_15b, hw->odrawers[15], 15);
+	setup_drawers_jumptable(drv->drawers_16b, hw->odrawers[16], 16);
+}
+
+/*
+ * Open the device driver and setup the VDI drawers and utils function jumptable
+*/
+OVDI_DRIVER *
+open_device(OVDI_HWAPI *hw)
+{
+	OVDI_DRIVER *drv;
+	char *mem;
+
+	drv = (*hw->device->open)(hw->device);
+
+	if (drv)
+	{
+		mem = (char *)omalloc(  (33*4) + /* Array of OVDI_DRAWERS table pointers */
+					(sizeof(OVDI_DRAWERS) * 8) +
+					sizeof(OVDI_UTILS),
+					MX_PREFTTRAM | MX_SUPER );
+		if (mem)
+			init_device_jumptable(hw, drv, mem);
+		else
+		{
+			free_mem(mem);
+			drv = 0;
+		}
+	}
+	return drv;
+}
+
 /*
  * initialize the function tables associated with a raster,
  * like the 'ovdi_drawers' structures and 'ovdi_utils' structure.
 */
 void
-init_raster(OVDI_DRIVER *drv, RASTER *r)
+init_raster(OVDI_HWAPI *hw, RASTER *r)
 {
+
+	r->odrawers	= hw->odrawers;
+	r->utils	= hw->utils;
+
+#if 0
 	char *mem;
 
 	if (!r->odrawers)
@@ -139,7 +287,7 @@ init_raster(OVDI_DRIVER *drv, RASTER *r)
 		mem = (char *)omalloc( sizeof(other_drawers) +
 					(sizeof(OVDI_DRAWERS) * 8) +
 					sizeof(OVDI_UTILS),
-					MX_PREFTTRAM | MX_PRIVATE );
+					MX_PREFTTRAM | MX_SUPER); //PRIVATE );
 
 		if (mem)
 		{
@@ -182,7 +330,7 @@ init_raster(OVDI_DRIVER *drv, RASTER *r)
 			setup_drawers_jumptable(drv->drawers_16b, r->odrawers[16], 16);
 		}
 	}
-
+#endif
 #if 0
 	r->odrawers = other_drawers;
 
@@ -201,47 +349,115 @@ init_raster(OVDI_DRIVER *drv, RASTER *r)
 
 }
 
+	
+RASTER *
+new_raster(OVDI_HWAPI *hw, char *base, O_Pos x2, O_Pos y2, RESFMT *res)
+{
+	RASTER *r;
+	long lenght;
+	int bypl, pixlen;
+
+	r = (RASTER *)omalloc(sizeof(RASTER), MX_PREFTTRAM | MX_SUPER); //MX_PRIVATE);
+
+	if (r)
+	{
+		bzero(r, sizeof(RASTER));
+		r->res = *res;
+		x2 |= 15;
+		pixlen = r->res.pixlen;
+		if (pixlen < 0)
+		{
+			pixlen = -pixlen;
+			bypl = (((x2 + 16) >> 4) << 1) * pixlen;
+		}
+		else
+			bypl = (long)(x2 + 1) * pixlen;
+
+		lenght = (long)bypl * y2;
+		if (!base)
+		{
+			(long)base = (long)omalloc(lenght + 32, MX_PREFTTRAM | MX_SUPER);
+			r->realflags = r->flags = R_MALLOCED;
+			scrnlog("rasterbase %lx\n", base);
+		}
+		scrnlog("bypl %d, lenght %ld, pixlen %d, x2 %d\n", bypl, lenght, pixlen, x2);
+		if (base)
+		{
+			r->base		= base;
+			r->lenght	= lenght;
+			r->bypl		= bypl;
+			r->w		= x2 + 1;
+			r->h		= y2 + 1;
+			r->x1 = r->y1	= 0;
+			r->x2		= x2;
+			r->y2		= y2;
+
+			init_raster_rgb(r);
+		}
+		else
+		{
+			free_mem(r);
+			r = 0;
+		}
+	}
+	return r;
+}
+
+void
+free_raster(RASTER *r)
+{
+	if (r->realflags & R_MALLOCED)
+		free_mem(r->base);
+	free_mem(r);
+}
+
 void
 raster_reschange(RASTER *r, COLINF *c)
 {
 
-	get_rgb_levels( r->pixelformat, &r->rgb_levels);
-	get_rgb_bits( r->pixelformat, &r->rgb_bits);
+	init_raster_rgb(r);
 
 	if (c)
 		init_colinf(r, c);
 
-	r->drawers	= r->odrawers[r->planes];
+	r->drawers	= r->odrawers[r->res.planes];
+	r->res		= *r->drawers->res;
 
 	if (scrsizmm_x)
-		r->wpixel = (scrsizmm_x * 1000) / r->w;
+		r->wpixel = scrsizmm_x; //((long)scrsizmm_x * 1000) / r->w;
 	else
 		r->wpixel = 278;
 
 	if (scrsizmm_y)
-		r->hpixel = (scrsizmm_y * 1000) / r->h;
+		r->hpixel = scrsizmm_y; //((long)scrsizmm_y * 1000) / r->h;
 	else
 		r->hpixel = 278;
 
+}
+void
+init_raster_rgb(RASTER *r)
+{
+	get_rgb_levels( r->res.pixelformat, &r->rgb_levels);
+	get_rgb_bits( r->res.pixelformat, &r->rgb_bits);
 }
 
 void
 reschange_devtab(DEV_TAB *dt, RASTER *r)
 {
-	unsigned long palettesize;
+	O_u32 palettesize;
 
 	dt->xres	= r->w - 1;
 	dt->yres	= r->h - 1;
 	dt->wpixel	= r->wpixel;
 	dt->hpixel	= r->hpixel;
 
-	if (r->planes == 1)
+	if (r->res.planes == 1)
 		dt->cancolor = 0;
 	else
 		dt->cancolor = 1;
 
-	if (r->planes < 8)
-		dt->colors = 1 << r->planes;
+	if (r->res.planes < 8)
+		dt->colors = 1 << r->res.planes;
 	else
 		dt->colors = 256;
 
@@ -250,18 +466,18 @@ reschange_devtab(DEV_TAB *dt, RASTER *r)
 	if (palettesize > 32767UL)
 		dt->palette = 0;
 	else
-		dt->palette = (unsigned short)palettesize;
+		dt->palette = (O_u16)palettesize;
 }
 
 void
 reschange_inqtab(INQ_TAB *it, RASTER *r)
 {
-	it->planes	= r->planes;
-	it->lut		= r->clut;
+	it->planes	= r->res.planes;
+	it->lut		= r->res.clut;
 }
 
 COLINF *
-new_colinf(RASTER *r)
+new_colinf(char *pixelformat)
 {
 	COLINF *c;
 	long len, mem;
@@ -280,13 +496,13 @@ new_colinf(RASTER *r)
 		c = (COLINF *)mem;
 		mem += sizeof(COLINF);
 
-		c->color_vdi2hw = (short *)mem;
+		c->color_vdi2hw = (O_16 *)mem;
 		mem += 256 << 1;
 
-		c->color_hw2vdi = (short *)mem;
+		c->color_hw2vdi = (O_16 *)mem;
 		mem += 256 << 1;
 
-		c->pixelvalues = (long *)mem;
+		c->pixelvalues = (O_u32 *)mem;
 		mem += 256 << 2;
 
 		c->request_rgb = (RGB_LIST *)mem;
@@ -295,7 +511,7 @@ new_colinf(RASTER *r)
 		c->actual_rgb = (RGB_LIST *)mem;
 		mem += (long)sizeof(RGB_LIST) * 256;
 
-		c->pixelformat	= r->pixelformat;
+		c->pixelformat	= pixelformat;
 	}
 	return c;	
 }
@@ -303,8 +519,8 @@ new_colinf(RASTER *r)
 void
 init_colinf(RASTER *r, COLINF *c)
 {
-	short *syspal;
-	short i, pens;
+	O_16 *syspal;
+	int i, pens;
 	RGB_LIST temp;
 
 	for (i = 0; i < 256; i++)
@@ -312,9 +528,9 @@ init_colinf(RASTER *r, COLINF *c)
 		c->color_vdi2hw[i] = VDI2HW_colorindex[i];
 		c->color_hw2vdi[i] = HW2VDI_colorindex[i];
 	}
-	if (r->planes < 8)
+	if (r->res.planes < 8)
 	{
-		pens = 1 << r->planes;
+		pens = 1 << r->res.planes;
 		c->color_vdi2hw[1] = pens - 1;
 		c->color_hw2vdi[pens - 1] = 1;
 	}
@@ -325,8 +541,8 @@ init_colinf(RASTER *r, COLINF *c)
 		pens = 256;
 	}
 	c->pens		= pens;
-	c->planes	= r->planes;
-	syspal	= (short *)&systempalette;
+	c->planes	= r->res.planes;
+	syspal	= (O_16 *)&systempalette;
 	temp.alpha = temp.ovl = 0;
 	for (i = 0; i < pens; i++)
 	{
@@ -340,7 +556,7 @@ init_colinf(RASTER *r, COLINF *c)
 void
 clone_colinf(COLINF *dst, COLINF *src)
 {
-	short i;
+	int i;
 
 	for (i = 0; i < 256; i++)
 	{
@@ -357,10 +573,10 @@ clone_colinf(COLINF *dst, COLINF *src)
 /*
  * Setup ovdi_drawers structure.
 */	
-static short
-setup_drawers_jumptable(OVDI_DRAWERS *src, OVDI_DRAWERS *dst, short planes)
+static O_Int
+setup_drawers_jumptable(OVDI_DRAWERS *src, OVDI_DRAWERS *dst, O_Int planes)
 {
-	short i;
+	int i;
 	long *srcp, *dstp, *defp;
 
 	*dst = defdrawers;
@@ -385,6 +601,11 @@ setup_drawers_jumptable(OVDI_DRAWERS *src, OVDI_DRAWERS *dst, short planes)
 	{
 		case 1:
 		{
+			if (src->res)
+				dst->res = src->res;
+			else
+				dst->res = &res_1b;
+
 			for (i = 0; i < 16; i++)
 			{
 				if (src->pixel_blits[i])
@@ -422,10 +643,20 @@ setup_drawers_jumptable(OVDI_DRAWERS *src, OVDI_DRAWERS *dst, short planes)
 				dst->fill_16x = src->fill_16x;
 			else
 				dst->fill_16x = fill_16x_1b;
+
+			if (src->spans_16x)
+				dst->spans_16x = src->spans_16x;
+			else
+				dst->spans_16x = spans_16x_1b;
 			break;
 		}
 		case 4:
 		{
+			if (src->res)
+				dst->res = src->res;
+			else
+				dst->res = &res_4b;
+
 			for (i = 0; i < 16; i++)
 			{
 				if (src->pixel_blits[i])
@@ -464,10 +695,19 @@ setup_drawers_jumptable(OVDI_DRAWERS *src, OVDI_DRAWERS *dst, short planes)
 			else
 				dst->fill_16x = fill_16x_4b;
 
+			if (src->spans_16x)
+				dst->spans_16x = src->spans_16x;
+			else
+				dst->spans_16x = spans_16x_4b;
 			break;
 		}
 		case 8:
 		{
+			if (src->res)
+				dst->res = src->res;
+			else
+				dst->res = &res_8b;
+
 			for (i = 0; i < 16; i++)
 			{
 				if (src->pixel_blits[i])
@@ -516,6 +756,11 @@ setup_drawers_jumptable(OVDI_DRAWERS *src, OVDI_DRAWERS *dst, short planes)
 		}
 		case 15:
 		{
+			if (src->res)
+				dst->res = src->res;
+			else
+				dst->res = &res_15b;
+
 			for (i = 0; i < 16; i++)
 			{
 				if (src->pixel_blits[i])
@@ -553,6 +798,11 @@ setup_drawers_jumptable(OVDI_DRAWERS *src, OVDI_DRAWERS *dst, short planes)
 		}
 		case 16:
 		{
+			if (src->res)
+				dst->res = src->res;
+			else
+				dst->res = &res_16b;
+
 			for (i = 0; i < 16; i++)
 			{
 				if (src->pixel_blits[i])

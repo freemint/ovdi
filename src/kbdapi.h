@@ -1,17 +1,21 @@
 #ifndef _OVDI_KBDDRV_H
 #define _OVDI_KBDDRV_H
 
+#include "ovdi_types.h"
+
 struct kbdapi
 {
 	struct kbdapi	*nxtapi;
-	long		version;
+	O_32		version;
 	char		*sname;
 	char		*lname;
-	short		(*install)	(void);
-	short		(*keywaiting)	(void);
-	short		(*getkey)	(short *ret_asci, short *ret_scan, long *ret_state);
-	void		(*waitkey)	(short *ret_asci, short *ret_scan, long *ret_state);
-	long		(*getks)	(void);
+	char		*pathname;
+	char		*filename;
+	O_Int		(*install)	(void);
+	O_Int		(*keywaiting)	(void);
+	O_Int		(*getkey)	(O_16 *ret_asci, O_16 *ret_scan, O_32 *ret_state);
+	void		(*waitkey)	(O_16 *ret_asci, O_16 *ret_scan, O_32 *ret_state);
+	O_32		(*getks)	(void);
 };
 typedef struct kbdapi KBDAPI;
 

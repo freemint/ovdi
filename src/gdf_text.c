@@ -5,20 +5,22 @@
 #include "ovdi_defs.h"
 #include "rasters.h"
 #include "vdi_defs.h"
+#include "vdi_font.h"
 
 void
-output_gdftext( VIRTUAL *v, POINT *xy, short *text, short textlen, short jlen, short wf, short cf)
+output_gdftext( VIRTUAL *v, POINT *xy, O_16 *text, O_Int textlen, O_Int jlen, O_Int wf, O_Int cf)
 {
 	int i;
-	short chr, strwidth, width, words, spaces, direction, wordx, charx, rmwordx, rmcharx;
-	short x1, y1, x2, y2, tmp, left_offset, right_offset, nxt_x1;
+	O_16 chr;
+	O_Int strwidth, width, words, spaces, direction, wordx, charx, rmwordx, rmcharx;
+	O_Pos x1, y1, x2, y2, tmp, left_offset, right_offset, nxt_x1;
 	long sc, sw, sca, swa, scs, sws;
 	VDIRECT *clip;
 	VDIRECT clp, src, dst;
 	MFDB fontd, screen;
 	MFDB *fmfdb;
-	short colors[2];
-	short coords[8];
+	O_16 colors[2];
+	O_Pos coords[8];
 	FONT_HEAD *f;
 	XGDF_HEAD *xf;
 
@@ -36,7 +38,7 @@ output_gdftext( VIRTUAL *v, POINT *xy, short *text, short textlen, short jlen, s
 	if (jlen && (cf || wf))
 	{
 		register short *p = text;
-		short dwx, dcx;
+		int dwx, dcx;
 
 		spaces	= 0;
 		words	= 1;
@@ -313,7 +315,7 @@ output_gdftext( VIRTUAL *v, POINT *xy, short *text, short textlen, short jlen, s
 			coords[4] = nxt_x1 < clip->x1 ? clip->x1 : nxt_x1;
 			coords[0] = coords[4] - nxt_x1;
 			coords[2] = coords[6] - nxt_x1;
-			rt_cpyfm( v->raster, v->colinf, fmfdb, (MFDB *)&screen, (short *)coords, clip, v->font.color, v->font.bgcol, v->font.wrmode);
+			rt_cpyfm( v->raster, v->colinf, fmfdb, (MFDB *)&screen, (O_Pos *)coords, clip, v->font.color, v->font.bgcol, v->font.wrmode);
 		}
 	}
 	return;
@@ -331,12 +333,12 @@ unsigned short *nxtfdb = fontdatabuff;
  * If fd_addr is set, font data is expanded into area pointed to by it.
 */
 void
-expand_gdf_font( FONT_HEAD *f, MFDB *fmfdb, short chr)
+expand_gdf_font( FONT_HEAD *f, MFDB *fmfdb, O_Int chr)
 {
 	int i, j;
 	unsigned short *fdatptr, *edatptr;
-	short x1, x2, woffset, cwidth;
-	short strtbits, groups, endbits, spans, spanm, ebm;
+	int x1, x2, woffset, cwidth;
+	int strtbits, groups, endbits, spans, spanm, ebm;
 	unsigned short fdat;
 
 	fdatptr = (unsigned short *)f->dat_table;
@@ -395,7 +397,7 @@ expand_gdf_font( FONT_HEAD *f, MFDB *fmfdb, short chr)
 
 	for (j = f->form_height; j > 0; j--)
 	{
-		short woff = woffset;
+		int woff = woffset;
 
 		if (x1 || strtbits)
 		{

@@ -83,8 +83,9 @@ get_rgb_relatives( RGB_LIST *values, RGB_LIST *levels, RGB_LIST *result)
 	result->red	= ((long)values->red 	* 1000) / levels->red;
 	result->green	= ((long)values->green	* 1000) / levels->green;
 	result->blue	= ((long)values->blue	* 1000) / levels->blue;
-	result->alpha	= ((long)values->alpha	* 1000) / levels->alpha;
-	result->ovl	= ((long)values->ovl	* 1000) / levels->ovl;
+
+	result->alpha	= levels->alpha ? ((long)values->alpha	* 1000) / levels->alpha : 0;
+	result->ovl	= levels->ovl ? ((long)values->ovl	* 1000) / levels->ovl : 0;
 }
 
 /* Return specified channel of a pixel-value. which selects what channel to get
@@ -123,7 +124,7 @@ get_color_bits( char *pf, unsigned long pixel, short which)
 
 /* Get intensity levels per channel in a pixel */
 void
-get_rgb_levels( register char *pf, RGB_LIST *levels)
+get_rgb_levels( char *pf, RGB_LIST *levels)
 {
 	RGB_LIST rgbbits;
 
@@ -138,7 +139,7 @@ get_rgb_levels( register char *pf, RGB_LIST *levels)
 
 /* Get number of bits per channel in a pixel */
 void
-get_rgb_bits( register char *pf, RGB_LIST *rgbbits)
+get_rgb_bits( char *pf, RGB_LIST *rgbbits)
 {
 	register short red, green, blue, alpha, ovl;
 
@@ -183,7 +184,7 @@ get_rgb_bits( register char *pf, RGB_LIST *rgbbits)
 
 /* Calculate the true pixelvalue (as written to video-ram) */
 unsigned long
-calc_pixelvalue( register char *pf, RGB_LIST *rgbv )
+calc_pixelvalue( char *pf, RGB_LIST *rgbv )
 {
 	register unsigned long pixelvalue = 0;
 	register short tmp;

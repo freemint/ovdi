@@ -3,6 +3,7 @@
 #include "draw.h"
 #include "vdi_defs.h"
 #include "ovdi_defs.h"
+#include "ovdi_dev.h"
 #include "vdi_globals.h"
 #include "v_attribs.h"
 #include "v_fill.h"
@@ -57,41 +58,40 @@ void
 lvs_clip( VIRTUAL *v, short flag, VDIRECT *rclip)
 {
 	RASTER *r = v->raster;
+	CLIPRECT *clip = &v->clip;
 
 	if (flag == 1)
 	{
-		VDIRECT clip;
 
-		sortcpy_corners((short *)rclip, (short *)&clip);
+		sortcpy_corners((short *)rclip, (short *)&clip->x1);
 
-		if (clip.x1 < 0)
-			clip.x1 = 0;
-		else if (clip.x1 > r->w - 1)
-			clip.x1 = r->w - 1;
+		if (clip->x1 < 0)
+			clip->x1 = 0;
+		else if (clip->x1 > r->w - 1)
+			clip->x1 = r->w - 1;
 	
-		if (clip.y1 < 0)
-			clip.y1 = 0;
-		else if (clip.y1 > r->h - 1)
-			clip.y1 = r->h - 1;
+		if (clip->y1 < 0)
+			clip->y1 = 0;
+		else if (clip->y1 > r->h - 1)
+			clip->y1 = r->h - 1;
 
-		if (clip.x2 < 0)
-			clip.x2 = 0;
-		else if (clip.x2 > r->w - 1)
-			clip.x2 = r->w - 1;
+		if (clip->x2 < 0)
+			clip->x2 = 0;
+		else if (clip->x2 > r->w - 1)
+			clip->x2 = r->w - 1;
 
-		if (clip.y2 < 0)
-			clip.y2 = 0;
-		else if (clip.y2 > r->h - 1)
-			clip.y2 = r->h - 1;
+		if (clip->y2 < 0)
+			clip->y2 = 0;
+		else if (clip->y2 > r->h - 1)
+			clip->y2 = r->h - 1;
 
-		v->clip = clip;
-		v->clip_flag = 1;
+		clip->flag = 1;
 	}
 	else
 	{
-		v->clip.x1 = v->clip.y1 = v->clip_flag = 0;
-		v->clip.x2 = r->w - 1;
-		v->clip.y2 = r->h - 1;
+		clip->x1 = clip->y1 = clip->flag = 0;
+		clip->x2 = r->x2;
+		clip->y2 = r->y2;
 	}
 	return;
 }
@@ -119,12 +119,44 @@ vs_color( VDIPB *pb, VIRTUAL *v)
 	color.alpha	= 0;
 	color.ovl	= 0;
 
-	lvs_color( v, pb->intin[0], &color);
+	i = calc_vdicolor( v->raster, v->colinf, pb->intin[0], &color);
+	if (i >= 0)
+		lvs_color( v, i, &v->colinf->actual_rgb[i]);
 
 	/* should this not return anything? */
 	return;
 }
 
+short
+calc_vdicolor( RASTER *r, COLINF *c, short vdipen, RGB_LIST *color)
+{
+	short hwpen;
+
+	if (vdipen >= c->pens)
+		return -1;
+
+	hwpen = c->color_vdi2hw[vdipen];
+
+	c->request_rgb[hwpen] = *color;
+
+	reqrgb_2_actrgb( r->pixelformat,
+			 &r->rgb_levels,
+			&c->request_rgb[hwpen],
+			&c->actual_rgb[hwpen],
+			&c->pixelvalues[hwpen]);
+
+	return hwpen;
+}
+
+void
+lvs_color( VIRTUAL *v, short hwpen, RGB_LIST *color)
+{
+	if (v->driver == v->physical && v->raster->clut)
+		(*v->driver->dev->setcol)(v->driver, hwpen, color);
+
+	return;
+}
+#if 0
 void
 lvs_color( VIRTUAL *v, short vdipen, RGB_LIST *color)
 {
@@ -148,34 +180,41 @@ lvs_color( VIRTUAL *v, short vdipen, RGB_LIST *color)
 
 	return;
 }
+#endif
+
 void
 vq_color( VDIPB *pb, VIRTUAL *v)
 {
 	short vdipen, hwpen, flag;
+	COLINF *c;
+	RASTER *r;
+
+	r = v->raster;
+	c = v->colinf;
 
 	vdipen = pb->intin[0];
 
-	if (vdipen >= (Planes2Pens[v->driver->r.planes]))
+	if (vdipen >= c->pens)
 	{
 exit:
 		pb->intout[0] = - 1;
 		return;
 	}
 
-	hwpen = v->color_vdi2hw[vdipen];
+	hwpen = c->color_vdi2hw[vdipen];
 	flag = pb->intin[1];
 
 	if (flag == COLOR_REQUESTED)
 	{
-		pb->intout[1] = v->request_rgb[hwpen].red;
-		pb->intout[2] = v->request_rgb[hwpen].green;
-		pb->intout[3] = v->request_rgb[hwpen].blue;
+		pb->intout[1] = c->request_rgb[hwpen].red;
+		pb->intout[2] = c->request_rgb[hwpen].green;
+		pb->intout[3] = c->request_rgb[hwpen].blue;
 	}
 	else if (flag == COLOR_ACTUAL)
 	{
 		RGB_LIST color;
 
-		get_rgb_relatives( &v->actual_rgb[hwpen], v->rgb_levels, &color);
+		get_rgb_relatives( &c->actual_rgb[hwpen], &r->rgb_levels, &color);
 		pb->intout[1] = color.red;
 		pb->intout[2] = color.green;
 		pb->intout[3] = color.blue;

@@ -4,17 +4,17 @@
 #include "ovdi_defs.h"
 #include "vdi_defs.h"
 
-void arb_corner( VDIRECT *corners, short type);
-void sortcpy_corners( short *src, short *dst);
-short clipbox( VDIRECT *corners, VDIRECT *clip);
-void rectfill( VIRTUAL *v, VDIRECT *corners, PatAttr *ptrn);
+void arb_corner		( VDIRECT *corners, short type);
+void sortcpy_corners	( short *src, short *dst);
+short clipbox		( VDIRECT *corners, VDIRECT *clip);
+void rectfill		( RASTER *r, COLINF *c, VDIRECT *corners, VDIRECT *clip, PatAttr *ptrn, short interior);
 
-void draw_arc( VIRTUAL *v, short xc, short yc, short xrad, short beg_ang, short end_ang, short *points, PatAttr *ptrn);
-void draw_pieslice( VIRTUAL *v, short xc, short yc, short xrad, short beg_ang, short end_ang, short *points, PatAttr *ptrn);
-void draw_circle( VIRTUAL *v, short xc, short yc, short xrad, short *points, PatAttr *ptrn);
-void draw_ellipse( VIRTUAL *v, short xc, short yc, short xrad, short yrad, short *points, PatAttr *ptrn);
-void draw_ellipsearc( VIRTUAL *v, short xc, short yc, short xrad, short yrad, short beg_ang, short end_ang, short *points, PatAttr *ptrn);
-void draw_ellipsepie( VIRTUAL *v, short xc, short yc, short xrad, short yrad, short beg_ang, short end_ang, short *points, PatAttr *ptrn);
+void draw_arc		( VIRTUAL *v, short xc, short yc, short xrad, short beg_ang, short end_ang, short *points, PatAttr *ptrn);
+void draw_pieslice	( VIRTUAL *v, short xc, short yc, short xrad, short beg_ang, short end_ang, short *points, PatAttr *ptrn);
+void draw_circle	( VIRTUAL *v, short xc, short yc, short xrad, short *points, PatAttr *ptrn);
+void draw_ellipse	( VIRTUAL *v, short xc, short yc, short xrad, short yrad, short *points, PatAttr *ptrn);
+void draw_ellipsearc	( VIRTUAL *v, short xc, short yc, short xrad, short yrad, short beg_ang, short end_ang, short *points, PatAttr *ptrn);
+void draw_ellipsepie	( VIRTUAL *v, short xc, short yc, short xrad, short yrad, short beg_ang, short end_ang, short *points, PatAttr *ptrn);
 
 void draw_rbox( VIRTUAL *v, short gdp_code, VDIRECT *corners, PatAttr *ptrn);
 

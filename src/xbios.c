@@ -106,16 +106,12 @@ new_xbios(short *p)
 {
 	long ret;
 	short oc;
-	short pid;
 	long (*f)(VIRTUAL *, short *);
 
 	ret = 0xfacedaceL;
 
 	if (V)
 	{
-//		pid = Pgetpid();
-//		log("XBIOS: pid %d ", pid);
-	
 		oc = *p++;
 
 		if (oc == 0x15)
@@ -134,15 +130,6 @@ new_xbios(short *p)
 			f = xbios_53thru55[oc - 0x53];
 			ret = (*f)(V, p);
 		}
-
-#if 1
-		if (ret != 0xfacedaceL && logit)
-		{
-			pid = Pgetpid();
-			p--;
-			log("XBIOS: (%d) - fc %x, p1 %x, p2 %x, p3 %x, p4 %x .. return %lx\n", pid, p[0], p[1], p[2], p[3], p[4], ret);
-		}
-#endif
 	}
 		
 	return ret;
@@ -275,15 +262,18 @@ long
 oSetcolor(VIRTUAL *v, short *p)
 {
 	short red, green, blue, col, idx, old;
+	COLINF *c;
 	RGB_LIST relative;
+
+	c = v->colinf;
 
 	idx = *p++;
 	col = *p;
 
 	/* Calculate the old color value */
-	red = ((long)v->request_rgb[idx].red * 16) / 1000;
-	green = ((long)v->request_rgb[idx].green * 16) / 1000;
-	blue = ((long)v->request_rgb[idx].blue * 16) / 1000;
+	red = ((long)c->request_rgb[idx].red * 16) / 1000;
+	green = ((long)c->request_rgb[idx].green * 16) / 1000;
+	blue = ((long)c->request_rgb[idx].blue * 16) / 1000;
 	old = ((red & 0xe) << 7) | ((red & 1) << 11);
 	old |= ((green & 0xe) << 3) | ((green & 1) << 7);
 	old |= ((blue & 0xe) >> 1) | ((blue & 1) << 3);
@@ -307,15 +297,18 @@ static long
 oEsetcolor(VIRTUAL *v, short *p)
 {
 	short red, green, blue, col, idx, old;
+	COLINF *c;
 	RGB_LIST relative;
+
+	c = v->colinf;
 
 	idx = *p++;
 	col = *p;
 
 	/* Calculate the old color value */
-	red = ((long)v->request_rgb[idx].red * 16) / 1000;
-	green = ((long)v->request_rgb[idx].green * 16) / 1000;
-	blue = ((long)v->request_rgb[idx].blue * 16) / 1000;
+	red = ((long)c->request_rgb[idx].red * 16) / 1000;
+	green = ((long)c->request_rgb[idx].green * 16) / 1000;
+	blue = ((long)c->request_rgb[idx].blue * 16) / 1000;
 	old = (red & 0xf) << 8;
 	old |= (green & 0xf) << 4;
 	old |= blue & 0xf;
@@ -338,8 +331,11 @@ static long
 oEsetpalette(VIRTUAL *v, short *p)
 {
 	short *pal;
+	COLINF *c;
 	short red, green, blue, i, cnt, idx, col;
 	RGB_LIST relative;
+
+	c = v->colinf;
 
 	relative.alpha = 0;
 	relative.ovl = 0;
@@ -376,8 +372,11 @@ oEsetpalette(VIRTUAL *v, short *p)
 static long
 oEgetpalette(VIRTUAL *v, short *p)
 {
+	COLINF *c;
 	short red, green, blue, i, idx, cnt, old;
 	short *pal;
+
+	c = v->colinf;
 
 	idx = *p++;
 	cnt = *p++;
@@ -393,9 +392,9 @@ oEgetpalette(VIRTUAL *v, short *p)
 	for (i = 0; i < cnt; i++)
 	{
 		/* Calculate the old color value */
-		red = ((long)v->request_rgb[idx].red * 16) / 1000;
-		green = ((long)v->request_rgb[idx].green * 16) / 1000;
-		blue = ((long)v->request_rgb[idx].blue * 16) / 1000;
+		red = ((long)c->request_rgb[idx].red * 16) / 1000;
+		green = ((long)c->request_rgb[idx].green * 16) / 1000;
+		blue = ((long)c->request_rgb[idx].blue * 16) / 1000;
 		old = (red & 0xf) << 8;
 		old |= (green & 0xf) << 4;
 		old |= blue & 0xf;

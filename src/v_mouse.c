@@ -1,6 +1,3 @@
-
-#include "mouse.h"
-#include "mousedrv.h"
 #include "ovdi_defs.h"
 #include "vdi_defs.h"
 #include "vdi_globals.h"
@@ -16,7 +13,7 @@ vsc_form( VDIPB *pb, VIRTUAL *v)
 void
 lvsc_form( VIRTUAL *v, short index, MFORM *mf)
 {
-	(*v->mouseapi->setnewmform)(v, mf);
+	(*v->mouseapi->setnewmform)(mf);
 	return;
 }
 

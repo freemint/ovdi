@@ -17,7 +17,7 @@ vsf_color ( VDIPB *pb, VIRTUAL *v )
 {
 	lvsf_color (v, pb->intin[0]);
 	lvsprm_color(v, pb->intin[0]);
-	pb->intout[0] = v->color_hw2vdi[v->fill.color];
+	pb->intout[0] = v->colinf->color_hw2vdi[v->fill.color];
 	
 	pb->contrl[N_INTOUT] = 1;
 	return;
@@ -32,7 +32,7 @@ lvsf_color( VIRTUAL *v, short color )
 
 	maxcolor = Planes2Pens[planes];
 	color = color < maxcolor ? color : maxcolor - 1;
-	color = v->color_vdi2hw[color];
+	color = v->colinf->color_vdi2hw[color];
 	v->pattern.color[0] = v->pattern.color[1] = v->udpat.color[0] = v->udpat.color[1] = color;
 	v->pattern.color[2] = v->pattern.color[3] = v->udpat.color[2] = v->udpat.color[3] = planes > 8 ? 0x0 : 0xff;
 	v->fill.color = color;
@@ -48,7 +48,7 @@ lvsf_bgcolor( VIRTUAL *v, short color )
 	planes = v->raster->planes;
 	maxcolor = Planes2Pens[planes];
 	color = color < maxcolor ? color : maxcolor - 1;
-	color = v->color_vdi2hw[color];
+	color = v->colinf->color_vdi2hw[color];
 	v->pattern.bgcol[0] = v->pattern.bgcol[1] = v->udpat.bgcol[0] = v->udpat.bgcol[1] = color;
 	v->pattern.bgcol[2] = v->pattern.bgcol[3] = v->udpat.bgcol[2] = v->udpat.bgcol[3] = planes > 8 ? 0xff : 0x0;
 	v->fill.bgcol = color;
@@ -64,7 +64,7 @@ lvsprm_color( VIRTUAL *v, short color )
 
 	maxcolor = Planes2Pens[planes];
 	color = color < maxcolor ? color : maxcolor - 1;
-	color = v->color_vdi2hw[color];
+	color = v->colinf->color_vdi2hw[color];
 	v->perimdata.color[0] = v->perimdata.color[1] = color;
 	v->perimdata.color[2] = v->perimdata.color[3] = planes > 8 ? 0x0 : 0xff;
 	return;
@@ -79,7 +79,7 @@ lvsprm_bgcolor( VIRTUAL *v, short color )
 
 	maxcolor = Planes2Pens[planes];
 	color = color < maxcolor ? color : maxcolor - 1;
-	color = v->color_vdi2hw[color];
+	color = v->colinf->color_vdi2hw[color];
 	v->perimdata.bgcol[0] = v->perimdata.bgcol[1] = color;
 	v->perimdata.bgcol[2] = v->perimdata.bgcol[3] = planes > 8 ? 0xff : 0x0;
 	return;
@@ -153,12 +153,14 @@ vsf_udpat( VDIPB *pb, VIRTUAL *v )
 void
 v_fillarea( VDIPB *pb, VIRTUAL *v)
 {
-	//short ptsbuff[10*5*2];
+	RASTER *r = v->raster;
+	VDIRECT *clip;
 
 	if (pb->contrl[N_PTSIN] < 2)
 		return;
 
-	filled_poly(    v, &pb->ptsin[0], pb->contrl[N_PTSIN], (short *)&v->spanbuff, v->spanbuffsiz, //(short *)&ptsbuff, sizeof(ptsbuff), 
+	clip = v->clip.flag ? (VDIRECT *)&v->clip.x1 : (VDIRECT *)&r->x1;
+	filled_poly(    r, v->colinf, &pb->ptsin[0], pb->contrl[N_PTSIN], clip, (short *)&v->spanbuff, v->spanbuffsiz,
 			v->fill.interior == FIS_USER ? &v->udpat : &v->pattern);
 
 	return;
@@ -167,11 +169,12 @@ v_fillarea( VDIPB *pb, VIRTUAL *v)
 void
 vr_recfl( VDIPB *pb, VIRTUAL *v)
 {
+	RASTER *r = v->raster;
 	short coords[4];
 
 	sortcpy_corners(&pb->ptsin[0], &coords[0]);
-	rectfill( v,	(VDIRECT *)&coords[0],
-			v->fill.interior == FIS_USER ? &v->udpat : &v->pattern);
+	rectfill( r, v->colinf, (VDIRECT *)&coords[0], v->clip.flag ? (VDIRECT *)&v->clip.x1 : (VDIRECT *)&r->x1,
+			v->fill.interior == FIS_USER ? &v->udpat : &v->pattern, v->fill.interior);
 	return;
 }
 
@@ -333,7 +336,7 @@ vqf_attributes( VDIPB *pb, VIRTUAL *v)
 {
 
 	pb->intout[0] = v->fill.interior;
-	pb->intout[1] = v->color_hw2vdi[v->fill.color]; //HW2VDI_colorindex[v->fill.color];
+	pb->intout[1] = v->colinf->color_hw2vdi[v->fill.color]; //HW2VDI_colorindex[v->fill.color];
 	pb->intout[2] = v->fill.style;
 	pb->intout[3] = v->wrmode + 1;
 	pb->intout[4] = v->fill.perimeter;

@@ -7,44 +7,32 @@
 #include "polygon.h"
 
 void
-rectfill( VIRTUAL *v, VDIRECT *corners, PatAttr *ptrn )
+rectfill( RASTER *r, COLINF *c, VDIRECT *corners, VDIRECT *clip, PatAttr *ptrn, short interior )
 {
-	register short x1, x2, y1, y2;
+	short wrmode, color;
 	VDIRECT clipped;
 
 	clipped = *corners;
 
-	if (!clipbox (&clipped, &v->clip))
+	if (!clipbox (&clipped, clip))
 		return;
 
-	x1 = v->fill.interior;
-	x2 = *ptrn->data;
+	color = *ptrn->data;
 
-	if (	(x1 == FIS_SOLID || x1 == FIS_HOLLOW
-		|| (ptrn->height == 1 && ptrn->width == 16 && (x2 == 0xffff || x2 == 0)) )
-		&&  v->drawers->draw_solid_rect
+	if (	(interior == FIS_SOLID || interior == FIS_HOLLOW
+		|| (ptrn->height == 1 && ptrn->width == 16 && (color == 0xffff || color == 0)) )
+		&&  r->drawers->draw_solid_rect
 	   )
 	{
-		y1 = ptrn->wrmode;
-		x2 = x1 == FIS_SOLID ? ptrn->color[y1] : ptrn->bgcol[y1];
+		wrmode	= ptrn->wrmode;
+		color	= interior == FIS_SOLID ? ptrn->color[wrmode] : ptrn->bgcol[wrmode];
 
-		(*v->drawers->draw_solid_rect)(v->raster, (short *)&clipped, y1, x2);
+		(*r->drawers->draw_solid_rect)(r, c, (short *)&clipped, wrmode, color);
 	}
 	else
 	{
-		x1 = clipped.x1;
-		x2 = clipped.x2;
-
-		y1 = clipped.y1;
-		y2 = clipped.y2;
-
-		draw_mspans( v, x1, x2, y1, y2, ptrn);
+		draw_mspans( r, c, clipped.x1, clipped.x2, clipped.y1, clipped.y2, ptrn);
 	}
-#if 0
-	for (y = y1; y <= y2; y++)
-		draw_spans( v, x1, x2, y, ptrn);
-#endif
-
 	return;
 }
 
@@ -78,45 +66,6 @@ sortcpy_corners( short *source, short *dest )
 
 	return;
 }
-
-#if 0
-void
-arb_corner(VDIRECT *corners, short type)
-{
-	/* Local declarations. */
-	register short temp, typ;
-	register short *xy1, *xy2;
-
-	/* Fix the x coordinate values, if necessary. */
-
-	xy1 = (short *)corners;
-	xy2 = (short *)(corners + 2);
-
-	if (*xy1 > *xy2)
-	{
-		temp = *xy1;
-		*xy1 = *xy2;
-		*xy2 = temp;
-	}
-
-	/* End if:  "x" values need to be swapped. */
-	/* Fix y values based on whether traditional (ll, ur) or raster-op */
-	/* (ul, lr) format is desired.                                     */
-	xy1++;		/* they now point to corners[1] and
-			   corners[3] */
-	xy2++;
-
-	typ = type;
-
-	if (((typ == LLUR) && (*xy1 < *xy2)) ||
-	    ((typ == ULLR) && (*xy1 > *xy2)))
-	{
-		temp = *xy1;
-		*xy1 = *xy2;
-		*xy2 = temp;
-	}			/* End if:  "y" values need to be swapped. */
-}				/* End "arb_corner". */
-#endif
 
 short
 clipbox( VDIRECT *corners, VDIRECT *clip)
@@ -308,14 +257,23 @@ void
 clc_arc(VIRTUAL *v, short gdp_code, short xc, short yc, short xrad, short yrad, short beg_ang, short end_ang,
 	short del_ang, short n_steps, short *points, PatAttr *ptrn)
 {
+	RASTER *r;
+	COLINF *c;
+	VDIRECT *clip;
+	LINE_ATTRIBS *latr;
 	short i, j, start, angle;
 	register short *pts;
-	//short spanbuff[10*5*2];
+
+	r = v->raster;
+	c = v->colinf;
+
+	clip = v->clip.flag ? (VDIRECT *)&v->clip.x1 : (VDIRECT *)&r->x1;
+	latr = &v->line;
 
 	pts = points;
 
-	if (((xc + xrad) < v->clip.x1) || ((xc - xrad) > v->clip.x2) ||
-	    ((yc + yrad) < v->clip.y1) || ((yc - yrad) > v->clip.y2))
+	if (((xc + xrad) < clip->x1) || ((xc - xrad) > clip->x2) ||
+	    ((yc + yrad) < clip->y1) || ((yc - yrad) > clip->y2))
 		return;
 
 	start = angle = beg_ang;
@@ -346,13 +304,13 @@ clc_arc(VIRTUAL *v, short gdp_code, short xc, short yc, short xrad, short yrad, 
 	}
 
 	if ((gdp_code == 2) || (gdp_code == 6))	/* Open arc */
-		pline( v, points, n_steps + 1, (short *)&v->spanbuff, v->spanbuffsiz, ptrn); //(short *)&spanbuff, sizeof(spanbuff), ptrn);
+		pline( r, c, points, n_steps + 1, clip, (short *)&v->spanbuff, v->spanbuffsiz, latr, ptrn);
 	else
 	{
-		filled_poly( v, points, n_steps + 1, (short *)&v->spanbuff, v->spanbuffsiz, ptrn); //(short *)&spanbuff, sizeof(spanbuff), ptrn);
+		filled_poly( r, c, points, n_steps + 1, clip, (short *)&v->spanbuff, v->spanbuffsiz, ptrn);
 
 		if (v->fill.perimeter)
-			pline( v, points, n_steps +1, (short *)&v->spanbuff, v->spanbuffsiz, &v->perimdata); //p(short *)&spanbuff, sizeof(spanbuff), &v->perimdata);
+			pline( r, c, points, n_steps +1, clip, (short *)&v->spanbuff, v->spanbuffsiz, latr, &v->perimdata);
 	}
 	return;
 }
@@ -362,13 +320,20 @@ clc_arc(VIRTUAL *v, short gdp_code, short xc, short yc, short xrad, short yrad, 
 void
 draw_rbox(VIRTUAL *v, short gdp_code, VDIRECT *corners, PatAttr *ptrn)
 {
+	RASTER *r;
+	COLINF *c;
+	VDIRECT *clip;
+	LINE_ATTRIBS *latr;
 	short i, j;
 	short rdeltax, rdeltay;
 	short xc, yc, xrad, yrad;
 	short n_steps;
-	RASTER *r = v->raster;
 	short points[42];
-	//short spanbuff[10*5*2];
+
+	r = v->raster;
+	c = v->colinf;
+	clip = v->clip.flag ? (VDIRECT *)&v->clip.x1 : (VDIRECT *)&r->x1;
+	latr = &v->line;
 
 	rdeltax = (corners->x2 - corners->x1) / 2;
 	rdeltay = (corners->y2 - corners->y1) / 2;
@@ -437,12 +402,12 @@ draw_rbox(VIRTUAL *v, short gdp_code, VDIRECT *corners, PatAttr *ptrn)
 
 	if (gdp_code == 8)
 	{
-		pline( v, (short *)&points, 21, (short *)&v->spanbuff, v->spanbuffsiz, ptrn); //(short *)&spanbuff, sizeof(spanbuff), ptrn);
+		pline( r, c, (short *)&points, 21, clip, (short *)&v->spanbuff, v->spanbuffsiz, latr, ptrn);
 	}
 	else
 	{
-		filled_poly( v, (short *)&points, 21, (short *)&v->spanbuff, v->spanbuffsiz, ptrn); //(short *)&spanbuff, sizeof(spanbuff), ptrn);
+		filled_poly( r, c, (short *)&points, 21, clip, (short *)&v->spanbuff, v->spanbuffsiz, ptrn);
 		if (v->fill.perimeter)
-			pline(v, (short *)&points, 21, (short *)&v->spanbuff, v->spanbuffsiz, &v->perimdata); //(short *)&spanbuff, sizeof(spanbuff), &v->perimdata);
+			pline( r, c, (short *)&points, 21, clip, (short *)&v->spanbuff, v->spanbuffsiz, latr, &v->perimdata);
 	}
 }

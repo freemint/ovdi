@@ -503,7 +503,7 @@ static short rt2ro[] = { 3, 0, 0, 0 };
 
 /* if wrmode has bit 15 set, wrmode is interpreted to be a vdi writing mode, not a blitblt */
 void
-rt_cpyfm(VIRTUAL *v, MFDB *src, MFDB *dst, short *pnts, short fgcol, short bgcol, short wrmode)
+rt_cpyfm(RASTER *r, COLINF *c, MFDB *src, MFDB *dst, short *pnts, VDIRECT *clip, short fgcol, short bgcol, short wrmode)
 {
 	int i, j, k;
 	short dst_w, dst_h, dst_x1, dst_y1, planes, bypl, width, height, startbit, headbits, groups, tailbits;
@@ -513,44 +513,37 @@ rt_cpyfm(VIRTUAL *v, MFDB *src, MFDB *dst, short *pnts, short fgcol, short bgcol
 	unsigned short *srcptr, *sourceptr;
 	unsigned short data;
 	short *pts;
-	RASTER *r;
 	struct ovdi_drawers *drawers;
 	pixel_blit dpf_fg, dpf_bg;
-	VDIRECT clip;
+	short clp[4];
 	short points[8];
 
 	if (wrmode > 3 || src->fd_nplanes != 1)
 		return;
 
-	if (logit && v->func == 121)
-		log("%s: rt - wrmode %d\n", v->procname, wrmode);
-
 	wrmode <<= 1;
-	r = v->raster;
 
 	if ( dst->fd_addr == 0)
 	{	/* destination screen! */
 
 		if (r->planes == 1 && !wrmode) //rt2ro[wrmode] != 0)
 		{
-			ro_cpyfm(v, src, dst, pnts, rt2ro[wrmode]);
+			ro_cpyfm(r, src, dst, pnts, clip, rt2ro[wrmode]);
 			return;
 		}
 			
-		drawers = r->drawers;
+		drawers 	= r->drawers;
 		planes		= r->planes;
 		bypl		= r->bypl;
 		addr		= r->base;
 		dst_w		= r->w;
 		dst_h		= r->h;
-		//log("sw %d, sh %d, sp %d\n", src->fd_w, src->fd_h, src->fd_nplanes);
-		//log("dw %d, dh %d, dp %d\n", dst->fd_w, dst->fd_h, dst->fd_nplanes);
 		d_is_screen = 1;
 	}
 	else
 	{
 		planes		= dst->fd_nplanes;
-		drawers		= v->odrawers[planes];
+		drawers		= r->odrawers[planes];
 		bypl		= (dst->fd_wdwidth << 1) * planes;
 		addr		= dst->fd_addr;
 		dst_w		= dst->fd_w;
@@ -567,27 +560,25 @@ rt_cpyfm(VIRTUAL *v, MFDB *src, MFDB *dst, short *pnts, short fgcol, short bgcol
 		return;
 
 
-	if (v->clip_flag && d_is_screen)
+	pts = (short *)&clp;
+	if (d_is_screen)
 	{
-		clip = v->clip;
-		//log("clip %d, %d - %d, %d\n", clip.x1, clip.y1, clip.x2, clip.y2);
+		*pts++	= clip->x1;
+		*pts++	= clip->y1; 
+		*pts++	= clip->x2;
+		*pts	= clip->y2;
 	}
 	else
 	{
-		clip.x1 = clip.y1 = 0;
-		clip.x2 = dst_w - 1;
-		clip.y2 = dst_h - 1;
+		*pts++	= 0;
+		*pts++	= 0; 
+		*pts++	= dst_w - 1;
+		*pts	= dst_h - 1;
 	}
 
 	pts = (short *)&points;
-	if ( !fix_raster_coords(pnts, pts, (short *)&clip) )
+	if ( !fix_raster_coords(pnts, pts, (short *)&clp[0]) )
 		return;
-
-	//log("org src %d %d %d %d\n",points[0], points[1], points[2], points[3]);
-	//log("org dst %d %d %d %d\n",points[4], points[5], points[6], points[7]);
-
-	//log("clp src  %d %d %d %d\n",pts[0], pts[1], pts[2], pts[3]);
-	//log("clp dst  %d %d %d %d\n",pts[4], pts[5], pts[6], pts[7]);
 
 	dst_x1 = pts[4];
 	dst_y1 = pts[5];
@@ -741,8 +732,8 @@ rt_cpyfm(VIRTUAL *v, MFDB *src, MFDB *dst, short *pnts, short fgcol, short bgcol
 		}
 		else
 		{
-			fcol = r->pixelvalues[fgcol];
-			bcol = r->pixelvalues[bgcol];
+			fcol = c->pixelvalues[fgcol];
+			bcol = c->pixelvalues[bgcol];
 		}
 			
 
@@ -841,27 +832,21 @@ rt_cpyfm(VIRTUAL *v, MFDB *src, MFDB *dst, short *pnts, short fgcol, short bgcol
 			addr += bypl;
 		}
 	}
-	//log("\n");
 	return;
 }
 
 void
-ro_cpyfm(VIRTUAL *v, MFDB *src, MFDB *dst, short *pts, short wrmode)
+ro_cpyfm(RASTER *r, MFDB *src, MFDB *dst, short *pts, VDIRECT *clip, short wrmode)
 {
 	short	srcplanes, dstplanes;
 	short *p;
 	raster_blit rop;
-	RASTER *r;
 	struct ovdi_drawers *drawers;
-	VDIRECT clip;
 	ROP_PB	*rpb;
 	ROP_PB	roppb;
+	short	clp[4];
 
-	r = v->raster;
 	rpb = &roppb;
-
-	if (logit && v->func == 109)
-		log("%s: ro - wrmode %d\n", v->procname, wrmode);
 
 	if ( !dst->fd_addr || (unsigned long)dst->fd_addr == (unsigned long)r->base)
 	{	/* destination screen! */
@@ -907,66 +892,29 @@ ro_cpyfm(VIRTUAL *v, MFDB *src, MFDB *dst, short *pts, short wrmode)
 	else if (rpb->d_is_scrn || rpb->s_is_scrn)
 		drawers = r->drawers;
 	else
-		drawers = v->odrawers[srcplanes];
+		drawers = r->odrawers[srcplanes];
 
 	if (!drawers)
 		return;
 
-#if 0
-	if (wrmode == 0 || wrmode == 15)
+	p = (short *)&clp;
+	if (rpb->d_is_scrn)
 	{
-		short interior;
-		RASTER rst;
-
-		clip = v->clip;
-		v->raster = &rst;
-
-		rst.base	= rpb->d_addr;
-		rst.flags	= 0;
-		rst.format	= r->format;
-		rst.w		= rpb->d_w;
-		rst.h		= rpb->d_h;
-		rst.clut	= r->clut;
-		rst.planes	= r->planes;
-		rst.bypl	= rpb->d_bypl;
-		rst.hpixel	= r->hpixel;
-		rst.wpixel	= r->wpixel;
-		rst.pixelformat = r->pixelformat;
-		rst.pixelvalues = r->pixelvalues;
-		rst.drawers	= drawers;
-
-		v->clip.x1 = v->clip.y1 = 0;
-		v->clip.x2 = rst.w - 1;
-		v->clip.y2 = rst.h - 1;
-
-		rpb->sx1 = pts[4];
-		rpb->sy1 = pts[5];
-		rpb->sx2 = pts[4] + (pts[2] - pts[0]);
-		rpb->sy2 = pts[5] + (pts[3] - pts[1]);
-
-		interior = v->fill.interior;
-		v->fill.interior = FIS_SOLID;
-		rectfill(v, (VDIRECT *)&rpb->sx1, wrmode == 0 ? &WhiteRect : &BlackRect);
-
-		v->fill.interior = interior;
-		v->clip = clip;
-		v->raster = r;
-
-		return;
+		*p++	= clip->x1;
+		*p++	= clip->y1;
+		*p++	= clip->x2;
+		*p	= clip->y2;
 	}
-#endif
-
-	if (v->clip_flag && rpb->d_is_scrn)
-		clip = v->clip;
 	else
 	{
-		clip.x1 = clip.y1 = 0;
-		clip.x2 = rpb->d_w - 1;
-		clip.y2 = rpb->d_h - 1;
+		*p++	= 0;
+		*p++	= 0;
+		*p++	= rpb->d_w - 1;
+		*p	= rpb->d_h - 1;
 	}
 	
 	p = (short *)&rpb->sx1;
-	if ( !fix_raster_coords(pts, p, (short *)&clip) )
+	if ( !fix_raster_coords(pts, p, (short *)&clp) )
 		return;
 
 	rop = drawers->raster_blits[wrmode];

@@ -28,8 +28,9 @@ used to render the mouse cursor/graphics onscreen.
 #include "ovdi_types.h"
 #include "../../sys/mint/arch/asm_spl.h"
 
-static void set_xmf_res(VIRTUAL *v);
-static void set_new_mform(VIRTUAL *v, MFORM *mf);
+static void set_xmf_res(RASTER *r, COLINF *c);
+static void set_new_mform(MFORM *mf);
+static void set_xmf_color(XMFORM *xmf);
 
 /* ASM wrappers - just because I cannot get gcc to save d0-d7/a0-a6 instead of d2-d7/a2-a6 */
 extern void m_abs_move(short x, short y);
@@ -158,6 +159,12 @@ init_mouse(VIRTUAL *v, LINEA_VARTAB *la)
 /* Setup the mousedrv structure - this structure is shared by the main mouse driver (layer 1),
  * the pointing device driver (layer 2), and the 'mouse rendering' driver (layer 3).
 */
+	m->la = la;
+	m->raster = 0;
+	m->colinf = 0;
+	(long)m->draw_mcurs = (long)mdonothing;
+	(long)m->undraw_mcurs = (long)mdonothing;
+
 	m->flags	= 0;
 	m->interrupt	= 1;
 	m->current_xmf	= xmf;
@@ -166,11 +173,12 @@ init_mouse(VIRTUAL *v, LINEA_VARTAB *la)
 	m->absmovmcurs	= m_abs_move;		//mouse_absolute_move;
 	m->butchg	= m_but_chg;			//mouse_buttons_change;
 
+	m->vreschk	= v->driver->dev->vreschk;
 /* Gather necessary info about the graphics, and install the 'mouse rendering' (layer 3)
  * part of the threesome.
 */
-	set_xmf_res(v);
-	set_new_mform(v, (MFORM *)&arrow_cdb);
+	//set_xmf_res(v->raster);
+	set_new_mform((MFORM *)&arrow_cdb);
 
  /* setup stuff in the Line A variable table */
 	la->user_but = mdonothing;
@@ -182,21 +190,8 @@ init_mouse(VIRTUAL *v, LINEA_VARTAB *la)
 	la->cur_ms_stat = 0;
 	la->m_hid_ct = 1;
 	la->mouse_bt = 0;
-	la->gcurx = v->raster->w >> 1;
-	la->gcury = v->raster->h >> 1;
-
-	m->la = la;
-	m->hide_ct = 1;
-	m->min_x = m->min_y = 0;
-	m->max_x = v->raster->w - 1;
-	m->max_y = v->raster->h - 1;
-	m->current_x = la->gcurx;
-	m->current_y = la->gcury;
-	m->current_bs = 0;
-	m->changed_bs = 0;
-	m->last_bs = 0;
-
-	//reset_mouse_curs();
+	la->gcurx = m->current_x;
+	la->gcury = m->current_y;
 
 /* The pointing device driver (layer 2) fills in 'buttons', 'wheels',
  * and puts the address of its start/stop functions in the 'start' and 'stop'
@@ -232,8 +227,12 @@ disable_mouse(void)
 {
 	MOUSEDRV *m = &md;
 
-	(*m->stop)();			/* stop the mouse device driver */
-	m->flags &= ~MDRV_ENABLED;	/* Indicate mouse is disabled */
+	if (m->flags & MDRV_ENABLED)
+	{
+		disable_mouse_curs();
+		(*m->stop)();			/* stop the mouse device driver */
+		m->flags &= ~MDRV_ENABLED;	/* Indicate mouse is disabled */
+	}
 	return;
 }
 
@@ -242,20 +241,48 @@ disable_mouse(void)
  * from the main driver structure.
  */
 static void
-set_xmf_res(VIRTUAL *v)
+set_xmf_res(RASTER *r, COLINF *c)
 {
 	register MOUSEDRV *m = &md;
 	register XMFORM *xmf = m->current_xmf;
-	register OVDI_DRIVER *d = v->driver;
 
-	xmf->mx		= d->r.w - 1;
-	xmf->my		= d->r.h - 1;
-	xmf->bypl	= d->r.bypl;
-	xmf->scr_base	= d->r.base;
+	m->interrupt++;
+	hide_mouse_curs();
+	m->current_xms->valid = 0;
 
-	m->draw_mcurs	= v->drawers->draw_mcurs;
-	m->undraw_mcurs	= v->drawers->undraw_mcurs;
-	m->vreschk	= d->dev->vreschk;
+	m->raster	= r;
+	m->colinf	= c;
+
+	xmf->mx		= r->w - 1;
+	xmf->my		= r->h - 1;
+	xmf->bypl	= r->bypl;
+	xmf->scr_base	= r->base;
+
+	set_xmf_color(xmf);
+
+	if (r->drawers->draw_mcurs)
+		m->draw_mcurs	= r->drawers->draw_mcurs;
+	else
+		(long)m->draw_mcurs = (long)mdonothing;
+
+	if (r->drawers->undraw_mcurs)
+		m->undraw_mcurs	= r->drawers->undraw_mcurs;
+	else
+		(long)m->undraw_mcurs = (long)mdonothing;
+
+	m->min_x	= m->min_y = 0;
+	m->max_x	= r->w - 1;
+	m->max_y	= r->h - 1;
+
+	m->hide_ct = 1;
+	m->current_x = m->max_x >> 1;
+	m->current_y = m->max_y >> 1;
+	m->current_bs = 0;
+	m->changed_bs = 0;
+	m->last_bs = 0;
+
+	show_mouse_curs(0);
+	m->interrupt--;
 
 	return;
 }
@@ -263,7 +290,7 @@ set_xmf_res(VIRTUAL *v)
 /* Grab data from a standard mform structure, as used by */
 /* current versions of the different VDI/AES's		 */
 static void
-set_new_mform(VIRTUAL *v, MFORM *mf)
+set_new_mform(MFORM *mf)
 {
 	int i;
 	register unsigned short *dest, *data, *mask;
@@ -273,18 +300,17 @@ set_new_mform(VIRTUAL *v, MFORM *mf)
 	m->interrupt++;
 	hide_mouse_curs();
 	
-	//m->flags	&= ~MC_ENABLED;
-
 	xmf->xhot	= mf->xhot;
 	xmf->yhot	= mf->yhot;
 	xmf->planes	= mf->planes;
 	xmf->mfbypl	= 2;
 	xmf->width	= 16;
 	xmf->height	= 16;
-	xmf->fg_col	= v->color_vdi2hw[mf->fg_col];
-	xmf->bg_col	= v->color_vdi2hw[mf->bg_col];
-	xmf->fg_pix	= v->raster->pixelvalues[xmf->fg_col];
-	xmf->bg_pix	= v->raster->pixelvalues[xmf->bg_col];
+
+	xmf->fg_col	= mf->fg_col;
+	xmf->bg_col	= mf->bg_col;
+
+	set_xmf_color(xmf);
 
 	dest = (unsigned short *)xmf->data;
 	data = (unsigned short *)&mf->data;
@@ -296,11 +322,37 @@ set_new_mform(VIRTUAL *v, MFORM *mf)
 		*dest++ = data[i];
 	}
 
-	//m->flags	|= MC_ENABLED;
 	show_mouse_curs(0);
 	m->interrupt--;
 	return;
 }
+static void
+set_xmf_color(XMFORM *xmf)
+{
+	MOUSEDRV *m = &md;
+	RASTER *r = m->raster;
+	COLINF *c = m->colinf;
+
+	if (r && c)
+	{
+		short f, b, mc;
+
+		mc = c->pens - 1;
+
+		f = xmf->fg_col;
+		if (f > mc)
+			f = mc;
+
+		b = xmf->bg_col;
+		if (b > mc)
+			b = mc;
+		
+		xmf->fg_pix = c->pixelvalues[f];
+		xmf->bg_pix = c->pixelvalues[b];
+	}
+}	
+			
+
 
 /* These are the functions called by mouse device drivers	*/
 /* (layer 2) to let the high-level know about mouse activity	*/

@@ -105,9 +105,9 @@ init_linea_vartab(VIRTUAL *v, LINEA_VARTAB *la)
 	dst = (short *)&la->req_col;
 	for (i = 0; i < 16; i++)
 	{
-		*dst++ = v->request_rgb[i].red;
-		*dst++ = v->request_rgb[i].green;
-		*dst++ = v->request_rgb[i].blue;
+		*dst++ = v->colinf->request_rgb[i].red;
+		*dst++ = v->colinf->request_rgb[i].green;
+		*dst++ = v->colinf->request_rgb[i].blue;
 	}
 
 	memcpy(&la->siz, &SIZ_TAB_rom, sizeof(SIZ_TAB));
@@ -149,9 +149,11 @@ set_linea_vector(void)
 void
 linea_handler(short func)
 {
+#if 0
 	short pid = Pgetpid();
 	if (logit)
 		log("(%d), calls liena func %d\n\n", pid, func);
+#endif
 	return;
 }
 		
@@ -160,9 +162,10 @@ linea_plot_pixel(void)
 {
 	register LINEA_VARTAB *la = linea_vars;
 	VIRTUAL *v = la->cur_work;
+	RASTER *r = v->raster;
 
 
-	(*v->drawers->put_pixel)(v->raster->base, v->raster->bypl,
+	(*r->drawers->put_pixel)(r->base, r->bypl,
 				  la->ptsin[0], la->ptsin[1], (unsigned long)la->intin[0]);
 	return;
 }
@@ -172,16 +175,17 @@ linea_get_pixel(void)
 {
 	LINEA_VARTAB *la = linea_vars;
 	VIRTUAL *v = la->cur_work;
+	RASTER *r = v->raster;
 	unsigned long pixel;
 	short planes = v->raster->planes;
 
-	pixel = (v->drawers->get_pixel)(v->raster->base, v->raster->bypl,
+	pixel = (*r->drawers->get_pixel)(r->base, r->bypl,
 					 la->ptsin[0], la->ptsin[1]);
 
 	if (planes > 8)
 	{
 		int i;
-		unsigned long *pv = v->raster->pixelvalues;
+		unsigned long *pv = v->colinf->pixelvalues;
 
 		for (i = 0; i < 256; i++)
 		{
@@ -216,15 +220,15 @@ linea_arb_line(void)
 		color |= 8;
 
 	ptrn.expanded = 0;
-	ptrn.color[0] = v->color_hw2vdi[color];
-	ptrn.bgcol[0] = v->color_hw2vdi[0];
+	ptrn.color[0] = v->colinf->color_hw2vdi[color];
+	ptrn.bgcol[0] = v->colinf->color_hw2vdi[0];
 	ptrn.width = 16;
 	ptrn.height = 1;
 	ptrn.planes = 1;
 	ptrn.wrmode = la->wrmode;
 	ptrn.data = (short *)&la->lnmask;
 
-	abline(v, (VDIRECT *)&la->x1, &ptrn);
+	abline(v->raster, v->colinf, (VDIRECT *)&la->x1, &ptrn);
 
 	return;
 }
@@ -248,8 +252,8 @@ linea_hor_line(void)
 		color |= 8;
 
 	ptrn.expanded = 0;
-	ptrn.color[0] = v->color_hw2vdi[color];
-	ptrn.bgcol[0] = v->color_hw2vdi[0];
+	ptrn.color[0] = v->colinf->color_hw2vdi[color];
+	ptrn.bgcol[0] = v->colinf->color_hw2vdi[0];
 	ptrn.width = 16;
 	ptrn.height = 1;
 	ptrn.planes = 1;
@@ -257,7 +261,7 @@ linea_hor_line(void)
 	pdata = la->patptr;
 	ptrn.data = &pdata[la->patmsk];
 
-	habline(v, la->x1, la->x2, la->y1, &ptrn);
+	habline(v->raster, v->colinf, la->x1, la->x2, la->y1, &ptrn);
 
 	return;
 }
@@ -267,10 +271,10 @@ linea_filled_rect(void)
 {
 	LINEA_VARTAB *la = linea_vars;
 	VIRTUAL *v = la->cur_work;
+	RASTER *r = v->raster;
 	PatAttr ptrn;
 	short color = 0;
 	short *pdata;
-	VDIRECT clip;
 
 	if (la->colbit0)
 		color |= 1;
@@ -282,8 +286,8 @@ linea_filled_rect(void)
 		color |= 8;
 
 	ptrn.expanded = 0;
-	ptrn.color[0] = v->color_hw2vdi[color];
-	ptrn.bgcol[0] = v->color_hw2vdi[0];
+	ptrn.color[0] = v->colinf->color_hw2vdi[color];
+	ptrn.bgcol[0] = v->colinf->color_hw2vdi[0];
 	ptrn.width = 16;
 	ptrn.height = 1;
 	ptrn.planes = 1;
@@ -292,16 +296,9 @@ linea_filled_rect(void)
 	ptrn.data = &pdata[la->patmsk];
 
 	if (la->clip)
-	{
-		clip = v->clip;
-		v->clip = *(VDIRECT *)&la->xmincl;
-		rectfill(v, (VDIRECT *)&la->x1, &ptrn);
-		v->clip = clip;
-	}
+		rectfill(r, v->colinf, (VDIRECT *)&la->x1, (VDIRECT *)&la->xmincl, &ptrn, FIS_PATTERN);
 	else
-	{
-		rectfill(v, (VDIRECT *)&la->x1, &ptrn);
-	}
+		rectfill(r, v->colinf, (VDIRECT *)&la->x1, (VDIRECT *)&r->x1, &ptrn, FIS_PATTERN);
 
 	return;
 }
@@ -311,10 +308,11 @@ linea_filled_poly(void)
 {
 	LINEA_VARTAB *la = linea_vars;
 	VIRTUAL *v = la->cur_work;
+	RASTER *r = v->raster;
+	VDIRECT *clip;
 	PatAttr ptrn;
 	short color = 0;
 	short *pdata;
-	VDIRECT clip;
 	short spanbuff[100];
 
 	if (la->colbit0)
@@ -327,8 +325,8 @@ linea_filled_poly(void)
 		color |= 8;
 
 	ptrn.expanded = 0;
-	ptrn.color[0] = v->color_hw2vdi[color];
-	ptrn.bgcol[0] = v->color_hw2vdi[0];
+	ptrn.color[0] = v->colinf->color_hw2vdi[color];
+	ptrn.bgcol[0] = v->colinf->color_hw2vdi[0];
 	ptrn.width = 16;
 	ptrn.height = 1;
 	ptrn.planes = 1;
@@ -336,17 +334,8 @@ linea_filled_poly(void)
 	pdata = la->patptr;
 	ptrn.data = &pdata[la->patmsk];
 
-	if (la->clip)
-	{
-		clip = v->clip;
-		v->clip = *(VDIRECT *)&la->xmincl;
-		filled_poly(v, (short *)&la->ptsin[0], la->contrl[1], (short *)&spanbuff, sizeof(spanbuff), &ptrn);
-		v->clip = clip;
-	}
-	else
-	{
-		filled_poly(v, (short *)&la->ptsin[0], la->contrl[1], (short *)&spanbuff, sizeof(spanbuff), &ptrn);
-	}
+	clip = la->clip ? (VDIRECT *)&la->xmincl : (VDIRECT *)&r->x1;
+	filled_poly(r, v->colinf, (short *)&la->ptsin[0], la->contrl[1], clip, (short *)&spanbuff, sizeof(spanbuff), &ptrn);
 
 	return;
 }
@@ -415,7 +404,7 @@ linea_transformmouse(void)
 	LINEA_VARTAB *la = linea_vars;
 	VIRTUAL *v = la->cur_work;
 
-	(*v->mouseapi->setnewmform)(v, (MFORM *)(((long)la->intin[0] << 16) | (unsigned short)la->intin[1]));
+	(*v->mouseapi->setnewmform)((MFORM *)(((long)la->intin[0] << 16) | (unsigned short)la->intin[1]));
 
 	return;
 }

@@ -1,8 +1,7 @@
 /* This is the pointing device driver for ATari-mouses  */
 
 #include <osbind.h>
-
-#include "mousedrv.h"
+#include "ovdi_defs.h"
 
 #define ON 1
 

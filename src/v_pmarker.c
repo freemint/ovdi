@@ -37,7 +37,7 @@ void
 vsm_color( VDIPB *pb, VIRTUAL *v)
 {
 	lvsm_color( v, pb->intin[0]);
-	pb->intout[0] = v->color_hw2vdi[v->pmarker.color];
+	pb->intout[0] = v->colinf->color_hw2vdi[v->pmarker.color];
 
 	pb->contrl[N_INTOUT] = 1;
 	return;
@@ -72,7 +72,7 @@ lvsm_color( VIRTUAL *v, short color)
 	planes = v->raster->planes;
 	maxcolor = Planes2Pens[planes];
 	color = color < maxcolor ? color : maxcolor - 1;
-	color = v->color_vdi2hw[color];
+	color = v->colinf->color_vdi2hw[color];
 	v->pmrkdat.color[0] = v->pmrkdat.color[1] = color;
 	v->pmrkdat.color[2] = v->pmrkdat.color[3] = planes > 8 ? 0x0 : 0xff;
 	v->pmarker.color = color;
@@ -86,7 +86,7 @@ lvsm_bgcolor( VIRTUAL *v, short color)
 	planes = v->raster->planes;
 	maxcolor = Planes2Pens[planes];
 	color = color < maxcolor ? color : maxcolor - 1;
-	color = v->color_vdi2hw[color];
+	color = v->colinf->color_vdi2hw[color];
 	v->pmrkdat.bgcol[0] = v->pmrkdat.bgcol[1] = color;
 	v->pmrkdat.bgcol[2] = v->pmrkdat.bgcol[3] = planes > 8 ? 0x0 : 0xff;
 	v->pmarker.bgcol = color;
@@ -118,6 +118,8 @@ lvsm_type( VIRTUAL *v, short type)
 void
 v_pmarker( VDIPB *pb, VIRTUAL *v)
 {
+	RASTER *r;
+	VDIRECT *clip;
 	register short count, type, height, width;
 	POINT *inpts;
 	POINT pts;
@@ -127,6 +129,9 @@ v_pmarker( VDIPB *pb, VIRTUAL *v)
 	if (count < 0)
 		return;
 	
+	r = v->raster;
+	clip = v->clip.flag ? (VDIRECT *)&v->clip.x1 : (VDIRECT *)&r->x1;
+
 	inpts = (POINT *)&pb->ptsin[0];
 	width = v->pmarker.width;
 	height = v->pmarker.height;
@@ -135,7 +140,7 @@ v_pmarker( VDIPB *pb, VIRTUAL *v)
 	while (count >= 0)
 	{
 		pts = *inpts++;
-		pmarker( v, &pts, type, 0, width, height, &v->pmrkdat);
+		pmarker( r, v->colinf, &pts, clip, type, 0, width, height, &v->pmrkdat);
 		count--;
 	}
 	return;
@@ -145,7 +150,7 @@ void
 vqm_attributes( VDIPB *pb, VIRTUAL *v)
 {
 	pb->intout[0] = v->pmarker.type + 1;
-	pb->intout[1] = v->color_hw2vdi[v->pmarker.color];
+	pb->intout[1] = v->colinf->color_hw2vdi[v->pmarker.color];
 	pb->intout[2] = v->wrmode +1;
 
 	pb->ptsout[0] = v->pmarker.width;

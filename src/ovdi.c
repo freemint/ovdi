@@ -88,6 +88,7 @@ oVDI( VDIPB *pb )
 
 	if (func > MAX_VDI_FUNCTIONS)
 	{
+
 #if 0
 		v = v_vtab[pb->contrl[HANDLE]].v;
 		if (v)
@@ -140,7 +141,7 @@ oVDI( VDIPB *pb )
 
 	v->func = func;
 
-#if 1
+#if 0
 //	if ( !(strcmp("PROFILE2", v->procname)) )
 	if ( (Kbshift(-1) & 0x1) )
 		logit = 1;

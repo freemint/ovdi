@@ -5,7 +5,9 @@ typedef struct virtual VIRTUAL;
 typedef struct ovdi_lib OVDI_LIB;
 
 #include "vdi_defs.h"
-#include "ovdi_dev.h"
+#include "mousedrv.h"
+
+//#include "ovdi_dev.h"
 
 #define MAX_VIRTUALS		512
 #define MAX_VDI_FUNCTIONS	140
@@ -14,6 +16,74 @@ typedef struct ovdi_lib OVDI_LIB;
 /* Flag definitions for 'flags' in struct raster */
 #define R_IS_SCREEN	1
 #define R_IN_VRAM	2
+
+/* Structure describing a raster - all drawing primitives get its info from */
+/* this structure */
+struct raster
+{
+	/* The top part of raster structure is filled	*/
+	/* in by the device driver upon resolution	*/
+	/* changes, etc.				*/
+	unsigned char		*base;
+	unsigned long		lenght;
+	short			flags;
+	short			format;
+	short			w, h;
+	short			x1, y1, x2, y2;
+	short			clut;
+	short			planes;
+	short			pixlen;
+	short			bypl;
+	char			*pixelformat;
+
+	/* This part is filled in by the VDI.		*/
+	/* Device driver must NOT touch this area!	*/
+	short			wpixel, hpixel;
+	struct ovdi_drawers	*drawers;
+	struct ovdi_drawers	(**odrawers);
+	struct ovdi_utils	*utils;
+	RGB_LIST		rgb_levels;
+	RGB_LIST		rgb_bits;
+};
+typedef struct raster RASTER;
+
+struct colinf
+{
+	short		pens;
+	short		planes;
+	short		*color_vdi2hw;
+	short		*color_hw2vdi;
+	char		*pixelformat;
+	long		*pixelvalues;		/* Pixelvalues, as they're written into video-ram */
+	RGB_LIST	*request_rgb;		/* Requested, relative RGB values (0 - 1000) */
+	RGB_LIST	*actual_rgb;		/* Actual RGB values, used to construct pixelvalues */
+//	RGB_LIST	*rgb_levels;		/* Number of levels for Red, Green, Blue, Alpha and Ovl parts */
+//	RGB_LIST	*rgb_bits;		/* Number of bits used for Red, Green, Blue, Alpha and Ovl */
+};
+typedef struct colinf COLINF;
+
+struct drawinf
+{
+	RASTER		*r;
+	COLINF		*c;
+};
+typedef struct drawinf DRAWINF;
+
+struct pattern_attribs
+{
+	short		expanded;		/* True if the pattern is expanded and valid. */
+	short		color[4];		/* wrmode is used as index into color array */
+	short		bgcol[4];		/* background color */
+	short		width;			/* Width of pattern in pixels */
+	short		height;			/* Height of pattern in pixels */
+	short		wwidth;			/* Width of fill pattern in words */
+	short		planes;			/* True if fill is multiplane */
+	short		wrmode;			/* writing mode (unused as of yet) */
+	unsigned short	mask;
+	unsigned short *data;
+	unsigned short *exp_data;
+};
+typedef struct pattern_attribs PatAttr;
 
 struct	currfont
 {
@@ -44,6 +114,7 @@ typedef struct currfont CURRFONT;
 
 struct	fill_attribs
 {
+	PatAttr	*ptrn;
 	short	color;
 	short	bgcol;
 	short	interior;
@@ -53,44 +124,34 @@ struct	fill_attribs
 
 struct line_attribs
 {
+	PatAttr		*ptrn;
 	short		color;
 	short		bgcol;
 	short		wrmode;
 	short		index;
 	unsigned short	data;
+	unsigned short	ud;
+
 	short		width;
 	short		beg;
 	short		end;
-	unsigned short	ud;
 };
+typedef struct line_attribs LINE_ATTRIBS;
 
 struct pmarker_attribs
 {
-	short	color;
-	short	bgcol;
-	short	wrmode;
-	short	type;
-	short	height;
-	short	width;
-	short	scale;	/* Current scale factor for marker data */
-	short	data;
-};
+	PatAttr		*ptrn;
+	short		color;
+	short		bgcol;
+	short		wrmode;
+	short		type;
+	short		data;
+	unsigned short	ud;
 
-struct pattern_attribs
-{
-	short		expanded;		/* True if the pattern is expanded and valid. */
-	short		color[4];		/* wrmode is used as index into color array */
-	short		bgcol[4];		/* background color */
-	short		width;			/* Width of pattern in pixels */
-	short		height;			/* Height of pattern in pixels */
-	short		wwidth;			/* Width of fill pattern in words */
-	short		planes;			/* True if fill is multiplane */
-	short		wrmode;			/* writing mode (unused as of yet) */
-	unsigned short	mask;
-	unsigned short *data;
-	unsigned short *exp_data;
+	short		width;
+	short		height;
+	short		scale;	/* Current scale factor for marker data */
 };
-typedef struct pattern_attribs PatAttr;
 
 struct pattern_data
 {
@@ -111,13 +172,12 @@ struct virtual
 	struct xgdf_head	*fring;
 	struct currfont		font;
 
-	struct ovdi_drawers	*drawers;
-	struct ovdi_drawers	*odrawers[32];
-	struct ovdi_utils	*utils;
-
 	struct fill_attribs	fill;
 	struct pattern_attribs	pattern;
+
+	struct line_attribs	perimeter;
 	struct pattern_attribs	perimdata;
+
 	struct pattern_attribs	udpat;
 	struct pattern_data	patdata;
 	struct pattern_data	udpatdata;
@@ -140,17 +200,18 @@ struct virtual
 	short			wrmode;			/* Current writing mode			*/
 	short			xfm_mode;		/* Transformation mode requested	*/
 
-	short			clip_flag;		/* Clipping flag */
-	VDIRECT			clip;
-
+	CLIPRECT		clip;
+	
 	struct console		*con;
 	struct ovdi_driver	*driver;
 	struct ovdi_driver	*physical;
 	struct raster		*raster;
+	struct colinf		*colinf;
 	struct kbdapi		*kbdapi;
 	struct mouseapi		*mouseapi;
 	struct timeapi		*timeapi;
 
+#if 0
 	short			*color_vdi2hw;
 	short			*color_hw2vdi;
 	long			*pixelvalues;		/* Pixelvalues, as they're written into video-ram */
@@ -158,6 +219,7 @@ struct virtual
 	RGB_LIST		*actual_rgb;		/* Actual RGB values, used to construct pixelvalues */
 	RGB_LIST		*rgb_levels;		/* Number of levels for Red, Green, Blue, Alpha and Ovl parts */
 	RGB_LIST		*rgb_bits;		/* Number of bits used for Red, Green, Blue, Alpha and Ovl */
+#endif
 
 	long			ptsbuffsiz;
 	long			spanbuffsiz;
@@ -210,11 +272,6 @@ struct rop_pb
 	short	d_w, d_h;
 };
 typedef struct rop_pb ROP_PB;
-
-	
-
-typedef void (*draw_mc)			(register XMFORM *xmf, register short x, register short y);
-typedef void (*undraw_mc)		(register XMSAVE *xms);
 
 #if 0
 struct pixel_blits
@@ -292,8 +349,8 @@ typedef pixel_blit pixel_blits[16];
  */
 struct ovdi_drawers
 {
- 
-	void		(*draw_filledrect)	( VIRTUAL *v, VDIRECT *corners, PatAttr *ptrn);
+/* REMEMBER TO UPDATE THE TABLES IN WORKSTATION WHEN MODIFYING HERE !!!!!!!!!!!!!!!!11 */ 
+	void		(*draw_filledrect)	( RASTER *r, COLINF *c, VDIRECT *corners, VDIRECT *clip, PatAttr *ptrn, short fis);
 	void		(*draw_arc)		( VIRTUAL *v, short xc, short yc, short xrad, short beg_ang, short end_ang, short *points, PatAttr *ptrn);
 	void		(*draw_pieslice)	( VIRTUAL *v, short xc, short yc, short xrad, short beg_ang, short end_ang, short *points, PatAttr *ptrn);
 	void		(*draw_circle)		( VIRTUAL *v, short xc, short yc, short xrad, short *points, PatAttr *ptrn);
@@ -301,14 +358,16 @@ struct ovdi_drawers
 	void		(*draw_ellipsearc)	( VIRTUAL *v, short xc, short yc, short xrad, short yrad, short beg_ang, short end_ang, short *points, PatAttr *ptrn);
 	void		(*draw_ellipsepie)	( VIRTUAL *v, short xc, short yc, short xrad, short yrad, short beg_ang, short end_ang, short *points, PatAttr *ptrn);
 	void		(*draw_rbox)		( VIRTUAL *v, short gdp_code, VDIRECT *corners, PatAttr *ptrn);
-	void		(*draw_abline)		( VIRTUAL *v, struct vdirect *pnts, PatAttr *ptrn);
-	void		(*draw_habline)		( VIRTUAL *v, short x1, short x2, short y, PatAttr *ptrn);
-	void		(*draw_wideline)	( VIRTUAL *v, short *pts, long numpts, short *points, long pointasize, PatAttr *ptrn);
-	void		(*draw_spans)		( VIRTUAL *v, short x1, short x2, short y, PatAttr *ptrn);
-	void		(*draw_filledpoly)	( VIRTUAL *v, short *pts, short n, short *points, long pointasize, PatAttr *ptrn);
+	void		(*draw_abline)		( RASTER *r, COLINF *c, struct vdirect *pnts, PatAttr *ptrn);
+	void		(*draw_habline)		( RASTER *r, COLINF *c, short x1, short x2, short y, PatAttr *ptrn);
+	void		(*draw_vabline)		( RASTER *r, COLINF *c, short y1, short y2, short x, PatAttr *ptrn);
+	void		(*draw_wideline)	( RASTER *r, COLINF *c, short *pts, long numpts, VDIRECT *clip, short *points, long pointasize, LINE_ATTRIBS *latr, PatAttr *ptrn);
+	void		(*draw_spans)		( RASTER *r, COLINF *c, short x1, short x2, short y, PatAttr *ptrn);
+	void		(*draw_filledpoly)	( RASTER *r, COLINF *c, short *pts, short n, VDIRECT *clip, short *points, long pointasize, PatAttr *ptrn);
+	void		(*draw_pmarker)		( RASTER *v, COLINF *c, POINT *origin, VDIRECT *clip, short type, short size, short w_in, short h_in, PatAttr *ptrn);
 
-	void		(*rt_cpyfm)		( VIRTUAL *v, MFDB *src, MFDB *dst, short *pnts, short fgcol, short bgcol, short wrmode);
-	void		(*ro_cpyfm)		( VIRTUAL *v, MFDB *src, MFDB *dst, short *pts, short wrmode);
+	void		(*rt_cpyfm)		( RASTER *r, COLINF *c, MFDB *src, MFDB *dst, short *pnts, VDIRECT *clip, short fgcol, short bgcol, short wrmode);
+	void		(*ro_cpyfm)		( RASTER *r, MFDB *src, MFDB *dst, short *pnts, VDIRECT *clip, short wrmode);
 
  /* Functions below here is always color-depth dependant. If driver dont provide
   * these, standard and VERY, VERY slow ones are used. */
@@ -317,7 +376,7 @@ struct ovdi_drawers
 	void		(*put_pixel)		( unsigned char *base, short bypl, short x, short y, unsigned long data);
 	unsigned long	(*get_pixel)		( unsigned char *base, short bypl, short x, short y);
 
-	void		(*draw_solid_rect)	( RASTER *r, short *corners, short wrmode, short color);
+	void		(*draw_solid_rect)	( RASTER *r, COLINF *c, short *corners, short wrmode, short color);
 	/*pixel_blits	vdi_pixels;*/
 	pixel_blits	drp;
 	pixel_blits	dlp;

@@ -78,7 +78,7 @@ void
 vst_color( VDIPB *pb, VIRTUAL *v)
 {
 	lvst_color( v, pb->intin[0]);
-	pb->intout[0] = v->color_hw2vdi[v->font.color];
+	pb->intout[0] = v->colinf->color_hw2vdi[v->font.color];
 
 	pb->contrl[N_INTOUT] = 1;
 	return;
@@ -91,7 +91,7 @@ lvst_color( VIRTUAL *v, register short color)
 
 	maxcolor = Planes2Pens[v->raster->planes];
 	color = color < maxcolor ? color : maxcolor - 1;
-	v->font.color = v->color_vdi2hw[color];
+	v->font.color = v->colinf->color_vdi2hw[color];
 	return;
 }
 
@@ -422,7 +422,7 @@ vqt_attributes( VDIPB *pb, VIRTUAL *v)
 	f = v->font.header;
 
 	pb->intout[0] = f->id;
-	pb->intout[1] = v->color_hw2vdi[v->font.color];
+	pb->intout[1] = v->colinf->color_hw2vdi[v->font.color];
 	pb->intout[2] = v->font.angle;
 	pb->intout[3] = v->font.halign;
 	pb->intout[4] = v->font.valign;

@@ -3,9 +3,6 @@
 #include "vdi_defs.h"
 #include "v_escape.h"
 
-
-
-
 void
 v_enter_cur( VDIPB *pb, VIRTUAL *v)
 {

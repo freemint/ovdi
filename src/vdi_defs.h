@@ -126,6 +126,13 @@ struct vdirect
 };
 typedef struct vdirect VDIRECT;
 
+struct cliprect
+{
+	short 	flag;
+	short	x1, y1, x2, y2;
+};
+typedef struct cliprect CLIPRECT;
+
 struct point
 {
 	short x;

@@ -15,7 +15,7 @@ static short Planes2xinc[] =
 
 /* Written by Odd Skancke */
 void
-pline(VIRTUAL *v, short *pts, long n, short *points, long pointasize, PatAttr *ptrn)
+pline(RASTER *r, COLINF *c, short *pts, long n, VDIRECT *clip, short *points, long pointasize, LINE_ATTRIBS *latr, PatAttr *ptrn)
 {
 	VDIRECT line, clipped;
 	register short x, y;
@@ -36,11 +36,11 @@ pline(VIRTUAL *v, short *pts, long n, short *points, long pointasize, PatAttr *p
 
 		clipped = line;
 
-		if (clip_line(&clipped, (VDIRECT *)&v->clip))
-			abline( v, &clipped, ptrn);
+		if (clip_line(&clipped, clip))
+			abline( r, c, &clipped, ptrn);
 
-		if ((v->line.beg | v->line.end) & LE_ARROW)
-			do_arrow(v, (short *)&line, 2, points, pointasize, ptrn);
+		if ((latr->beg | latr->end) & LE_ARROW)
+			do_arrow( r, c, (short *)&line, 2, clip, points, pointasize, latr, ptrn);
 
 		n--;
 	}
@@ -128,7 +128,7 @@ clip_line(VDIRECT *input, VDIRECT *clip)
 */
 
 void
-abline (VIRTUAL *v, struct vdirect *pnts, PatAttr *ptrn)
+abline (RASTER *r, COLINF *c, struct vdirect *pnts, PatAttr *ptrn)
 {
 	unsigned char *addr;		/* using void pointer is much faster */
 	unsigned short x1,y1,x2,y2;	/* the coordinates */
@@ -142,7 +142,6 @@ abline (VIRTUAL *v, struct vdirect *pnts, PatAttr *ptrn)
 	register pixel_blit dlp_fg;
 	register pixel_blit dlp_bg;
 	short	eps, e1, e2, loopcnt;
-	RASTER *r;
 
 
 	/* Make x axis always goind up */
@@ -165,17 +164,15 @@ abline (VIRTUAL *v, struct vdirect *pnts, PatAttr *ptrn)
 
 	if (!(dy = y2 - y1))
 	{
-		habline(v, x1, x2, y1, ptrn);
+		habline(r, c, x1, x2, y1, ptrn);
 		return;
 	}
 
 	if (!(dx = x2 - x1))
 	{
-		vabline(v, y1, y2, x1, ptrn);
+		vabline(r, c, y1, y2, x1, ptrn);
 		return;
 	}
-
-	r = v->raster;
 
 	/* calculate increase values for x and y to add to actual address */
 	if (dy < 0)
@@ -199,8 +196,8 @@ abline (VIRTUAL *v, struct vdirect *pnts, PatAttr *ptrn)
 	fgcol = ptrn->color[planes];
 	bgcol = ptrn->bgcol[planes];
 	planes <<= 1;
-	dlp_fg = v->drawers->dlp[planes];
-	dlp_bg = v->drawers->dlp[planes + 1];
+	dlp_fg = r->drawers->dlp[planes];
+	dlp_bg = r->drawers->dlp[planes + 1];
 	planes = r->planes;
 
 	if (planes < 8)
@@ -295,8 +292,8 @@ abline (VIRTUAL *v, struct vdirect *pnts, PatAttr *ptrn)
 		}
 		else
 		{
-			fcol = r->pixelvalues[fgcol];
-			bcol = r->pixelvalues[bgcol];
+			fcol = c->pixelvalues[fgcol];
+			bcol = c->pixelvalues[bgcol];
 		}
 
 		xinc = Planes2xinc[planes - 8];
@@ -366,7 +363,7 @@ abline (VIRTUAL *v, struct vdirect *pnts, PatAttr *ptrn)
  * Written by Odd Skancke
  */
 void
-habline (VIRTUAL *v, short x1, short x2, short y, PatAttr *ptrn)
+habline (RASTER *r, COLINF *c, short x1, short x2, short y, PatAttr *ptrn)
 {
 	short x, dx, xinc, bit;
 	short planes, bypl;
@@ -376,8 +373,6 @@ habline (VIRTUAL *v, short x1, short x2, short y, PatAttr *ptrn)
 	int i;
 	register pixel_blit dpf_fg;
 	register pixel_blit dpf_bg;
-	RASTER *r;
-
 
 	if (x2 > x1)
 	{
@@ -401,12 +396,11 @@ habline (VIRTUAL *v, short x1, short x2, short y, PatAttr *ptrn)
 	if (planes == MD_ERASE)
 		linemask = ~linemask;
 
-	r = v->raster;
 	bgcol	= ptrn->bgcol[planes];
 	fgcol	= ptrn->color[planes];
 	planes <<= 1;
-	dpf_fg	= v->drawers->dlp[planes];
-	dpf_bg	= v->drawers->dlp[planes + 1];
+	dpf_fg	= r->drawers->dlp[planes];
+	dpf_bg	= r->drawers->dlp[planes + 1];
 	planes	= r->planes;
 	bypl	= r->bypl;
 
@@ -454,8 +448,8 @@ habline (VIRTUAL *v, short x1, short x2, short y, PatAttr *ptrn)
 		}
 		else
 		{
-			fcol = r->pixelvalues[fgcol];
-			bcol = r->pixelvalues[bgcol];
+			fcol = c->pixelvalues[fgcol];
+			bcol = c->pixelvalues[bgcol];
 		}
 
 		xinc = Planes2xinc[planes - 8];
@@ -482,7 +476,7 @@ habline (VIRTUAL *v, short x1, short x2, short y, PatAttr *ptrn)
  * Written by Odd Skancke
  */
 void
-vabline (VIRTUAL *v, short y1, short y2, short x, PatAttr *ptrn)
+vabline (RASTER *r, COLINF *c, short y1, short y2, short x, PatAttr *ptrn)
 {
 	short i, y, dy, bit;
 	short planes, bypl, xinc;
@@ -491,7 +485,6 @@ vabline (VIRTUAL *v, short y1, short y2, short x, PatAttr *ptrn)
 	unsigned char *addr;
 	register pixel_blit dpf_fg;
 	register pixel_blit dpf_bg;
-	RASTER *r;
 
 	if (y2 > y1)
 	{
@@ -515,12 +508,11 @@ vabline (VIRTUAL *v, short y1, short y2, short x, PatAttr *ptrn)
 	if (planes == MD_ERASE)
 		linemask = ~linemask;
 
-	r = v->raster;
 	bgcol	= ptrn->bgcol[planes];
 	fgcol	= ptrn->color[planes];
 	planes <<= 1;
-	dpf_fg	= v->drawers->dlp[planes];
-	dpf_bg	= v->drawers->dlp[planes + 1];
+	dpf_fg	= r->drawers->dlp[planes];
+	dpf_bg	= r->drawers->dlp[planes + 1];
 	planes	= r->planes;
 	bypl	= r->bypl;
 
@@ -561,8 +553,8 @@ vabline (VIRTUAL *v, short y1, short y2, short x, PatAttr *ptrn)
 		}
 		else
 		{
-			fcol = r->pixelvalues[fgcol];
-			bcol = r->pixelvalues[bgcol];
+			fcol = c->pixelvalues[fgcol];
+			bcol = c->pixelvalues[bgcol];
 		}
 
 		addr = (unsigned char *)r->base + ((long)x * xinc) + ((long)y * r->bypl);
@@ -586,13 +578,12 @@ vabline (VIRTUAL *v, short y1, short y2, short x, PatAttr *ptrn)
 
 /* Taken from fVDI (line.c), adapted by Odd Skancke */
 short
-wide_setup(VIRTUAL *v, short width, short *q_circle)
+wide_setup(RASTER *r, short width, short *q_circle)
 {
 	short i, j;
 	short x, y, d, low, high;
 	short xsize, ysize;
 	short num_qc_lines;
-	RASTER *r;
 
 	/* Limit the requested line width to a reasonable value. */
 
@@ -647,8 +638,6 @@ wide_setup(VIRTUAL *v, short width, short *q_circle)
 		q_circle[x] = x;
 
 	 /* Calculate the number of vertical pixels required. */
-
-	r = v->raster;
 
 	xsize = r->wpixel;
 	ysize = r->hpixel;
@@ -756,7 +745,7 @@ perp_off(short *vx, short *vy, short *q_circle, short num_qc_lines)
 
 /* Taken from fVDI (line.c), adapted by Odd Skancke*/
 void
-arrow(VIRTUAL *v, short *xy, short inc, short numpts, short *points, long pointasize, PatAttr *ptrn)
+arrow(RASTER *r, COLINF *c, short *xy, short inc, short numpts, VDIRECT *clip, short *points, long pointasize, LINE_ATTRIBS *latr, PatAttr *ptrn)
 {
 	short i, arrow_len, arrow_wid, line_len;
 	short *xybeg;
@@ -765,16 +754,13 @@ arrow(VIRTUAL *v, short *xy, short inc, short numpts, short *points, long pointa
 	long arrow_len2, line_len2;
 	short xsize, ysize;
 	short polygon[6];
-	RASTER *r;
-
-	r = v->raster;
 
 	xsize = r->wpixel;
 	ysize = r->hpixel;
 
 	/* Set up the arrow-head length and width as a function of line width. */
 
-	arrow_len = v->line.width == 1 ? 8 : 3 * v->line.width - 1;
+	arrow_len = latr->width == 1 ? 8 : 3 * latr->width - 1;
 
 	arrow_len2 = arrow_len * arrow_len;
 	arrow_wid = arrow_len / 2;
@@ -831,7 +817,7 @@ arrow(VIRTUAL *v, short *xy, short inc, short numpts, short *points, long pointa
 	polygon[3] = *(xy + 1) - base_y - ht_y;
 	polygon[4] = *xy;
 	polygon[5] = *(xy + 1);
-	filled_poly(v, (short *)&polygon, 3, points, pointasize, ptrn);
+	filled_poly(r, c, (short *)&polygon, 3, clip, points, pointasize, ptrn);
 
 	/* Adjust the end point and all points skipped. */
 	*xy -= ht_x;
@@ -845,7 +831,7 @@ arrow(VIRTUAL *v, short *xy, short inc, short numpts, short *points, long pointa
 
 /* Taken from fVDI (line.c), adapted by Odd Skancke*/
 void
-do_arrow(VIRTUAL *v, short *pts, short numpts, short *points, long pointasize, PatAttr *ptrn)
+do_arrow(RASTER *r, COLINF *c, short *pts, short numpts, VDIRECT *clip, short *points, long pointasize, LINE_ATTRIBS *latr, PatAttr *ptrn)
 {
 	short x_start, y_start, new_x_start, new_y_start;
 
@@ -856,18 +842,18 @@ do_arrow(VIRTUAL *v, short *pts, short numpts, short *points, long pointasize, P
 	new_x_start = x_start = pts[0];
 	new_y_start = y_start = pts[1];
 
-	if (v->line.beg & LE_ARROW)
+	if (latr->beg & LE_ARROW)
 	{
-		arrow(v, &pts[0], 2, numpts, points, pointasize, ptrn);
+		arrow(r, c, &pts[0], 2, numpts, clip, points, pointasize, latr, ptrn);
 		new_x_start = pts[0];
 		new_y_start = pts[1];
 	}
 
-	if (v->line.end & LE_ARROW)
+	if (latr->end & LE_ARROW)
 	{
 		pts[0] = x_start;
 		pts[1] = y_start;
-		arrow(v, &pts[2 * numpts - 2], -2, numpts, points, pointasize, ptrn);
+		arrow(r, c, &pts[2 * numpts - 2], -2, numpts, clip, points, pointasize, latr, ptrn);
 		pts[0] = new_x_start;
 		pts[1] = new_y_start;
 	}
@@ -875,7 +861,7 @@ do_arrow(VIRTUAL *v, short *pts, short numpts, short *points, long pointasize, P
 
 /* Taken from fVDI (line.c), modified by Odd Skancke*/
 void
-wide_line(VIRTUAL *v, short *pts, long numpts, short *points, long pointasize, PatAttr *ptrn)
+wide_line(RASTER *r, COLINF *c, short *pts, long numpts, VDIRECT *clip, short *points, long pointasize, LINE_ATTRIBS *latr, PatAttr *ptrn)
 {
 	int i, j, k;
 	short wx1, wy1, wx2, wy2, vx, vy;
@@ -884,22 +870,19 @@ wide_line(VIRTUAL *v, short *pts, long numpts, short *points, long pointasize, P
 	short xsize, ysize;
 	short polygon[8];
 	short q_circleb[MAX_L_WIDTH];
-	RASTER *r;
 
 	/* Don't attempt wide lining on a degenerate polyline. */
 	if (numpts < 2)
 		return;
 
-	r = v->raster;
-
 	q_circle = (short *)&q_circleb;
 
-	num_qc_lines = wide_setup(v, v->line.width, q_circle);
+	num_qc_lines = wide_setup(r, latr->width, q_circle);
 
 #if 1
 	/* If the ends are arrowed, output them. */
-	if ((v->line.beg | v->line.end) & LE_ARROW)
-		do_arrow(v, pts, numpts, points, pointasize, ptrn);
+	if ((latr->beg | latr->end) & LE_ARROW)
+		do_arrow(r, c, pts, numpts, clip, points, pointasize, latr, ptrn);
 #endif
 
 	/* Initialize the starting point for the loop. */
@@ -963,7 +946,7 @@ wide_line(VIRTUAL *v, short *pts, long numpts, short *points, long pointasize, P
 		*misc++ = wx2 + vx;
 		*misc   = wy2 + vy;
 
-		filled_poly(v, (short *)&polygon/*points*/, 4, points/*misc*/, pointasize, ptrn);
+		filled_poly(r, c, (short *)&polygon, 4, clip, points, pointasize, ptrn);
 
 		/* The line segment end point becomes the starting point for the next
 		 * line segment.
@@ -973,148 +956,9 @@ wide_line(VIRTUAL *v, short *pts, long numpts, short *points, long pointasize, P
 	}
 }
 
-#if 0
-void
-horzline(short x1, short x2, short y, void *scrbase)
-{
-	short x;
-	unsigned short leftmask;
-	unsigned short rightmask;
-	void *addr;
-	int dx;
-	int patind;			/* index into pattern table */
-	int patadd;			/* advance for multiplane patterns */
-	int leftpart;
-	int rightpart;
-
-	if (x2 > x1)
-	{
-		dx = x2 - x1;		/* width of line */
-		x = x1;
-	}
-	else
-	{
-		dx = x1 - x2;		/* width of line */
-		x = x2;
-	}
-
-	/* Get the pattern with which the line is to be drawn. */
-	patind = y & patmsk;		/* which pattern to start with */
-	patadd = multifill ? 16 : 0;	/* multi plane pattern offset */
-
-	/* init adress counter */
-	addr  = scrbase				/* start of screen */
-	addr += (x1 & 0xfff0) >> shft_off;	/* add x coordinate part of addr */
-	addr += (long)y * v_lin_wr;		/* add y coordinate part of addr */
-
-	/* precalculate, what to draw */
-	leftpart = x & 0xf;
-	rightpart = (x + dx) & 0xf;
-	leftmask = ~(0xffff >> leftpart);	/* origin for not left fringe lookup */
-	rightmask = 0x7fff >> rightpart;	/* origin for right fringe lookup */
-
-	switch (WRT_MODE)
-	{
-		case 3:  /* nor */
-			hzline_nor(addr, dx, leftpart, rightmask, leftmask, patind);
-			break;
-		case 2:  /* xor */
-			hzline_xor(addr, dx, leftpart, rightpart, leftmask, patind);
-			break;
-		case 1:  /* or */
-			hzline_or(addr, dx, leftpart, rightpart, leftmask, patind);
-			break;
-		default: /* rep */
-			hzline_rep(addr, dx, leftpart, rightmask, leftmask, patind);
-	}
-}
-
-static
-void hzline_rep(unsigned char *addr, int dx, int leftpart, unsigned short rightmask, unsigned short leftmask, short patind)
-{
-	int planes;
-	int plane;
-	short *color;
-	int patadd;                         /* advance for multiplane patterns */
-
-	/* precalculate, what to draw */
-	patadd = multifill ? 16 : 0;        /* multi plane pattern offset */
-	color = &FG_BP_1;
-	planes = v_planes;
-
-	for (plane = planes-1; plane >= 0; plane-- )
-	{
-		unsigned short *adr;
-		unsigned short pattern;
-		int pixels;			/* counting down the rest of dx */
-		int bw;
-
-		adr = addr;
-		pixels = dx-16;
-
-		/* load values fresh for this bitplane */
-		if (*color++)
-			pattern = patptr[patind];
-		else
-			pattern = 0;
-
-		/* check, if the line is completely contained within one WORD */
-		if (pixels+leftpart < 0)
-		{
-			unsigned short bits;
-
-			/* Isolate the necessary pixels */
-			bits = *adr;			/* get data from screen address */
-			bits ^= pattern;		/* xor the pattern with the source */
-			bits &= leftmask|rightmask;	/* isolate the bits outside the fringe */
-			bits ^= pattern;		/* restore the bits outside the fringe */
-			*adr = bits;			/* write back the result */
-		}
-		else
-		{
-			unsigned short bits;
-
-			/* Draw the left fringe */
-			if (leftmask)
-			{
-				bits = *adr;		/* get data from screen address */
-				bits ^= pattern;	/* xor the pattern with the source */
-				bits &= leftmask;	/* isolate the bits outside the fringe */
-				bits ^= pattern;	/* restore the bits outside the fringe */
-				*adr = bits;		/* write back the result */
-
-				adr += planes;
-				pixels -= 16;
-				pixels += leftpart;
-			}
-
-			/* Full WORDs */
-			for (bw = pixels >> 4; bw>=0; bw--)
-			{
-				*adr = pattern;
-				adr += planes;
-			}
-
-			/* Draw the right fringe */
-			if (~rightmask)
-			{
-				bits = *adr;		/* get data from screen address */
-				bits ^= pattern;	/* xor the pattern with the source */
-				bits &= rightmask;	/* isolate the bits outside the fringe */
-				bits ^= pattern;	/* restore the bits outside the fringe */
-				*adr = bits;		/* write back the result */
-			}
-		}
-	addr++;		/* advance one WORD to next plane */
-	patind += patadd;
-	}
-}
-
-#endif 0
-
 /* pmarker taken from fVDI (line.c), modified by Odd Skancke */
 void
-pmarker( VIRTUAL *v, POINT *center, short type, short size, short w_in, short h_in, PatAttr *ptrn)
+pmarker( RASTER *r, COLINF *c, POINT *center, VDIRECT *clip, short type, short size, short w_in, short h_in, PatAttr *ptrn)
 {
 	short i, j, num_lines;
 	short x_center, y_center;
@@ -1180,7 +1024,9 @@ pmarker( VIRTUAL *v, POINT *center, short type, short size, short w_in, short h_
 				line = (short *)&coords;
 				*line++ = x1 + center->x, *line++ = y1 + center->y;
 				*line++ = x2 + center->x, *line   = y2 + center->y;
-				abline( v, (VDIRECT *)&coords, ptrn);
+
+				if (clip_line((VDIRECT *)&coords, clip))
+					abline( r, c, (VDIRECT *)&coords, ptrn);
 			}
 
 			x1 = x2;
@@ -1191,7 +1037,7 @@ pmarker( VIRTUAL *v, POINT *center, short type, short size, short w_in, short h_
 
 /* Writen by Odd Skancke */
 void
-draw_spans(VIRTUAL *v, short x1, short x2, short y, PatAttr *ptrn)
+draw_spans(RASTER *r, COLINF *c, short x1, short x2, short y, PatAttr *ptrn)
 {
 	short x, dx, xinc;
 	short planes, bypl;
@@ -1201,7 +1047,6 @@ draw_spans(VIRTUAL *v, short x1, short x2, short y, PatAttr *ptrn)
 	int i, j;
 	register pixel_blit dpf_fg;
 	register pixel_blit dpf_bg;
-	RASTER *r;
 
 	if (x1 > x2)
 	{
@@ -1213,15 +1058,13 @@ draw_spans(VIRTUAL *v, short x1, short x2, short y, PatAttr *ptrn)
 	x = x1;
 	dx = x2 - x1 + 1;
 
-	r = v->raster;
-
 	wrmode = ptrn->wrmode;
 	fgcol = ptrn->color[wrmode];
 	bgcol	= ptrn->bgcol[wrmode];
 
 	wrmode <<= 1;
-	dpf_fg	= v->drawers->dlp[wrmode];
-	dpf_bg	= v->drawers->dlp[wrmode + 1];
+	dpf_fg	= r->drawers->dlp[wrmode];
+	dpf_bg	= r->drawers->dlp[wrmode + 1];
 	planes	= r->planes;
 	bypl	= r->bypl;
 
@@ -1359,7 +1202,6 @@ draw_spans(VIRTUAL *v, short x1, short x2, short y, PatAttr *ptrn)
 
 		if (ptrn->expanded)
 		{
-			scrnlog("pattern expanded! %s\n", v->procname);
 			pw = ptrn->width;
 			xind = x1 % pw;
 			patrn = (unsigned char *)ptrn->exp_data + ((y % ptrn->height) * (pw * xinc));
@@ -1401,8 +1243,8 @@ draw_spans(VIRTUAL *v, short x1, short x2, short y, PatAttr *ptrn)
 			}
 			else
 			{
-				fcol = r->pixelvalues[fgcol];
-				bcol = r->pixelvalues[bgcol];
+				fcol = c->pixelvalues[fgcol];
+				bcol = c->pixelvalues[bgcol];
 			}
 
 			patrn = (unsigned char *)(long)ptrn->data + ((y % ptrn->height)/*(y % ptrn->height)*/ * (ptrn->wwidth << 1));
@@ -1488,7 +1330,7 @@ draw_spans(VIRTUAL *v, short x1, short x2, short y, PatAttr *ptrn)
 }
 /* Writen by Odd Skancke */
 void
-draw_mspans(VIRTUAL *v, short x1, short x2, short y1, short y2, PatAttr *ptrn)
+draw_mspans(RASTER *r, COLINF *c, short x1, short x2, short y1, short y2, PatAttr *ptrn)
 {
 	short x, dx, xinc, dy;
 	short planes, bypl;
@@ -1498,7 +1340,6 @@ draw_mspans(VIRTUAL *v, short x1, short x2, short y1, short y2, PatAttr *ptrn)
 	int i, j;
 	register pixel_blit dpf_fg;
 	register pixel_blit dpf_bg;
-	RASTER *r;
 
 	if (x1 > x2)
 	{
@@ -1511,15 +1352,13 @@ draw_mspans(VIRTUAL *v, short x1, short x2, short y1, short y2, PatAttr *ptrn)
 	dx = x2 - x1 + 1;
 	dy = y2 - y1 + 1;
 
-	r = v->raster;
-
 	wrmode = ptrn->wrmode;
 	fgcol = ptrn->color[wrmode];
 	bgcol	= ptrn->bgcol[wrmode];
 
 	wrmode <<= 1;
-	dpf_fg	= v->drawers->dlp[wrmode];
-	dpf_bg	= v->drawers->dlp[wrmode + 1];
+	dpf_fg	= r->drawers->dlp[wrmode];
+	dpf_bg	= r->drawers->dlp[wrmode + 1];
 	planes	= r->planes;
 	bypl	= r->bypl;
 
@@ -1664,8 +1503,7 @@ draw_mspans(VIRTUAL *v, short x1, short x2, short y1, short y2, PatAttr *ptrn)
 		if (ptrn->expanded)
 		{
 			addr = a;
-			scrnlog("pattern expanded! %s\n", v->procname);
-			pw = ptrn->width; //v->pattern.width;
+			pw = ptrn->width;
 			xind = x1 % pw;
 			patrn = (unsigned char *)ptrn->exp_data + ((y1 % ptrn->height) * (pw * xinc));
 
@@ -1706,8 +1544,8 @@ draw_mspans(VIRTUAL *v, short x1, short x2, short y1, short y2, PatAttr *ptrn)
 			}
 			else
 			{
-				fcol = r->pixelvalues[fgcol];
-				bcol = r->pixelvalues[bgcol];
+				fcol = c->pixelvalues[fgcol];
+				bcol = c->pixelvalues[bgcol];
 			}
 
 

@@ -13,9 +13,11 @@
 #include "libkern.h"
 #include "line.h"
 #include "linea.h"
+#include "memory.h"
 #include "mousedrv.h"
 #include "ovdi_defs.h"
 #include "ovdi_dev.h"
+#include "ovdi_rasters.h"
 #include "polygon.h"
 #include "rasters.h"
 #include "std_driver.h"
@@ -31,87 +33,9 @@
 #include "workstation.h"
 #include "xbios.h"
 
-extern const short systempalette[];
 
-static OVDI_DRAWERS defdrawers = 
-{
-	rectfill,
-	draw_arc,
-	draw_pieslice,
-	draw_circle,
-	draw_ellipse,
-	draw_ellipsearc,
-	draw_ellipsepie,
-	draw_rbox,
-	abline,
-	habline,
-	wide_line,
-	draw_spans,
-	filled_poly,
-	rt_cpyfm,
-	ro_cpyfm,
+static void change_resolution(VIRTUAL *v);
 
-	0,	/* draw_pixel */
-	0,	/* read_pixel */
-	0,	/* put_pixel */
-	0,	/* get_pixel */
-	0,	/* draw_solid_rect */
-	{ 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 },	/* drp - draw raster points */
-	{ 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 },	/* dlp - draw line points */
-	{ 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 },	/* pixel_blits */
-	{ 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 },	/* raster_blits */
-
-	0,	/* draw_mcurs */
-	0,	/* undraw_mcurs */
-
-};
-
-static OVDI_UTILS defutils =
-{
-	clc_nsteps,
-	clc_arc,
-	clipbox,
-	sortcpy_corners,
-	code,
-	clip_line,
-	fix_raster_coords,
-	trnfm,
-
-	conv_vdi2dev_1b,
-	conv_vdi2dev_2b,
-	conv_vdi2dev_4b,
-	conv_vdi2dev_8b,
-	conv_vdi2dev_16b,
-	conv_vdi2dev_16b,
-	conv_vdi2dev_24b,
-	conv_vdi2dev_32b,
-	{0,0,0,0},
-
-	conv_dev2vdi_1b,
-	conv_dev2vdi_2b,
-	conv_dev2vdi_4b,
-	conv_dev2vdi_8b,
-	conv_dev2vdi_16b,
-	conv_dev2vdi_16b,
-	conv_dev2vdi_24b,
-	conv_dev2vdi_32b,
-	{0,0,0,0}
-};
-
-static OVDI_UTILS	root_utils;
-static OVDI_DRAWERS	root_drawers;
-static OVDI_DRAWERS	drawers_1b;
-static OVDI_DRAWERS	drawers_2b;
-static OVDI_DRAWERS	drawers_4b;
-static OVDI_DRAWERS	drawers_8b;
-static OVDI_DRAWERS	drawers_15b;
-static OVDI_DRAWERS	drawers_16b;
-static OVDI_DRAWERS	drawers_24b;
-static OVDI_DRAWERS	drawers_32b;
-
-
-
-static short setup_drawers_jumptable(OVDI_DRAWERS *src, OVDI_DRAWERS *dst, short planes);
 static void update_devtab(DEV_TAB *, VIRTUAL *);
 static void update_inqtab(INQ_TAB *, VIRTUAL *);
 static void update_siztab(SIZ_TAB *, VIRTUAL *);
@@ -136,7 +60,7 @@ v_opnwk(VDIPB *pb, VIRTUAL *wk, VIRTUAL *lawk, struct ovdi_device *dev)
 	/* Cannot open anything but screen for now */
 	if (vdidev_id < 1 || vdidev_id > 10)
 	{
-		log("Only support for screen drivers!\n");
+		//log("Only support for screen drivers!\n");
 		if (v_vtab[1].v)
 			prepare_stdreturn(pb, wk);
 		goto error;
@@ -147,7 +71,7 @@ v_opnwk(VDIPB *pb, VIRTUAL *wk, VIRTUAL *lawk, struct ovdi_device *dev)
 	if (v_vtab[1].v)
 	{
 		scrnlog("This should absolutely NOT happen, I think\n");
-		log("This should absolutely NOT happen, I think\n");
+		//log("This should absolutely NOT happen, I think\n");
 		prepare_stdreturn(pb, wk);
 		goto error;
 	}
@@ -156,52 +80,34 @@ v_opnwk(VDIPB *pb, VIRTUAL *wk, VIRTUAL *lawk, struct ovdi_device *dev)
 
 	if (drv)
 	{
-		OVDI_DRAWERS *drawers;
-		OVDI_UTILS *utils;
-		long *rlpxl;
-		short pens;
-		struct rgb_list *dst_reqrgb, *actrgb;
-		struct rgb_list tmp_rgb;
-		short *src_reqrgb;
+		short vdipen;
 		RASTER *r;
-		PatAttr *ptrn;
-
+		COLINF *c;
 
 		r = (RASTER *)&drv->r;
 		wk->driver = drv;
 		wk->physical = drv;
 		wk->raster = r;
 
-	/* Check for necessary functions which the current graphics card driver */
-	/* didnt have 								*/
+		init_raster(drv, r);
 
-		setup_drawers_jumptable(drv->drawers_1b, &drawers_1b, 1);
-		wk->odrawers[1] = &drawers_1b;
-		setup_drawers_jumptable(drv->drawers_8b, &drawers_8b, 8);
-		wk->odrawers[8] = &drawers_8b;
-		setup_drawers_jumptable(drv->drawers_15b, &drawers_15b, 15);
-		wk->odrawers[15] = &drawers_15b;
-		setup_drawers_jumptable(drv->drawers_16b, &drawers_16b, 16);
-		wk->odrawers[16] = &drawers_16b;
+		c = new_colinf(r);
+		if (!c)
+		{
+			goto error;
+		}
+		wk->raster = r;
+		wk->colinf = c;
+		change_resolution(wk);
 
-		drawers		= wk->odrawers[r->planes];
-		wk->drawers	= drawers;
-		r->drawers	= drawers;
-
-		utils		= &root_utils;
-		*utils		= defutils;
-		wk->utils	= utils;
-
-
-		if (scrsizmm_x)
-			r->wpixel = (scrsizmm_x * 1000) / r->w;
-		else
-			r->wpixel = 278;
-
-		if (scrsizmm_y)
-			r->hpixel = (scrsizmm_y * 1000) / r->h;
-		else
-			r->hpixel = 278;
+		if (r->clut)
+		{
+			for (i = 0; i <= c->pens; i++)
+			{
+				vdipen = c->color_vdi2hw[i];
+				lvs_color(wk, vdipen, &c->actual_rgb[vdipen]);
+			}
+		}
 
 	/* Check for available color indipendant driver services */
 		if (!drv->add_vbifunc) /* Check if driver has VBI api, if not, use generic built in stuff */
@@ -215,97 +121,10 @@ v_opnwk(VDIPB *pb, VIRTUAL *wk, VIRTUAL *lawk, struct ovdi_device *dev)
 			drv->disable_vbi = disable_vbi;
 		}
 
-	/* setup color tables */
-		wk->color_vdi2hw = (short *)&VDI2HW_colorindex;
-		wk->color_hw2vdi = (short *)&HW2VDI_colorindex;
-
-		src_reqrgb = (short *)&systempalette;
-		dst_reqrgb = (struct rgb_list *)&req_pens;
-		actrgb = (struct rgb_list *)&act_pens;
-		rlpxl = realpixels;
-		r->pixelvalues = rlpxl;
-		wk->request_rgb = dst_reqrgb;
-		wk->actual_rgb = actrgb;
-
-		wk->rgb_levels = &rgb_levels;
-		get_rgb_levels( r->pixelformat, wk->rgb_levels);
-		wk->rgb_bits = &rgb_bits;
-		get_rgb_bits( r->pixelformat, wk->rgb_bits);
-
-		if (r->planes < 8)
-		{
-			pens = Planes2Pens[r->planes];
-			VDI2HW_colorindex[1] = pens - 1;
-			HW2VDI_colorindex[pens - 1] = 1;
-		}
-		else
-		{
-			VDI2HW_colorindex[1] = 255;
-			HW2VDI_colorindex[15] = 255;
-			pens = 256;
-		}
-
-		tmp_rgb.alpha	= 0;
-		tmp_rgb.ovl	= 0;
-		for (i = 0; i < pens; i++)
-		{
-			tmp_rgb.red	= *src_reqrgb++;
-			tmp_rgb.green	= *src_reqrgb++;
-			tmp_rgb.blue	= *src_reqrgb++;
-			lvs_color( wk, i, &tmp_rgb);
-		}
-
 	/* Set physical/logical screen addresses */
 		r->base = (*dev->setpscr)(drv, r->base);
 		drv->log_base = (*dev->setlscr)(drv, r->base);
 		*(long *)v_bas_ad = (long)r->base; //scr_base;
-
-	/* Setup some commonly used PatAttr's */
-		/* WHITE rectangle */
-		ptrn = &WhiteRect;
-		ptrn->expanded = 0;
-		ptrn->color[0] = ptrn->color[1] = VDI2HW_colorindex[0];
-		ptrn->bgcol[0] = ptrn->bgcol[1] = VDI2HW_colorindex[1];
-		if (r->planes > 8)
-		{
-			ptrn->color[2] = ptrn->color[3] = 0x0;
-			ptrn->bgcol[2] = ptrn->bgcol[3] = 0xff;
-		}
-		else
-		{
-			ptrn->color[2] = ptrn->color[3] = 0xff;
-			ptrn->bgcol[2] = ptrn->bgcol[3] = 0x0;
-		}
-		ptrn->width = 16;
-		ptrn->height = 1;
-		ptrn->wwidth = 1;
-		ptrn->planes = 1;
-		ptrn->wrmode = 0;
-		ptrn->mask = 0xffff;
-		ptrn->data = &SOLID;
-
-		/* BLACK rectangle */
-		ptrn = &BlackRect;
-		ptrn->expanded = 0;
-		ptrn->color[0] = ptrn->color[1] = VDI2HW_colorindex[1];
-		ptrn->bgcol[0] = ptrn->bgcol[1] = VDI2HW_colorindex[0];
-		if (r->planes > 8)
-		{
-			ptrn->color[2] = ptrn->color[3] = 0x00;
-			ptrn->bgcol[2] = ptrn->bgcol[3] = 0xff;
-		}
-		else
-		{
-			ptrn->color[2] = ptrn->color[3] = 0xff;
-			ptrn->bgcol[2] = ptrn->bgcol[3] = 0x0;
-		}
-		ptrn->width = 16;
-		ptrn->height = 1;
-		ptrn->wwidth = 1;
-		ptrn->planes = 1;
-		ptrn->wrmode = 0;
-		ptrn->mask = 0xffff;
-		ptrn->data = &SOLID;
 
 	/* Init Mouse/Keyboard device driver */
 		wk->mouseapi = init_mouse(wk, linea_vars);
@@ -342,6 +161,9 @@ v_opnwk(VDIPB *pb, VIRTUAL *wk, VIRTUAL *lawk, struct ovdi_device *dev)
 			enable_xbios(wk);
 		}
 
+	/* Let mousedriver know about resolution */
+		(*wk->mouseapi->setxmfres)(wk->raster, wk->colinf);
+
 	/* Setup more LineA stuff */
 		init_linea_vartab(wk, linea_vars);
 	/* Add the mousecursor rendering function to VBI */
@@ -376,224 +198,65 @@ error:	{
 	return;
 }
 
-static short
-setup_drawers_jumptable(OVDI_DRAWERS *src, OVDI_DRAWERS *dst, short planes)
+
+static void
+change_resolution(VIRTUAL *v)
 {
-	short i;
+	PatAttr *ptrn;
+	RASTER *r;
+	COLINF *c;
 
-	*dst = defdrawers;
+	r = v->raster;
+	c = v->colinf;
 
-	switch (planes)
+	raster_reschange(r, c);
+	
+/* Setup some commonly used PatAttr's */
+	/* WHITE rectangle */
+	ptrn = &WhiteRect;
+	ptrn->expanded = 0;
+	ptrn->color[0] = ptrn->color[1] = c->color_vdi2hw[0];
+	ptrn->bgcol[0] = ptrn->bgcol[1] = c->color_vdi2hw[1];
+	if (r->planes > 8)
 	{
-		case 1:
-		{
-			for (i = 0; i < 16; i++)
-			{
-				if (src->pixel_blits[i])
-					dst->pixel_blits[i] = src->pixel_blits[i];
-				else
-					dst->pixel_blits[i] = rt_ops_1b[i];
-
-				if (src->raster_blits[i])
-					dst->raster_blits[i] = src->raster_blits[i];
-				else
-					dst->raster_blits[i] = rops_1b[i];
-			}
-
-			if (src->draw_mcurs)
-				dst->draw_mcurs = src->draw_mcurs;
-			else
-				dst->draw_mcurs = draw_mousecurs_1b;
-
-			if (src->undraw_mcurs)
-				dst->undraw_mcurs = src->undraw_mcurs;
-			else
-				dst->undraw_mcurs = restore_msave_1b;
-
-			if (src->put_pixel)
-				dst->put_pixel = src->put_pixel;
-			else
-				dst->put_pixel = put_pixel_1b;
-
-			if (src->get_pixel)
-				dst->get_pixel = src->get_pixel;
-			else
-				dst->get_pixel = get_pixel_1b;
-
-			if (src->draw_solid_rect)
-				dst->draw_solid_rect = src->draw_solid_rect;
-			else
-				dst->draw_solid_rect = draw_solid_rect_1b;
-
-			break;
-		}
-		case 8:
-		{
-			for (i = 0; i < 16; i++)
-			{
-				if (src->pixel_blits[i])
-					dst->pixel_blits[i] = src->pixel_blits[i];
-				else
-					dst->pixel_blits[i] = rt_ops_8b[i];
-
-				if (src->raster_blits[i])
-					dst->raster_blits[i] = src->raster_blits[i];
-				else
-					dst->raster_blits[i] = rops_8b[i];
-			}
-
-			if (src->draw_mcurs)
-				dst->draw_mcurs = src->draw_mcurs;
-			else
-				dst->draw_mcurs = draw_mousecurs_8b;
-
-			if (src->undraw_mcurs)
-				dst->undraw_mcurs = src->undraw_mcurs;
-			else
-				dst->undraw_mcurs = restore_msave_8b;
-
-			if (src->put_pixel)
-				dst->put_pixel = src->put_pixel;
-			else
-				dst->put_pixel = put_pixel_8b;
-
-			if (src->get_pixel)
-				dst->get_pixel = src->get_pixel;
-			else
-				dst->get_pixel = get_pixel_8b;
-
-			if (src->draw_solid_rect)
-				dst->draw_solid_rect = src->draw_solid_rect;
-			else
-				dst->draw_solid_rect = draw_solid_rect_8b;
-
-			break;
-		}
-		case 15:
-		{
-			for (i = 0; i < 16; i++)
-			{
-				if (src->pixel_blits[i])
-					dst->pixel_blits[i] = src->pixel_blits[i];
-				else
-					dst->pixel_blits[i] = rt_ops_16b[i];
-
-				if (src->raster_blits[i])
-					dst->raster_blits[i] = src->raster_blits[i];
-				else
-					dst->raster_blits[i] = rops_16b[i];
-			}
-
-			if (src->draw_mcurs)
-				dst->draw_mcurs = src->draw_mcurs;
-			else
-				dst->draw_mcurs = draw_mousecurs_16b;
-
-			if (src->undraw_mcurs)
-				dst->undraw_mcurs = src->undraw_mcurs;
-			else
-				dst->undraw_mcurs = restore_msave_16b;
-
-			if (src->put_pixel)
-				dst->put_pixel = src->put_pixel;
-			else
-				dst->put_pixel = put_pixel_16b;
-
-			if (src->get_pixel)
-				dst->get_pixel = src->get_pixel;
-			else
-				dst->get_pixel = get_pixel_16b;
-
-			break;
-		}
-		case 16:
-		{
-			for (i = 0; i < 16; i++)
-			{
-				if (src->pixel_blits[i])
-					dst->pixel_blits[i] = src->pixel_blits[i];
-				else
-					dst->pixel_blits[i] = rt_ops_16b[i];
-
-				if (src->raster_blits[i])
-					dst->raster_blits[i] = src->raster_blits[i];
-				else
-					dst->raster_blits[i] = rops_16b[i];
-			}
-
-			if (src->draw_mcurs)
-				dst->draw_mcurs = src->draw_mcurs;
-			else
-				dst->draw_mcurs = draw_mousecurs_16b;
-
-			if (src->undraw_mcurs)
-				dst->undraw_mcurs = src->undraw_mcurs;
-			else
-				dst->undraw_mcurs = restore_msave_16b;
-
-			if (src->put_pixel)
-				dst->put_pixel = src->put_pixel;
-			else
-				dst->put_pixel = put_pixel_16b;
-
-			if (src->get_pixel)
-				dst->get_pixel = src->get_pixel;
-			else
-				dst->get_pixel = get_pixel_16b;
-
-			break;
-		}
-#if 0
-		case 24:
-		{
-			if (!drv->f.raster_operations)
-				drv->f.raster_operation = &rops_24b;
-			break;
-		}
-		case 32:
-		{
-			if (!drv->f.raster_operations)
-				drv->f.raster_operation = &rops_32b;
-			break;
-		}
-#endif
-		default:
-		{
-			return 1;
-		}
-
-
+		ptrn->color[2] = ptrn->color[3] = 0x0;
+		ptrn->bgcol[2] = ptrn->bgcol[3] = 0xff;
 	}
+	else
+	{
+		ptrn->color[2] = ptrn->color[3] = 0xff;
+		ptrn->bgcol[2] = ptrn->bgcol[3] = 0x0;
+	}
+	ptrn->width = 16;
+	ptrn->height = 1;
+	ptrn->wwidth = 1;
+	ptrn->planes = 1;
+	ptrn->wrmode = 0;
+	ptrn->mask = 0xffff;
+	ptrn->data = &SOLID;
 
- /* DRP - Draw Raster Point, used for vrt_cpyfm(). */
-	/* MD_REPLACE */
-	dst->drp[0] = dst->pixel_blits[3];
-	dst->drp[1] = dst->pixel_blits[3];
-	/* MD_TRANS */
-	dst->drp[2] = dst->pixel_blits[3];
-	dst->drp[3] = 0;
-	/* MD_EOR */
-	dst->drp[4] = dst->pixel_blits[6];
-	dst->drp[5] = dst->pixel_blits[6];
-	/* MD_ERASE */
-	dst->drp[6] = 0;
-	dst->drp[7] = dst->pixel_blits[3];
-
- /* DLP - used for Lines, patterns, etc... */
-	/* MD_REPLACE */
-	dst->dlp[0] = dst->pixel_blits[3];
-	dst->dlp[1] = dst->pixel_blits[3];
-	/* MD_TRANS */
-	dst->dlp[2] = dst->pixel_blits[3];
-	dst->dlp[3] = 0;
-	/* MD_EOR */
-	dst->dlp[4] = dst->pixel_blits[6];
-	dst->dlp[5] = 0;
-	/* MD_ERASE */
-	dst->dlp[6] = dst->pixel_blits[3];
-	dst->dlp[7] = 0;
-
-	return 0;
+	/* BLACK rectangle */
+	ptrn = &BlackRect;
+	ptrn->expanded = 0;
+	ptrn->color[0] = ptrn->color[1] = c->color_vdi2hw[1];
+	ptrn->bgcol[0] = ptrn->bgcol[1] = c->color_vdi2hw[0];
+	if (r->planes > 8)
+	{
+		ptrn->color[2] = ptrn->color[3] = 0x00;
+		ptrn->bgcol[2] = ptrn->bgcol[3] = 0xff;
+	}
+	else
+	{
+		ptrn->color[2] = ptrn->color[3] = 0xff;
+		ptrn->bgcol[2] = ptrn->bgcol[3] = 0x0;
+	}
+	ptrn->width = 16;
+	ptrn->height = 1;
+	ptrn->wwidth = 1;
+	ptrn->planes = 1;
+	ptrn->wrmode = 0;
+	ptrn->mask = 0xffff;
+	ptrn->data = &SOLID;
 }
 
 static void
@@ -616,7 +279,7 @@ update_devtab(DEV_TAB *dt, VIRTUAL *v)
 
 	dt->colors = Planes2Pens[r->planes];
 
-	palettesize = (long)v->rgb_levels->red * (long)v->rgb_levels->green * (long)v->rgb_levels->blue;
+	palettesize = (long)r->rgb_levels.red * (long)r->rgb_levels.green * (long)r->rgb_levels.blue;
 
 	if (palettesize > 32767UL)
 		dt->palette = 0;
@@ -700,7 +363,7 @@ v_opnvwk(VDIPB *pb, VIRTUAL *v)
 	handle = 0;
 	pid = -1;
 
-	new = (VIRTUAL *)Malloc(sizeof(VIRTUAL));
+	new = (VIRTUAL *)omalloc(sizeof(VIRTUAL), MX_PREFTTRAM | MX_SUPER); //MX_PRIVATE);
 
 	if (new)
 	{
@@ -733,22 +396,10 @@ v_opnvwk(VDIPB *pb, VIRTUAL *v)
 			new->driver	= root->driver;
 			new->physical	= root->physical;
 			new->raster	= root->raster;
+			new->colinf	= root->colinf;
 			new->kbdapi	= root->kbdapi;
 			new->mouseapi	= root->mouseapi;
 			new->timeapi	= root->timeapi;
-
-			new->color_vdi2hw	= root->color_vdi2hw;
-			new->color_hw2vdi	= root->color_hw2vdi;
-			new->pixelvalues	= root->pixelvalues;
-			new->request_rgb	= root->request_rgb;
-			new->actual_rgb		= root->actual_rgb;
-			new->rgb_levels		= root->rgb_levels;
-			new->rgb_bits		= root->rgb_bits;
-			new->drawers		= root->drawers;
-			new->utils		= root->utils;
-
-			for (i = 0; i < 32; i++)
-				new->odrawers[i] = root->odrawers[i];
 
 			setup_virtual(pb, new, root);
 			lvst_load_fonts(new);
@@ -758,7 +409,7 @@ v_opnvwk(VDIPB *pb, VIRTUAL *v)
 		}
 		else
 		{
-			Mfree(new);
+			free_mem(new);
 		}
 	}
 
@@ -773,12 +424,13 @@ void
 v_clswk( VDIPB *pb, VIRTUAL *root)
 {
 	short i;
+	RASTER *r;
 
 /* DO NOT CLEAR 'handle' !! It indicates to the v_opnwk() that basic things are already initialized */
 	if (root->root)
 	{
 		scrnlog("Cannot close physical with virtual handle!!!!\n");
-		log("Cannot close physical with virtual handle!!!!\n");
+		//log("Cannot close physical with virtual handle!!!!\n");
 		return;
 	}
 
@@ -804,7 +456,7 @@ v_clswk( VDIPB *pb, VIRTUAL *root)
 		}
 	}
 
-	/* Disable mouse driver */
+ 	/* Disable mouse driver */
 		(*root->mouseapi->disablemcurs)();
 		(*root->mouseapi->disable)();
 	/* remove user/next tim user functions */
@@ -816,10 +468,20 @@ v_clswk( VDIPB *pb, VIRTUAL *root)
 	/* remove the mousecursor rendering function from VBI */
 		(*root->driver->remove_vbifunc)((unsigned long)root->mouseapi->housekeep);
 
+ /* ANY MEMORY ALLOCATED FOR THE PROCESS THAT OPENED THE PHYSICAL */
+ /* MUST NOW BE RELEASED!!! */
+	free_mem(root->colinf);
+	root->colinf = 0;
+
+	r = root->raster;
+	exit_console(root->con);
 	(*root->driver->dev->close)(root->driver);
+	raster_reschange(r, 0);
+	change_console_resolution(root->con, r);
+	enter_console(root->con);
 
 	if (root->scratchp)
-		Mfree(root->scratchp);
+		free_mem(root->scratchp);
 
 	v_vtab[1].v = 0;
 	v_vtab[1].pid = -1;
@@ -846,9 +508,9 @@ v_clsvwk( VDIPB *pb, VIRTUAL *v)
 	if (handle > 1 && handle < MAX_VIRTUALS)
 	{
 		if (v->scratchp)
-			Mfree(v->scratchp);
+			free_mem(v->scratchp);
 
-		Mfree(v);
+		free_mem(v);
 		entry[handle].v = 0;
 		entry[handle].pid = -1;
 	}
@@ -919,9 +581,9 @@ prepare_scrninfreturn( VDIPB *pb, VIRTUAL *v)
 
 	if (planes > 8)
 	{
-		palettesize =	(unsigned long)v->rgb_levels->red *
-				(unsigned long)v->rgb_levels->green *
-				(unsigned long)v->rgb_levels->blue;
+		palettesize =	(unsigned long)r->rgb_levels.red *
+				(unsigned long)r->rgb_levels.green *
+				(unsigned long)r->rgb_levels.blue;
 		pb->intout[3] = (unsigned short)((unsigned long)palettesize >> 16);
 		pb->intout[4] = (unsigned short)((unsigned long)palettesize & 0xffff);
 	}
@@ -936,22 +598,22 @@ prepare_scrninfreturn( VDIPB *pb, VIRTUAL *v)
 	pb->intout[6]	= (unsigned short)((unsigned long)r->base >> 16);
 	pb->intout[7]	= (unsigned short)((unsigned long)r->base & 0xffff);
 	
-	pb->intout[8]	= v->rgb_bits->red;
-	pb->intout[9]	= v->rgb_bits->green;
-	pb->intout[10]	= v->rgb_bits->blue;
-	pb->intout[11]	= v->rgb_bits->alpha;
-	pb->intout[12]	= v->rgb_bits->ovl;
+	pb->intout[8]	= r->rgb_bits.red;
+	pb->intout[9]	= r->rgb_bits.green;
+	pb->intout[10]	= r->rgb_bits.blue;
+	pb->intout[11]	= r->rgb_bits.alpha;
+	pb->intout[12]	= r->rgb_bits.ovl;
 
  /* Bit order */
 	if (planes > 8)
 	{
 		char *pf;
 
-		pb->intout[13] = planes - (	v->rgb_bits->red +
-						v->rgb_bits->green +
-						v->rgb_bits->blue +
-						v->rgb_bits->alpha +
-						v->rgb_bits->ovl);
+		pb->intout[13] = planes - (	r->rgb_bits.red +
+						r->rgb_bits.green +
+						r->rgb_bits.blue +
+						r->rgb_bits.alpha +
+						r->rgb_bits.ovl);
 		switch (planes)
 		{
 			case 15:
@@ -1015,7 +677,7 @@ prepare_scrninfreturn( VDIPB *pb, VIRTUAL *v)
 		pb->intout[14] = 0;
 		misc = (short *)&pb->intout[16];
 		for (i = 0; i < ncols; i++)
-			*misc++ = v->color_vdi2hw[i];
+			*misc++ = v->colinf->color_vdi2hw[i];
 
 		while (256 - ncols)
 		{
@@ -1038,7 +700,7 @@ prepare_extreturn( VDIPB *pb, VIRTUAL *v)
 
 	memcpy( &pb->intout[0], &INQ_TAB_rom, sizeof(INQ_TAB));
 
-	pb->intout[19] = v->clip_flag;
+	pb->intout[19] = v->clip.flag;
 
 	//bzero(&pb->intout[20], (45-20) << 1);
 	//pb->intout[20] = 0;
@@ -1083,22 +745,15 @@ prepare_stdreturn( VDIPB *pb, VIRTUAL *v)
 void
 lv_clrwk(VIRTUAL *virtual)
 {
-	short tmp;
 	VIRTUAL *v;
-	VDIRECT corners;
+	RASTER *r;
 
 	v = virtual->root ? virtual->root : virtual;
 
+	r = v->raster;
+
 	lvs_clip(v, 0, 0);
-
-	corners.x1 = corners.y1 = 0;
-	corners.x2 = v->raster->w - 1;
-	corners.y2 = v->raster->h - 1;
-
-	tmp = v->fill.interior;
-	v->fill.interior = FIS_SOLID;
-	rectfill( v, &corners, &WhiteRect);
-	v->fill.interior = tmp;
+	rectfill( r, v->colinf, (VDIRECT *)&r->x1, (VDIRECT *)&r->x1, &WhiteRect, FIS_SOLID);
 
 	return;
 }
@@ -1356,7 +1011,7 @@ setup_fonts(VIRTUAL *v, SIZ_TAB *st, DEV_TAB *dt)
 						v->font.lcount++;
 					}
 
-					//log("Loaded font id %d, name: '%s'\n", f1->id, f1->name);
+					//log("Loaded font id %d, name: '%s'\n", xf->font_head->id, xf->font_head->name);
 				}
 				else
 					//log("Cound not load font '%s' !!\n", &fname[0]);
@@ -1390,6 +1045,7 @@ setup_fonts(VIRTUAL *v, SIZ_TAB *st, DEV_TAB *dt)
 		xf = v->font.loaded; //f1 = v->font.loaded;
 		while(xf)
 		{
+			f1 = xf->font_head;
 			//log("  id %d, point %d, height %d, name %s\n", f1->id, f1->point, f1->top, f1->name);
 			xf = xf->next;
 		}

@@ -10,7 +10,7 @@ void
 vsl_color(VDIPB *pb, VIRTUAL *v)
 {
 	lvsl_color(v, pb->intin[0]);
-	pb->intout[0] = v->color_hw2vdi[v->line.color];
+	pb->intout[0] = v->colinf->color_hw2vdi[v->line.color];
 
 	pb->contrl[N_INTOUT] = 1;
 	return;
@@ -23,7 +23,7 @@ lvsl_color( VIRTUAL *v, short color)
 	planes = v->raster->planes;
 	maxcolor = Planes2Pens[planes];
 	color = color < maxcolor ? color : maxcolor - 1;
-	color = v->color_vdi2hw[color];
+	color = v->colinf->color_vdi2hw[color];
 	v->linedat.color[0] = v->linedat.color[1] = color;
 	v->linedat.color[2] = v->linedat.color[3] = planes > 8 ? 0x0 : 0xff;
 	v->line.color = color;
@@ -37,7 +37,7 @@ lvsl_bgcolor( VIRTUAL *v, short color)
 	planes = v->raster->planes;
 	maxcolor = Planes2Pens[planes];
 	color = color < maxcolor ? color : maxcolor - 1;
-	color = v->color_vdi2hw[color];
+	color = v->colinf->color_vdi2hw[color];
 	v->linedat.bgcol[0] = v->linedat.bgcol[1] = color;
 	v->linedat.bgcol[2] = v->linedat.bgcol[3] = planes > 8 ? 0xff : 0x0;
 	v->line.bgcol = color;
@@ -142,10 +142,12 @@ lvsl_width( VIRTUAL *v, short width)
 void
 v_pline( VDIPB *pb, VIRTUAL *v)
 {
+	RASTER *r = v->raster;
+	COLINF *c = v->colinf;
+	VDIRECT *clip;
 	short wide, count;
 	POINT *in_pts;
 	VDIRECT points;
-	//short ptsbuff[10*5*2];
 
 	count = pb->contrl[N_PTSIN];
 
@@ -154,6 +156,8 @@ v_pline( VDIPB *pb, VIRTUAL *v)
 
 	in_pts = (POINT *)&pb->ptsin[0];
 	wide = v->line.width == 1 ? 0 : 1;
+
+	clip = v->clip.flag ? (VDIRECT *)&v->clip.x1 : (VDIRECT *)&r->x1;
 
 	while (count >= 0)
 	{
@@ -164,9 +168,9 @@ v_pline( VDIPB *pb, VIRTUAL *v)
 		points.y2 = in_pts->y;
 
 		if (wide)
-			wide_line(v, (short *)&points, 2, (short *)&v->spanbuff, v->spanbuffsiz, &v->linedat); //(short *)&ptsbuff, sizeof(ptsbuff), &v->linedat );
+			wide_line(r, c, (short *)&points, 2, clip, (short *)&v->spanbuff, v->spanbuffsiz, &v->line, &v->linedat);
 		else
-			pline(v, (short *)&points, 2, (short *)&v->spanbuff, v->spanbuffsiz, &v->linedat); //(short *)&ptsbuff, sizeof(ptsbuff), &v->linedat);
+			pline(r, c, (short *)&points, 2, clip, (short *)&v->spanbuff, v->spanbuffsiz, &v->line, &v->linedat);
 
 		count--;
 	}
@@ -178,7 +182,7 @@ vql_attributes( VDIPB *pb, VIRTUAL *v)
 {
 
 	pb->intout[0] = v->line.index + 1;
-	pb->intout[1] = v->color_hw2vdi[v->line.color];
+	pb->intout[1] = v->colinf->color_hw2vdi[v->line.color];
 	pb->intout[2] = v->linedat.wrmode + 1;
 	pb->intout[3] = v->line.beg;
 	pb->intout[4] = v->line.end;

@@ -10,7 +10,9 @@
 struct	console
 {
 	FONT_HEAD 		*f;
-	struct virtual		*v;
+	struct ovdi_driver	*drv;
+	struct raster		*r;
+	struct colinf		*colinf;
 	struct linea_vartab	*la;
 	
 	short	tc_flags;	/* text cursor flags */
@@ -20,8 +22,8 @@ struct	console
 	short		blinkrate;
 	short		nxt_blink;
 	short		save_row;
-	short		*col_vdi2hw;
-	short		*col_hw2vdi;
+//	short		*col_vdi2hw;
+//	short		*col_hw2vdi;
 	PatAttr		pattern;
 	
 	/* Device API */
@@ -42,6 +44,7 @@ typedef void (*EscFunc)(CONSOLE *c);
 
 void init_console(VIRTUAL *v, LINEA_VARTAB *la);
 void install_console_handlers(CONSOLE *c);
+void change_console_resolution(CONSOLE *c, struct raster *r);
 void enter_console(CONSOLE *c);
 void exit_console(CONSOLE *c);
 short conf_textcursor_blink(CONSOLE *c, short mode, short rate);

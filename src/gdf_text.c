@@ -17,7 +17,8 @@ output_gdftext( VIRTUAL *v, POINT *xy, short *text, short textlen, short jlen, s
 	short chr, strwidth, width, words, spaces, direction, wordx, charx, rmwordx, rmcharx;
 	short x1, y1, x2, y2, tmp, left_offset, right_offset, nxt_x1;
 	long sc, sw, sca, swa, scs, sws;
-	register VDIRECT clp, src, dst;
+	VDIRECT *clip;
+	VDIRECT clp, src, dst;
 	MFDB /*fontd,*/ screen;
 	MFDB *fmfdb;
 	short colors[2];
@@ -33,6 +34,8 @@ output_gdftext( VIRTUAL *v, POINT *xy, short *text, short textlen, short jlen, s
 	y1	= xy->y;
 
 	strwidth = gdf_string_width(f, text, textlen);
+
+	clip	= v->clip.flag ? (VDIRECT *)&v->clip.x1 : (VDIRECT *)&v->raster->x1;
 
 	if (jlen && (cf || wf))
 	{
@@ -168,29 +171,29 @@ output_gdftext( VIRTUAL *v, POINT *xy, short *text, short textlen, short jlen, s
 	dst.x2 = x2;
 	dst.y2 = y2;
 
-	if (x1 < v->clip.x1)
+	if (x1 < clip->x1)
 	{
-		if (x2 < v->clip.x1)
+		if (x2 < clip->x1)
 			return;
-		x1 = v->clip.x1;
+		x1 = clip->x1;
 	}
-	if (x2 > v->clip.x2)
+	if (x2 > clip->x2)
 	{
-		if (x1 > v->clip.x2)
+		if (x1 > clip->x2)
 			return;
-		x2 = v->clip.x2;
+		x2 = clip->x2;
 	}
-	if (y1 < v->clip.y1)
+	if (y1 < clip->y1)
 	{
-		if (y2 < v->clip.y1)
+		if (y2 < clip->y1)
 			return;
-		y1 = v->clip.y1;
+		y1 = clip->y1;
 	}
-	if (y2 > v->clip.y2)
+	if (y2 > clip->y2)
 	{
-		if (y1 > v->clip.y2)
+		if (y1 > clip->y2)
 			return;
-		y2 = v->clip.y2;
+		y2 = clip->y2;
 	}
 
 	clp.x1 = x1;
@@ -225,17 +228,17 @@ output_gdftext( VIRTUAL *v, POINT *xy, short *text, short textlen, short jlen, s
 
 	nxt_x1 = dst.x1;
 
-	if (nxt_x1 > v->clip.x2)
+	if (nxt_x1 > clip->x2)
 		return;
 	
 	tmp = nxt_x1 + (fmfdb->fd_w - 1);
-	if (tmp >= v->clip.x1)
+	if (tmp >= clip->x1)
 	{
-		coords[4] = nxt_x1 < v->clip.x1 ? v->clip.x1 : nxt_x1;
-		coords[6] = tmp > v->clip.x2 ? v->clip.x2 : tmp;
+		coords[4] = nxt_x1 < clip->x1 ? clip->x1 : nxt_x1;
+		coords[6] = tmp > clip->x2 ? clip->x2 : tmp;
 		coords[0] = coords[4] - nxt_x1;
 		coords[2] = coords[6] - nxt_x1;
-		rt_cpyfm( v, fmfdb/*&fontd*/, &screen, coords, v->font.color, v->font.bgcol, v->font.wrmode);
+		rt_cpyfm( v->raster, v->colinf, fmfdb/*&fontd*/, &screen, coords, clip, v->font.color, v->font.bgcol, v->font.wrmode);
 	}
 
 	if (!(textlen--))
@@ -280,7 +283,7 @@ output_gdftext( VIRTUAL *v, POINT *xy, short *text, short textlen, short jlen, s
 			}
 		}
 
-		if (nxt_x1 > v->clip.x2)
+		if (nxt_x1 > clip->x2)
 			return;
 
 	/* CACHE SHIT */
@@ -299,13 +302,13 @@ output_gdftext( VIRTUAL *v, POINT *xy, short *text, short textlen, short jlen, s
 
 		tmp = nxt_x1 + (fmfdb->fd_w - 1);
 
-		if (tmp >= v->clip.x1)
+		if (tmp >= clip->x1)
 		{
-			coords[6] = tmp > v->clip.x2 ? v->clip.x2 : tmp;
-			coords[4] = nxt_x1 < v->clip.x1 ? v->clip.x1 : nxt_x1;
+			coords[6] = tmp > clip->x2 ? clip->x2 : tmp;
+			coords[4] = nxt_x1 < clip->x1 ? clip->x1 : nxt_x1;
 			coords[0] = coords[4] - nxt_x1;
 			coords[2] = coords[6] - nxt_x1;
-			rt_cpyfm( v, fmfdb, (MFDB *)&screen, (short *)coords, v->font.color, v->font.bgcol, v->font.wrmode);
+			rt_cpyfm( v->raster, v->colinf, fmfdb, (MFDB *)&screen, (short *)coords, clip, v->font.color, v->font.bgcol, v->font.wrmode);
 		}
 	}
 	return;

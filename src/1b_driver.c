@@ -352,7 +352,7 @@ ALL_BLACK(unsigned char *addr, long data)
 }
 
 void
-draw_solid_rect_1b(RASTER *r, short *corners, short wrmode, short color)
+draw_solid_rect_1b(RASTER *r, COLINF *c, short *corners, short wrmode, short color)
 {
 	unsigned short *dst, *d;
 	short i, bypl, dx, dy, sb, hb, tb, g;

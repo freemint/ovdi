@@ -21,7 +21,6 @@ load_font( char *fn, long *size, long *loc)
 
 	if (total_fsize + fs + sizeof(XGDF_HEAD) > sizeof(fonts_buffer))
 	{
-		log("fontbuffer exhausted!\n");
 		return -1;
 	}
 

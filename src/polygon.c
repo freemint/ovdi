@@ -5,7 +5,7 @@
 #include "polygon.h"
 
 void
-filled_poly(VIRTUAL *v, short *pts, short n, short *points, long pointasize, PatAttr *ptrn)
+filled_poly(RASTER *r, COLINF *c, short *pts, short n, VDIRECT *clip, short *points, long pointasize, PatAttr *ptrn)
 {
 	int i, j;
 	short tmp, y;
@@ -44,10 +44,10 @@ filled_poly(VIRTUAL *v, short *pts, short n, short *points, long pointasize, Pat
 
 	}
 
-	if (miny < v->clip.y1)
-		miny = v->clip.y1;
-	if (maxy > v->clip.y2)
-		maxy = v->clip.y2;
+	if (miny < clip->y1)
+		miny = clip->y1;
+	if (maxy > clip->y2)
+		maxy = clip->y2;
 
 	spans = 0;
 	coords = &points[n];
@@ -98,15 +98,15 @@ filled_poly(VIRTUAL *v, short *pts, short n, short *points, long pointasize, Pat
 		if (spans > max_spans)
 		{			/* Should really check against size of points array! */
 			for (i = n; i < (n+(spans*3)); i += 3)
-				draw_spans(v, points[i+1], points[i+2], points[i], ptrn);
+				draw_spans(r, c, points[i+1], points[i+2], points[i], ptrn);
 
 			spans = 0;
 			coords = &points[n];
 		}
 #endif
 
-		x1 = v->clip.x1;
-		x2 = v->clip.x2;
+		x1 = clip->x1;
+		x2 = clip->x2;
 
 		for(i = 0; i < ints - 1; i += 2)
 		{
@@ -133,7 +133,7 @@ filled_poly(VIRTUAL *v, short *pts, short n, short *points, long pointasize, Pat
 	if (spans)
 	{
 		for (i = n; i < (n+(spans*3)); i += 3)
-			draw_spans(v, points[i+1], points[i+2], points[i], ptrn);
+			draw_spans(r, c, points[i+1], points[i+2], points[i], ptrn);
 	}
 #endif
 }

@@ -17,7 +17,9 @@ static void		ovdidev_setcolor	(OVDI_DRIVER *drv, short pen, RGB_LIST *colors);
 static void		ovdidev_vsync		(OVDI_DRIVER *drv);
 static void		ovdidev_vreschk		(short x, short y);
 
-static short	Load_Resolution(short index, RESOLUTION *res);
+static short	Load_Resolution(char *fname, short index, RESOLUTION *res);
+static short	change_resolution(OVDI_DRIVER *drv, RESOLUTION *res);
+
 static short	boot_drive;
 int get_cookie(long tag, long *ret);
 
@@ -421,10 +423,9 @@ static char pf_32bIbs[] =
 };
 
 static short
-Load_Resolution(short res_index, RESOLUTION *res )
+Load_Resolution(char *fname, short res_index, RESOLUTION *res)
 {
-	
-	char fname[] = "c:\\auto\\sta_vdi.bib\0";
+	//char fname[] = "c:\\auto\\sta_vdi.bib\0";
 	short fd;
 	long r;
 
@@ -500,25 +501,58 @@ ovdidev_open(OVDI_DEVICE *dev, short dev_id)
 	XCB *x = xcb;
 	OVDI_DRIVER *drv = &driver;
 	RESOLUTION res;
-	long tmp;
-	short fmt, res_index;
+	short res_index;
+	char fname[] = "c:\\auto\\sta_vdi.bib\0";
 
 	res_index = (unsigned char)x->resolution;
 
-	if ( !(Load_Resolution(res_index, &res)) )
-	{
-		log("No resolution??\n");
+	if ( !(Load_Resolution((char *)&fname, res_index, &res)) )
 		return 0;
+
+	if (change_resolution(drv, &res))
+	{
+		drv->dev	= dev;
+		return drv;
 	}
+	else
+		return 0;
+}
+
+static long
+ovdidev_close(OVDI_DRIVER *drv)
+{
+	RESOLUTION res;
+	char fname[] = "c:\\auto\\emulator.bib\0";
+
+	if ( !(Load_Resolution((char *)&fname, 0, &res)) )
+		return 0;
+
+	if ( change_resolution(drv, &res) )
+		return (long)drv;
+	else
+		return 0;
+
+	return 0;
+}
+
+static short
+change_resolution(OVDI_DRIVER *drv, RESOLUTION *res)
+{
+	XCB *x = xcb;
+	long tmp;
+	short fmt;
 
 	tmp =	(long)x->scr_base;
 	tmp -=	(long)x->base;
 
-	do_p_chres((long)x->p_chres, &res, tmp);
+	do_p_chres((long)x->p_chres, res, tmp);
 
 	drv->r.planes		= x->planes;
 	drv->r.bypl		= x->bypl;
 	drv->palette		= x->colors;
+	drv->r.x1 = drv->r.y1	= 0;
+	drv->r.x2		= x->max_x;
+	drv->r.y2		= x->max_y;
 	drv->r.w		= x->max_x + 1;
 	drv->r.h		= x->max_y + 1;
 	drv->v_top		= x->v_top;
@@ -530,7 +564,6 @@ ovdidev_open(OVDI_DEVICE *dev, short dev_id)
 	drv->scr_size		= x->scrn_siz;
 	drv->r.lenght		= x->scrn_siz;
 	drv->r.base		= x->scr_base;
-	drv->dev		= dev;
 	drv->r.flags		= R_IS_SCREEN | R_IN_VRAM;
 
 	if (drv->r.planes == 1)
@@ -607,18 +640,12 @@ ovdidev_open(OVDI_DEVICE *dev, short dev_id)
 	}
 	else
 	{
-		log(" planes = %d\n", drv->r.planes);
 		return 0;
 	}
 
-	return drv;
+	return 1;
 }
 
-static long
-ovdidev_close(OVDI_DRIVER *drv)
-{
-	return 0;
-}
 
 static unsigned char *
 ovdidev_setpscreen(OVDI_DRIVER *drv, unsigned char *scradr)
@@ -643,9 +670,6 @@ static void
 ovdidev_setcolor(OVDI_DRIVER *drv, short pen, RGB_LIST *colors)
 {
 	unsigned char bcols[4];
-
-	if (drv->r.planes != 8)
-		return;
 
 	bcols[0] = (unsigned char)colors->red;
 	bcols[1] = (unsigned char)colors->green;

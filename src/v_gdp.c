@@ -52,12 +52,20 @@ v_gdp( VDIPB *pb, VIRTUAL *v)
 void
 v_bar( VDIPB *pb, VIRTUAL *v)
 {
-
+	RASTER *r = v->raster;
+	COLINF *c = v->colinf;
+	VDIRECT *clip;
+	LINE_ATTRIBS *latr;
+	short interior;
 	short coords[10];
 
+	clip = v->clip.flag ? (VDIRECT *)&v->clip.x1 : (VDIRECT *)&r->x1;
+	interior = v->fill.interior;
+	latr = &v->line;
+
 	sortcpy_corners(&pb->ptsin[0], &coords[0]);
-	rectfill( v,	(VDIRECT *)&coords[0],
-			v->fill.interior == FIS_USER ? &v->udpat : &v->pattern);
+	rectfill( r, c, (VDIRECT *)&coords[0], clip,
+			interior == FIS_USER ? &v->udpat : &v->pattern, interior);
 
 	if (v->fill.perimeter)
 	{
@@ -68,7 +76,7 @@ v_bar( VDIPB *pb, VIRTUAL *v)
 		coords[6] = coords[8] = coords[0];
 		coords[3] = coords[9] = coords[1];
 
-		pline( v, (short *)&coords, 5, (short *)&ptsbuff, sizeof(ptsbuff), &v->perimdata); //&v->linedat);
+		pline( r, c, (short *)&coords, 5, clip, (short *)&ptsbuff, sizeof(ptsbuff), latr, &v->perimdata);
 	}
 	return;
 }

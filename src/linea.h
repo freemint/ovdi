@@ -3,9 +3,9 @@
 
 typedef struct linea_vartab LINEA_VARTAB;
 
+#include "ovdi_defs.h"
 #include "gdf_defs.h"
 #include "mouse.h"
-#include "ovdi_defs.h"
 #include "vdi_defs.h"
 
 /* These are bits in reservd7 used by the console

@@ -1,10 +1,10 @@
 #ifndef _OVDI_MOUSEDRV_H
 #define _OVDI_MOUSEDRV_H
 
+#include "ovdi_defs.h"
 #include "linea.h"
 #include "mouse.h"
-#include "ovdi_defs.h"
-#include "ovdi_dev.h"
+//#include "ovdi_dev.h"
 
 #define	MB_LEFT		1
 #define MB_RIGHT	2
@@ -22,6 +22,8 @@ struct xmsave
 	unsigned char *src;
 	unsigned char *save;
 };
+typedef struct xmsave XMSAVE;
+
 
 struct xmform
 {
@@ -36,16 +38,19 @@ struct xmform
 	short	mfbypl;			/* Bytes per line of mouse data */
 	short	width;			/* Width of mouse data in pixels */
 	short	height;			/* Height of mouse data in pixels */
-	short	fg_col;			/* Foreground color (only used with mono mouse forms) */
-	short	bg_col;			/* Background color (only used with mono mouse forms) */
-	long	fg_pix;			/* Foreground color pixel value */
-	long	bg_pix;			/* Background color pixel value */
+	short	fg_col;			/* Foreground VDI color */
+	short	bg_col;			/* Background VDI color */
+	long	fg_pix;			/* Foreground HW color pixel value */
+	long	bg_pix;			/* Background HW color pixel value */
 
 	XMSAVE	*save;			/* Pointer to XMSAVE used to save background */
 	unsigned short *mask;
 	unsigned char *data;		/* Pointer to mouse form data */
 };
+typedef	struct xmform XMFORM;
 
+typedef void (*draw_mc)		(register struct xmform *xmf, register short x, register short y);
+typedef void (*undraw_mc)	(register struct xmsave *xms);
 
 struct mousedrv
 {
@@ -59,6 +64,9 @@ struct mousedrv
 	void			(*absmovmcurs)(register short x, register short y);
 	void			(*butchg)(register unsigned short bs);
 
+
+	struct raster		*raster;
+	struct colinf		*colinf;
 	LINEA_VARTAB		*la;
 	XMFORM			*current_xmf;
 	XMSAVE			*current_xms;
@@ -81,6 +89,7 @@ struct mousedrv
 	volatile unsigned short	last_bs;
 
 };
+typedef struct mousedrv MOUSEDRV;
 
 struct mouseapi
 {
@@ -90,8 +99,8 @@ struct mouseapi
 	void		(*enable)(void);
 	void		(*disable)(void);
 
-	void		(*setxmfres)(VIRTUAL *v);
-	void		(*setnewmform)(VIRTUAL *v, MFORM *mf);
+	void		(*setxmfres)(struct raster *r, struct colinf *c);
+	void		(*setnewmform)(MFORM *mf);
 	void		(*resetmcurs)();
 	void		(*enablemcurs)();
 	void		(*disablemcurs)();
@@ -110,8 +119,8 @@ struct mouseapi
 #define MVEC_MOV	2
 	unsigned long	(*setvector)(short vecnum, unsigned long vector);
 	void		(*housekeep)(void);
-
 };
+typedef struct mouseapi MOUSEAPI;
 
 MOUSEAPI * init_mouse	(VIRTUAL *v, LINEA_VARTAB *la);
 

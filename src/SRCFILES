@@ -18,11 +18,13 @@ HEADER = \
 	libkern.h \
 	linea.h \
 	math.h \
+	memory.h \
 	mouse.h \
 	mousedrv.h \
 	ovdi.h \
 	ovdi_defs.h \
 	ovdi_dev.h \
+	ovdi_rasters.h \
 	ovdi_types.h \
 	patch_gem.h \
 	polygon.h \
@@ -71,9 +73,11 @@ COBJS = \
 	line.c \
 	linea.c \
 	math.c \
+	memory.c \
 	mousedrv.c \
 	ovdi.c \
 	ovdi_dev.c \
+	ovdi_rasters.c \
 	patch_gem.c \
 	polygon.c \
 	rasters.c \

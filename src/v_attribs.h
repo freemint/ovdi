@@ -11,8 +11,8 @@ void	vs_clip		( VDIPB *pb, VIRTUAL *v);
 void	lvs_clip	( VIRTUAL *v, short flag, VDIRECT *cliprect);
 
 void	vs_color	( VDIPB *pb, VIRTUAL *v);
-void	lvs_color	( VIRTUAL *v, short vdipen, RGB_LIST *request);
-
+void	lvs_color	( VIRTUAL *v, short hwpen, RGB_LIST *color);
+short	calc_vdicolor	( RASTER *r, COLINF *c, short vdipen, RGB_LIST *color);
 void	vq_color	( VDIPB *pb, VIRTUAL *v);
 
 void	set_writingmode	( short wrmode, short *ret);

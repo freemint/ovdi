@@ -6,6 +6,8 @@
 #include "gdf_text.h"
 #include "libkern.h"
 #include "ovdi_defs.h"
+#include "ovdi_dev.h"
+#include "ovdi_rasters.h"
 #include "ovdi_types.h"
 #include "rasters.h"
 #include "vdi_defs.h"
@@ -21,6 +23,8 @@
 #define xconout_raw	*(long *)(0x592)
 #define bell_hook	*(long *)(0x5ac)
 #define conterm		*(char *)(0x484)
+
+//static void change_resolution(CONSOLE *c, RASTER *r);
 
 EscFunc ctrl_codes[] =
 {
@@ -98,7 +102,14 @@ char LC_escapeflags[] =
 
 static unsigned short consfill = 0xffff;
 
-CONSOLE console;
+static CONSOLE console;
+
+static COLINF colinf;
+static short vdi2hw[256];
+static short hw2vdi[256];
+static RGB_LIST request_rgb[256];
+static RGB_LIST actual_rgb[256];
+static unsigned long pixelvalues[256];
 
 /* init console structure. All console functions will reference the
  * VIRTUAL structure passed here.
@@ -111,59 +122,31 @@ init_console(VIRTUAL *v, LINEA_VARTAB *la)
 
 	bzero(&console, sizeof(CONSOLE));
 
-	f = sysfnt09p->font_head; //sysfnt10p;
-	c->f = f;
-	c->v = v;
-	c->la = la;
 
-	c->col_vdi2hw = v->color_vdi2hw;
-	c->col_hw2vdi = v->color_hw2vdi;
-
-	c->pattern.expanded = 0;
-	c->pattern.color[0] = c->pattern.color[1] = c->col_vdi2hw[0];
-	c->pattern.color[2] = c->pattern.color[3] = v->raster->planes > 8 ? 0 : 0xff;
-	c->pattern.bgcol[0] = c->pattern.bgcol[1] = c->col_vdi2hw[1];
-	c->pattern.bgcol[2] = c->pattern.bgcol[3] = v->raster->planes > 8 ? 0xff : 0x0;
-
-	c->pattern.width = 16;
-	c->pattern.height = 1;
-	c->pattern.wwidth = 1;
-	c->pattern.planes = 1;
-	c->pattern.wrmode = 2;
-	c->pattern.mask = 0xffff;
-	c->pattern.data = &consfill;
+	f	= sysfnt09p->font_head; //sysfnt10p;
+	c->f	= f;
+	c->r	= v->raster;
+	c->drv	= v->driver;
+	c->la	= la;
 
 	c->curs_hide_ct = 1;
 	c->tps = (*v->driver->get_vbitics)();
 
 	/* console driver */
-	c->enter_console = &console_enter;
-	c->exit_console = &console_exit;
-	c->draw_text_cursor = &draw_text_cursor;
-	c->undraw_text_cursor = &undraw_text_cursor;
-	c->textcursor_blink = &do_txtcurs_blnk;
-	c->scroll_lines = &scroll_lines;
-	c->erase_lines = &erase_lines;
-	c->draw_character = &draw_character;
-	c->csout_char = &cs_output_character;
+	c->enter_console	= &console_enter;
+	c->exit_console		= &console_exit;
+	c->draw_text_cursor	= &draw_text_cursor;
+	c->undraw_text_cursor	= &undraw_text_cursor;
+	c->textcursor_blink	= &do_txtcurs_blnk;
+	c->scroll_lines		= &scroll_lines;
+	c->erase_lines		= &erase_lines;
+	c->draw_character	= &draw_character;
+	c->csout_char		= &cs_output_character;
 	
-
-	/* Initialize the Line A variables used by the console/vt52 emulator */
-	la->v_cur_x = la->v_cur_y = la->v_sav_x = la->v_sav_y = 0;
-	la->v_cel_ht = f->top + f->bottom + 1;
-	la->v_cel_wr = 0;	/* Not used!!! */
-	la->v_cel_mx = (v->raster->w / f->max_cell_width) - 1;
-	la->v_cel_my = (v->raster->h / (f->top + f->bottom + 1)) - 1;
-	la->v_cur_flag = 0;
-	la->v_col_fg = c->col_vdi2hw[1];
-	la->v_col_bg = c->col_vdi2hw[0];
-
-	la->v_cur_ad = (unsigned char *)v->raster->base;
-	la->v_cur_of = 0;
-
 	la->v_period = 1 * 66;
 	la->v_cur_ct = 1 * 66;
 
+	la->v_cur_flag	= V_LINEWRAP;
 	la->v_fnt_ad = f->dat_table;
 	la->v_fnt_nd = f->last_ade;
 	la->v_fnt_st = f->first_ade;
@@ -179,12 +162,78 @@ init_console(VIRTUAL *v, LINEA_VARTAB *la)
 	la->loff = f->left_offset;
 	la->scale = 0;
 	la->chup = 0;
-	la->textfg = c->col_vdi2hw[1];
-	la->textbg = c->col_vdi2hw[0];
+
+	change_console_resolution(c, v->raster);
 
 	v->con = c;
 	return;
 }
+
+void
+change_console_resolution(CONSOLE *c, RASTER *r)
+{
+	short i, hwpen;
+	FONT_HEAD *f = c->f;
+	LINEA_VARTAB *la = c->la;
+	COLINF *cinf;
+
+	c->r = r;
+
+	if (c->colinf)
+		cinf = c->colinf;
+	else
+	{
+		cinf = &colinf;
+		cinf->color_vdi2hw = (short *)&vdi2hw;
+		cinf->color_hw2vdi = (short *)&hw2vdi;
+		cinf->pixelvalues = (unsigned long *)&pixelvalues;
+		cinf->request_rgb = (RGB_LIST *)&request_rgb;
+		cinf->actual_rgb = (RGB_LIST *)&actual_rgb;
+
+		c->colinf = cinf;
+	}
+	
+	init_colinf(r, cinf);
+
+	if (r->clut)
+	{
+		for (i = 0; i < cinf->pens; i++)
+		{
+			hwpen = cinf->color_vdi2hw[i];
+			(*c->drv->dev->setcol)(c->drv, hwpen, &cinf->actual_rgb[hwpen]);
+		}
+	}
+
+	c->pattern.expanded = 0;
+	c->pattern.color[0] = c->pattern.color[1] = cinf->color_vdi2hw[0];
+	c->pattern.color[2] = c->pattern.color[3] = r->planes > 8 ? 0 : 0xff;
+	c->pattern.bgcol[0] = c->pattern.bgcol[1] = cinf->color_vdi2hw[1];
+	c->pattern.bgcol[2] = c->pattern.bgcol[3] = r->planes > 8 ? 0xff : 0x0;
+
+	c->pattern.width	= 16;
+	c->pattern.height	= 1;
+	c->pattern.wwidth	= 1;
+	c->pattern.planes	= 1;
+	c->pattern.wrmode	= 2;
+	c->pattern.mask		= 0xffff;
+	c->pattern.data		= &consfill;
+
+	/* Initialize the Line A variables used by the console/vt52 emulator */
+	la->v_cur_x	= la->v_cur_y = la->v_sav_x = la->v_sav_y = 0;
+	la->v_cel_ht	= f->top + f->bottom + 1;
+	la->v_cel_wr	= 0;	/* Not used!!! */
+	la->v_cel_mx	= (r->x2 / f->max_cell_width); // - 1;
+	la->v_cel_my	= (r->y2 / (f->top + f->bottom + 1)); // - 1;
+	la->v_col_fg	= cinf->color_vdi2hw[1];
+	la->v_col_bg	= cinf->color_vdi2hw[0];
+
+	la->v_cur_ad	= (unsigned char *)r->base;
+	la->v_cur_of	= 0;
+
+	la->textfg	= cinf->color_vdi2hw[1];
+	la->textbg	= cinf->color_vdi2hw[0];
+}
+
 void
 install_console_handlers(CONSOLE *c)
 {
@@ -630,7 +679,7 @@ Esc_b(CONSOLE *c)
 void
 Esc_b_collect(CONSOLE *c, short color)
 {
-	c->la->v_col_fg = c->col_vdi2hw[color & 0xf];
+	c->la->v_col_fg = c->colinf->color_vdi2hw[color & 0xf];
 	set_constate(c, (long)&con_state_handler);
 	return;
 }
@@ -648,7 +697,7 @@ Esc_c(CONSOLE *c)
 void
 Esc_c_collect(CONSOLE *c, short color)
 {
-	c->la->v_col_bg = c->col_vdi2hw[color & 0xf];
+	c->la->v_col_bg = c->colinf->color_vdi2hw[color & 0xf];
 	set_constate(c, (long)&con_state_handler);
 	return;
 }
@@ -889,12 +938,15 @@ void
 erase_lines( CONSOLE *c, short x1, short y1, short x2, short y2)
 {
 	FONT_HEAD *f;
-	VIRTUAL *v;
+	RASTER *r;
+	COLINF *ci;
 	short cwidth, cheight, lines;
 	short coords[4];
 
 	f = c->f;
-	v = c->v;
+	r = c->r;
+	ci = c->colinf;
+
 
 	cwidth = f->max_cell_width;
 	cheight = f->top + f->bottom + 1;
@@ -907,7 +959,7 @@ erase_lines( CONSOLE *c, short x1, short y1, short x2, short y2)
 		coords[1] = y1 * cheight;
 		coords[2] = ((x2 + 1) * cwidth) - 1;
 		coords[3] = ((y1 + 1) * cheight) - 1;
-		rectfill(v, (VDIRECT *)&coords, &c->pattern);
+		rectfill(r, ci, (VDIRECT *)&coords, (VDIRECT *)&r->x1, &c->pattern, FIS_SOLID);
 	}
 	else if (lines == 2)
 	{
@@ -915,34 +967,33 @@ erase_lines( CONSOLE *c, short x1, short y1, short x2, short y2)
 		coords[1] = y1 * cheight;
 		coords[2] = ((c->la->v_cel_mx + 1) * cwidth) - 1;
 		coords[3] = ((y1 + 1) * cheight) - 1;
-		rectfill(v, (VDIRECT *)&coords, &c->pattern);
+		rectfill(r, ci, (VDIRECT *)&coords, (VDIRECT *)&r->x1, &c->pattern, FIS_SOLID);
 
 		coords[0] = 0;
 		coords[1] = (y1 + 1) * cheight;
 		coords[2] = (x2 * cwidth) - 1;
 		coords[3] = ((y2 + 1) * cheight) - 1;
-		rectfill(v, (VDIRECT *)&coords, &c->pattern);
+		rectfill(r, ci, (VDIRECT *)&coords, (VDIRECT *)&r->x1, &c->pattern, FIS_SOLID);
 	}
 	else
 	{
-
 		coords[0] = x1 * cwidth;
 		coords[1] = y1 * cheight;
 		coords[2] = ((c->la->v_cel_mx + 1) * cwidth) - 1;
 		coords[3] = ((y1 + 1) * cheight) - 1;
-		rectfill(v, (VDIRECT *)&coords, &c->pattern);
+		rectfill(r, ci, (VDIRECT *)&coords, (VDIRECT *)&r->x1, &c->pattern, FIS_SOLID);
 
 		coords[0] = 0;
 		coords[1] = (y1 + 1) * cheight;
 		coords[2] = ((c->la->v_cel_mx + 1) * cwidth) - 1;
 		coords[3] = (y2 * cheight) - 1;
-		rectfill(v, (VDIRECT *)&coords, &c->pattern);
+		rectfill(r, ci, (VDIRECT *)&coords, (VDIRECT *)&r->x1, &c->pattern, FIS_SOLID);
 
 		coords[0] = 0;
 		coords[1] = y2 * cheight;
 		coords[2] = (x2 * cwidth) - 1;
 		coords[3] = ((y2 + 1) * cheight) - 1;
-		rectfill(v, (VDIRECT *)&coords, &c->pattern);
+		rectfill(r, ci, (VDIRECT *)&coords, (VDIRECT *)&r->x1, &c->pattern, FIS_SOLID);
 	}
 	return;
 }
@@ -953,11 +1004,13 @@ scroll_lines( CONSOLE *c, short y, short nlines, short direction)
 {
 	short cheight, cwidth;
 	FONT_HEAD *f;
+	RASTER *r;
 	short pts[8];
 	register short *srcpts, *dstpts;
 	MFDB src, dst;
 
 	f = c->f;
+	r = c->r;
 
 	cheight = f->top + f->bottom + 1;
 	cwidth = f->max_cell_width;
@@ -966,7 +1019,7 @@ scroll_lines( CONSOLE *c, short y, short nlines, short direction)
 	dstpts = (short *)&pts[4];
 
 	srcpts[0] = dstpts[0] = 0;
-	srcpts[2] = dstpts[2] = (c->la->v_cel_mx * cwidth) - 1;
+	srcpts[2] = dstpts[2] = ((c->la->v_cel_mx + 1) * cwidth) - 1;
 
 	if (direction == UP)
 	{
@@ -993,16 +1046,18 @@ scroll_lines( CONSOLE *c, short y, short nlines, short direction)
 	}
 
 	src.fd_addr = dst.fd_addr = 0;
-	ro_cpyfm(c->v, &src, &dst, pts, 3);
+	ro_cpyfm( r, &src, &dst, pts, (VDIRECT *)&r->x1, 3);
 	return;
 }
 
 void
 draw_text_cursor(CONSOLE *c)
 {
-
+	RASTER *r;
 	register short cwidth, cheight;
 	short coords[4];
+
+	r = c->r;
 
 	cwidth = c->f->max_cell_width;
 	cheight = c->f->top + c->f->bottom + 1;
@@ -1013,7 +1068,7 @@ draw_text_cursor(CONSOLE *c)
 	coords[3] = coords[1] + cheight - 1;
 
 	c->pattern.wrmode = MD_XOR - 1;
-	rectfill( c->v, (VDIRECT *)&coords[0], &c->pattern);
+	rectfill( r, c->colinf, (VDIRECT *)&coords, (VDIRECT *)&r->x1, &c->pattern, FIS_SOLID);
 
 	return;
 }
@@ -1030,13 +1085,12 @@ draw_character(CONSOLE *c, short chr)
 {
 	MFDB dst, fontd;
 	FONT_HEAD *f;
-	VIRTUAL *v;
+	RASTER *r;
 	register short cwidth, cheight, fc, bc;
-	VDIRECT sclip;
 	short coords[8];
 
 	f = c->f;
-	v = c->v;
+	r = c->r;
 
 	cwidth = f->max_cell_width;
 	cheight = f->top + f->bottom + 1;
@@ -1053,12 +1107,6 @@ draw_character(CONSOLE *c, short chr)
 
 	dst.fd_addr = 0;
 
-	cwidth = v->clip_flag;
-	sclip = v->clip;
-	v->clip.x1 = v->clip.y1 = 0;
-	v->clip.x2 = v->raster->w - 1;
-	v->clip.y2 = v->raster->h - 1;
-
 	if (c->la->v_cur_flag & V_INVERSED)
 	{
 		fc = c->la->v_col_bg;
@@ -1071,10 +1119,7 @@ draw_character(CONSOLE *c, short chr)
 	}
 
 
-	rt_cpyfm( v, &fontd, &dst, (short *)coords, fc, bc, 0);
-
-	v->clip_flag = cwidth;
-	v->clip = sclip;
+	rt_cpyfm( r, c->colinf, &fontd, &dst, (short *)coords, (VDIRECT *)&r->x1, fc, bc, 0);
 
 	return;
 }

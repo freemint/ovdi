@@ -11,10 +11,6 @@ typedef	struct ovdidrv_functab OVDIDRV_FUNCTAB;
 typedef struct ovdi_driver OVDI_DRIVER;
 typedef struct ovdi_device OVDI_DEVICE;
 
-typedef	struct xmform XMFORM;
-typedef struct xmsave XMSAVE;
-typedef struct mousedrv MOUSEDRV;
-typedef struct mouseapi MOUSEAPI;
 
 //typedef void		(*draw_pixel)(unsigned char *adr, long data);
 //typedef long		(*read_pixel)(unsigned char *adr);
@@ -47,40 +43,9 @@ struct ovdidrv_functab
 	void		(*enable_vbi)(void);
 	void		(*disable_vbi)(void);
 
-//	draw_mc draw_mc;
-//	undraw_mc undraw_mc;
-
-//	unsigned long	(*get_pixel)(unsigned char *base, short bypl, short x, short y);
-//	void		(*put_pixel)(unsigned char *base, short bypl, short x, short y, unsigned long pixel);
-	
-//	draw_pixel *pixelfuncts;
-//	draw_pixel *rt_functs;
-//	raster_op *raster_operations;
-
-	/*drawpixel_functs *pixelfuncts;*/
 //	long	reservd[128-3];
 	
 };
-
-/* Structure describing a raster - all drawing primitives get its info from */
-/* this structure */
-struct raster
-{
-	unsigned char		*base;
-	unsigned long		lenght;
-	struct ovdi_drawers	*drawers;
-	short			flags;
-	short			format;
-	short			w, h;
-	short			clut;
-	short			planes;
-	short			pixlen;
-	short			bypl;
-	short			wpixel, hpixel;
-	char			*pixelformat;
-	unsigned long		*pixelvalues;
-};
-typedef struct raster RASTER;
 
 struct ovdi_driver
 {

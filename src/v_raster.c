@@ -3,6 +3,7 @@
 #include "display.h"
 #include "rasters.h"
 #include "ovdi_defs.h"
+#include "ovdi_dev.h"
 #include "vdi_defs.h"
 #include "v_raster.h"
 #include "vdi_globals.h"
@@ -11,10 +12,11 @@ void
 vro_cpyfm( VDIPB *pb, VIRTUAL *v)
 {
 	MFDB *s, *d;
+	RASTER *r = v->raster;
 
 	s = (MFDB *)((((unsigned long)pb->contrl[7]) << 16) | (unsigned short)pb->contrl[8]);
 	d = (MFDB *)((((unsigned long)pb->contrl[9]) << 16) | (unsigned short)pb->contrl[10]);
-	ro_cpyfm( v, s, d, (short *)&pb->ptsin[0], pb->intin[0]);
+	ro_cpyfm( r, s, d, (short *)&pb->ptsin[0], v->clip.flag ? (VDIRECT *)&v->clip.x1 : (VDIRECT *)&r->x1, pb->intin[0]);
 	return;
 }
 
@@ -22,16 +24,17 @@ void
 vrt_cpyfm( VDIPB *pb, VIRTUAL *v)
 {
 	MFDB *s, *d;
+	RASTER *r = v->raster;
 	short fgc, bgc, wrmode;
 
 	wrmode = pb->intin[0] - 1;
 
-	fgc = v->color_vdi2hw[pb->intin[1]];
-	bgc = v->color_vdi2hw[pb->intin[2]];
+	fgc = v->colinf->color_vdi2hw[pb->intin[1]];
+	bgc = v->colinf->color_vdi2hw[pb->intin[2]];
 
 	s = (MFDB *)((((unsigned long)pb->contrl[7]) << 16) | (unsigned short)pb->contrl[8]);
 	d = (MFDB *)((((unsigned long)pb->contrl[9]) << 16) | (unsigned short)pb->contrl[10]);
-	rt_cpyfm( v, s, d, (short *)&pb->ptsin[0], fgc, bgc, wrmode);
+	rt_cpyfm( r, v->colinf, s, d, (short *)&pb->ptsin[0], v->clip.flag ? (VDIRECT *)&v->clip.x1 : (VDIRECT *)&r->x1, fgc, bgc, wrmode);
 	return;
 }
 
@@ -53,7 +56,7 @@ v_get_pixel( VDIPB *pb, VIRTUAL *v)
 	RASTER *r = v->raster;
 	unsigned long pixel;
 
-	pixel = (*v->drawers->get_pixel)(r->base, r->bypl, pb->ptsin[0], pb->ptsin[1]);
+	pixel = (*r->drawers->get_pixel)(r->base, r->bypl, pb->ptsin[0], pb->ptsin[1]);
 
 	if (planes > 8)
 	{
@@ -77,7 +80,7 @@ v_get_pixel( VDIPB *pb, VIRTUAL *v)
 	else
 	{
 		pb->intout[0] = (unsigned short)pixel;
-		pb->intout[1] = v->color_hw2vdi[(unsigned short)pixel];
+		pb->intout[1] = v->colinf->color_hw2vdi[(unsigned short)pixel];
 	}
 
 	pb->contrl[N_INTOUT] = 2;

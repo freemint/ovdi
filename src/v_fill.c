@@ -29,10 +29,15 @@ lvsf_color( VIRTUAL *v, short color )
 	register short maxcolor, planes;
 
 	planes = v->raster->planes;
+	maxcolor = v->colinf->pens;
 
-	maxcolor = Planes2Pens[planes];
-	color = color < maxcolor ? color : maxcolor - 1;
+	if (color < 0)
+		color = 0;
+	else if (color >= maxcolor)
+		color = maxcolor - 1;
+
 	color = v->colinf->color_vdi2hw[color];
+
 	v->pattern.color[0] = v->pattern.color[1] = v->udpat.color[0] = v->udpat.color[1] = color;
 	v->pattern.color[2] = v->pattern.color[3] = v->udpat.color[2] = v->udpat.color[3] = planes > 8 ? 0x0 : 0xff;
 	v->fill.color = color;
@@ -46,9 +51,15 @@ lvsf_bgcolor( VIRTUAL *v, short color )
 
 
 	planes = v->raster->planes;
-	maxcolor = Planes2Pens[planes];
-	color = color < maxcolor ? color : maxcolor - 1;
+	maxcolor = v->colinf->pens;
+
+	if (color < 0)
+		color = 0;
+	else if (color >= maxcolor)
+		color = maxcolor - 1;
+
 	color = v->colinf->color_vdi2hw[color];
+
 	v->pattern.bgcol[0] = v->pattern.bgcol[1] = v->udpat.bgcol[0] = v->udpat.bgcol[1] = color;
 	v->pattern.bgcol[2] = v->pattern.bgcol[3] = v->udpat.bgcol[2] = v->udpat.bgcol[3] = planes > 8 ? 0xff : 0x0;
 	v->fill.bgcol = color;
@@ -61,10 +72,15 @@ lvsprm_color( VIRTUAL *v, short color )
 	register short maxcolor, planes;
 
 	planes = v->raster->planes;
+	maxcolor = v->colinf->pens;
 
-	maxcolor = Planes2Pens[planes];
-	color = color < maxcolor ? color : maxcolor - 1;
+	if (color < 0)
+		color = 0;
+	else if (color >= maxcolor)
+		color = maxcolor - 1;
+
 	color = v->colinf->color_vdi2hw[color];
+
 	v->perimdata.color[0] = v->perimdata.color[1] = color;
 	v->perimdata.color[2] = v->perimdata.color[3] = planes > 8 ? 0x0 : 0xff;
 	return;
@@ -76,10 +92,15 @@ lvsprm_bgcolor( VIRTUAL *v, short color )
 	register short maxcolor, planes;
 
 	planes = v->raster->planes;
+	maxcolor = v->colinf->pens;
 
-	maxcolor = Planes2Pens[planes];
-	color = color < maxcolor ? color : maxcolor - 1;
+	if (color < 0)
+		color = 0;
+	else if (color >= maxcolor)
+		color = maxcolor - 1;
+
 	color = v->colinf->color_vdi2hw[color];
+
 	v->perimdata.bgcol[0] = v->perimdata.bgcol[1] = color;
 	v->perimdata.bgcol[2] = v->perimdata.bgcol[3] = planes > 8 ? 0xff : 0x0;
 	return;

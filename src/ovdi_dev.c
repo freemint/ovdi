@@ -504,10 +504,17 @@ ovdidev_open(OVDI_DEVICE *dev, short dev_id)
 	short res_index;
 	char fname[] = "c:\\auto\\sta_vdi.bib\0";
 
-	res_index = (unsigned char)x->resolution;
+	if (dev_id == 1)
+		res_index = (unsigned char)x->resolution;
+	else
+		res_index = dev_id;
 
 	if ( !(Load_Resolution((char *)&fname, res_index, &res)) )
-		return 0;
+	{
+		res_index = 0;
+		if ( !(Load_Resolution((char *)&fname, res_index, &res)) )
+			return 0;
+	}
 
 	if (change_resolution(drv, &res))
 	{
@@ -569,12 +576,14 @@ change_resolution(OVDI_DRIVER *drv, RESOLUTION *res)
 	if (drv->r.planes == 1)
 	{
 		drv->r.format		= PF_ATARI;
+		drv->r.pixelformat	= pf_nova;
 		drv->r.clut		= 1;
 		drv->r.pixlen		= -1;
 	}
 	else if (drv->r.planes == 4)
 	{
 		drv->r.format		= PF_ATARI;
+		drv->r.pixelformat	= pf_nova;
 		drv->r.clut		= 1;
 		drv->r.pixlen		= -4;
 	}

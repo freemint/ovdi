@@ -70,9 +70,15 @@ lvsm_color( VIRTUAL *v, short color)
 	register short maxcolor, planes;
 
 	planes = v->raster->planes;
-	maxcolor = Planes2Pens[planes];
-	color = color < maxcolor ? color : maxcolor - 1;
+	maxcolor = v->colinf->pens;
+
+	if (color < 0)
+		color = 0;
+	else if (color >= maxcolor)
+		color = maxcolor - 1;
+
 	color = v->colinf->color_vdi2hw[color];
+
 	v->pmrkdat.color[0] = v->pmrkdat.color[1] = color;
 	v->pmrkdat.color[2] = v->pmrkdat.color[3] = planes > 8 ? 0x0 : 0xff;
 	v->pmarker.color = color;
@@ -84,9 +90,15 @@ lvsm_bgcolor( VIRTUAL *v, short color)
 	register short maxcolor, planes;
 
 	planes = v->raster->planes;
-	maxcolor = Planes2Pens[planes];
-	color = color < maxcolor ? color : maxcolor - 1;
+	maxcolor = v->colinf->pens;
+
+	if (color < 0)
+		color = 0;
+	else if (color >= maxcolor)
+		color = maxcolor - 1;
+
 	color = v->colinf->color_vdi2hw[color];
+
 	v->pmrkdat.bgcol[0] = v->pmrkdat.bgcol[1] = color;
 	v->pmrkdat.bgcol[2] = v->pmrkdat.bgcol[3] = planes > 8 ? 0x0 : 0xff;
 	v->pmarker.bgcol = color;

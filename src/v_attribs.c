@@ -120,7 +120,7 @@ vs_color( VDIPB *pb, VIRTUAL *v)
 	color.ovl	= 0;
 
 	i = calc_vdicolor( v->raster, v->colinf, pb->intin[0], &color);
-	if (i >= 0)
+	if (i != -1)
 		lvs_color( v, i, &v->colinf->actual_rgb[i]);
 
 	/* should this not return anything? */
@@ -132,7 +132,7 @@ calc_vdicolor( RASTER *r, COLINF *c, short vdipen, RGB_LIST *color)
 {
 	short hwpen;
 
-	if (vdipen >= c->pens)
+	if (vdipen >= c->pens || vdipen < 0)
 		return -1;
 
 	hwpen = c->color_vdi2hw[vdipen];
@@ -194,7 +194,7 @@ vq_color( VDIPB *pb, VIRTUAL *v)
 
 	vdipen = pb->intin[0];
 
-	if (vdipen >= c->pens)
+	if (vdipen >= c->pens || vdipen < 0)
 	{
 exit:
 		pb->intout[0] = - 1;

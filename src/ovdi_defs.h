@@ -1,6 +1,8 @@
 #ifndef _OVDI_DEFS_H
 #define _OVDI_DEFS_H
 
+typedef struct raster RASTER;
+typedef struct colinf COLINF;
 typedef struct virtual VIRTUAL;
 typedef struct ovdi_lib OVDI_LIB;
 
@@ -45,7 +47,7 @@ struct raster
 	RGB_LIST		rgb_levels;
 	RGB_LIST		rgb_bits;
 };
-typedef struct raster RASTER;
+//typedef struct raster RASTER;
 
 struct colinf
 {
@@ -60,7 +62,7 @@ struct colinf
 //	RGB_LIST	*rgb_levels;		/* Number of levels for Red, Green, Blue, Alpha and Ovl parts */
 //	RGB_LIST	*rgb_bits;		/* Number of bits used for Red, Green, Blue, Alpha and Ovl */
 };
-typedef struct colinf COLINF;
+//typedef struct colinf COLINF;
 
 struct drawinf
 {

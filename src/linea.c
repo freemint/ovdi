@@ -94,26 +94,8 @@ void
 init_linea_vartab(VIRTUAL *v, LINEA_VARTAB *la)
 {
 
-	register short i;
-	register short *dst;
-
 	la->cur_font = sysfnt10p->font_head; //v->fring->;
-
-	memcpy(&la->inq, &INQ_TAB_rom, sizeof(INQ_TAB));
-	memcpy(&la->dev, &DEV_TAB_rom, sizeof(DEV_TAB));
-
-	dst = (short *)&la->req_col;
-	for (i = 0; i < 16; i++)
-	{
-		*dst++ = v->colinf->request_rgb[i].red;
-		*dst++ = v->colinf->request_rgb[i].green;
-		*dst++ = v->colinf->request_rgb[i].blue;
-	}
-
-	memcpy(&la->siz, &SIZ_TAB_rom, sizeof(SIZ_TAB));
-
 	la->cur_work = v;
-
 	la->def_font = la->cur_font = sysfnt10p->font_head;
 	la->font_ring[0] = sysfnt08p->font_head;
 	la->font_ring[1] = sysfnt10p->font_head;
@@ -121,12 +103,36 @@ init_linea_vartab(VIRTUAL *v, LINEA_VARTAB *la)
 	la->font_ring[3] = 0;
 	la->font_count = 3;
 
-	la->v_rez_hz = v->raster->w;
-	la->v_rez_vt = v->raster->h;
-	la->bytes_lin = v->raster->bypl;
-	la->planes = v->raster->planes;
-	la->width = v->raster->bypl;
+	linea_reschange(la, v->raster, v->colinf);
+
 	return;
+}
+
+void
+linea_reschange(LINEA_VARTAB *la, RASTER *r, COLINF *c)
+{
+	register short i;
+	register short *dst;
+
+	memcpy(&la->inq, &INQ_TAB_rom, sizeof(INQ_TAB));
+	memcpy(&la->dev, &DEV_TAB_rom, sizeof(DEV_TAB));
+
+	dst = (short *)&la->req_col;
+	for (i = 0; i < 16; i++)
+	{
+		*dst++ = c->request_rgb[i].red;
+		*dst++ = c->request_rgb[i].green;
+		*dst++ = c->request_rgb[i].blue;
+	}
+
+	memcpy(&la->siz, &SIZ_TAB_rom, sizeof(SIZ_TAB));
+
+	la->v_rez_hz	= r->w;
+	la->v_rez_vt	= r->h;
+	la->bytes_lin	= r->bypl;
+	la->planes	= r->planes;
+	la->width	= r->bypl;
+	
 }
 
 void

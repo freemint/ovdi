@@ -190,7 +190,7 @@ oVsync(VIRTUAL *v, short *p)
 static long
 oPhysbase(VIRTUAL *v, short *p)
 {
-	return (long)v->driver->r.base;
+	return (long)v->raster->base;
 }
 
 static long
@@ -225,7 +225,7 @@ oSetscreen(VIRTUAL *v, short *p)
 		if ((phys < (unsigned long)v->driver->vram_start) || (phys > (unsigned long)((unsigned long)v->driver->vram_start + v->driver->vram_size)))
 			return 0;
 
-		v->driver->r.base = (*d->setpscr)(v->driver, (unsigned char *)phys);
+		v->raster->base = (*d->setpscr)(v->driver, (unsigned char *)phys);
 	}
 	return 0;
 }
@@ -234,8 +234,11 @@ static long
 oSetpalette(VIRTUAL *v, short *p)
 {
 	short *pal;
-	short red, green, blue, i;
+	short red, green, blue, i, hwpen;
+	COLINF *c;
 	RGB_LIST relative;
+
+	c = v->colinf;
 
 	relative.alpha = 0;
 	relative.ovl = 0;
@@ -252,7 +255,11 @@ oSetpalette(VIRTUAL *v, short *p)
 		relative.green = rel_16col_tab[green];
 		relative.blue = rel_16col_tab[blue];
 
-		lvs_color(v, i, &relative);
+		hwpen = calc_vdicolor(v->raster, c, i, &relative);
+
+		if (hwpen >= 0)
+			lvs_color(v, hwpen, &c->actual_rgb[hwpen]);
+
 		pal++;
 	}
 	return 0L;
@@ -287,7 +294,10 @@ oSetcolor(VIRTUAL *v, short *p)
 	relative.green = rel_16col_tab[green];
 	relative.blue = rel_16col_tab[blue];
 
-	lvs_color(v, idx, &relative);
+	idx = calc_vdicolor(v->raster, c, idx, &relative);
+
+	if (idx >= 0)
+		lvs_color(v, idx, &c->actual_rgb[idx]);
 
 	return (long)old;
 	return 0L;
@@ -322,7 +332,10 @@ oEsetcolor(VIRTUAL *v, short *p)
 	relative.green = rel_16col_tab[green];
 	relative.blue = rel_16col_tab[blue];
 
-	lvs_color(v, idx, &relative);
+	idx = calc_vdicolor(v->raster, c, idx, &relative);
+
+	if (idx >= 0)
+		lvs_color(v, idx, &c->actual_rgb[idx]);
 
 	return (long)old;
 }
@@ -332,7 +345,7 @@ oEsetpalette(VIRTUAL *v, short *p)
 {
 	short *pal;
 	COLINF *c;
-	short red, green, blue, i, cnt, idx, col;
+	short red, green, blue, i, cnt, idx, col, hwpen;
 	RGB_LIST relative;
 
 	c = v->colinf;
@@ -363,7 +376,10 @@ oEsetpalette(VIRTUAL *v, short *p)
 		relative.green = rel_16col_tab[green];
 		relative.blue = rel_16col_tab[blue];
 
-		lvs_color(v, idx, &relative);
+		hwpen = calc_vdicolor(v->raster, c, idx, &relative);
+
+		if (hwpen >= 0)
+			lvs_color(v, idx, &c->actual_rgb[hwpen]);
 		idx++;
 	}
 	return 0L;

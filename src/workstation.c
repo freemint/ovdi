@@ -35,8 +35,9 @@
 
 
 static void change_resolution(VIRTUAL *v);
-
+static void reschange_devtab(DEV_TAB *, RASTER *);
 static void update_devtab(DEV_TAB *, VIRTUAL *);
+static void reschange_inqtab(INQ_TAB *, RASTER *);
 static void update_inqtab(INQ_TAB *, VIRTUAL *);
 static void update_siztab(SIZ_TAB *, VIRTUAL *);
 static void prepare_stdreturn( VDIPB *, VIRTUAL *);
@@ -45,6 +46,14 @@ static void prepare_scrninfreturn( VDIPB *, VIRTUAL *);
 static void get_MiNT_info(VIRTUAL *);
 static void setup_virtual(VDIPB *, VIRTUAL *, VIRTUAL *);
 static void setup_fonts(VIRTUAL *, SIZ_TAB *, DEV_TAB *);
+
+/* Keep a 'root' color info structure */
+static COLINF colinf;
+static short vdi2hw[256];
+static short hw2vdi[256];
+static RGB_LIST request_rgb[256];
+static RGB_LIST actual_rgb[256];
+static unsigned long pixelvalues[256];
 
 void
 v_opnwk(VDIPB *pb, VIRTUAL *wk, VIRTUAL *lawk, struct ovdi_device *dev)
@@ -65,17 +74,24 @@ v_opnwk(VDIPB *pb, VIRTUAL *wk, VIRTUAL *lawk, struct ovdi_device *dev)
 			prepare_stdreturn(pb, wk);
 		goto error;
 	}
-	
+
+	log("Opening physical ID %d\n", vdidev_id);
+
 	MiNT = get_cookie((long)0x4d694e54/*"MiNT"*/, 0);
 
 	if (v_vtab[1].v)
 	{
 		scrnlog("This should absolutely NOT happen, I think\n");
-		//log("This should absolutely NOT happen, I think\n");
+		log("This should absolutely NOT happen, I think\n");
 		prepare_stdreturn(pb, wk);
 		goto error;
 	}
-	
+
+	if (wk->handle)
+	{
+		exit_console(wk->con);
+	}
+
 	drv = (*dev->open)(dev, vdidev_id);
 
 	if (drv)
@@ -91,14 +107,30 @@ v_opnwk(VDIPB *pb, VIRTUAL *wk, VIRTUAL *lawk, struct ovdi_device *dev)
 
 		init_raster(drv, r);
 
-		c = new_colinf(r);
-		if (!c)
+		c = &colinf;
+		if (!wk->handle)
 		{
-			goto error;
+			c->color_vdi2hw = (short *)&vdi2hw;
+			c->color_hw2vdi = (short *)&hw2vdi;
+			c->pixelvalues = (unsigned long *)&pixelvalues;
+			c->request_rgb = (RGB_LIST *)&request_rgb;
+			c->actual_rgb = (RGB_LIST *)&actual_rgb;
 		}
+
 		wk->raster = r;
 		wk->colinf = c;
+
+		raster_reschange(r, c);
+		reschange_devtab(&DEV_TAB_rom, r);
+		reschange_inqtab(&INQ_TAB_rom, r);
+		linea_reschange(linea_vars, r, c);
+
 		change_resolution(wk);
+
+		if (wk->handle)
+		{
+			change_console_resolution(wk->con, r);
+		}
 
 		if (r->clut)
 		{
@@ -124,7 +156,7 @@ v_opnwk(VDIPB *pb, VIRTUAL *wk, VIRTUAL *lawk, struct ovdi_device *dev)
 	/* Set physical/logical screen addresses */
 		r->base = (*dev->setpscr)(drv, r->base);
 		drv->log_base = (*dev->setlscr)(drv, r->base);
-		*(long *)v_bas_ad = (long)r->base; //scr_base;
+		*(long *)v_bas_ad = (long)r->base;
 
 	/* Init Mouse/Keyboard device driver */
 		wk->mouseapi = init_mouse(wk, linea_vars);
@@ -169,7 +201,8 @@ v_opnwk(VDIPB *pb, VIRTUAL *wk, VIRTUAL *lawk, struct ovdi_device *dev)
 	/* Add the mousecursor rendering function to VBI */
 		(*drv->add_vbifunc)((unsigned long)wk->mouseapi->housekeep, 0);
 	/* Add consoles textcursor blinker to VBI */
-		(*drv->add_vbifunc)((unsigned long)wk->con->textcursor_blink, 25);
+		if (!wk->handle)
+			(*drv->add_vbifunc)((unsigned long)wk->con->textcursor_blink, 25);
 
 	/* Enable things ... */
 		(*wk->timeapi->enable)();
@@ -198,7 +231,6 @@ error:	{
 	return;
 }
 
-
 static void
 change_resolution(VIRTUAL *v)
 {
@@ -209,8 +241,6 @@ change_resolution(VIRTUAL *v)
 	r = v->raster;
 	c = v->colinf;
 
-	raster_reschange(r, c);
-	
 /* Setup some commonly used PatAttr's */
 	/* WHITE rectangle */
 	ptrn = &WhiteRect;
@@ -258,26 +288,25 @@ change_resolution(VIRTUAL *v)
 	ptrn->mask = 0xffff;
 	ptrn->data = &SOLID;
 }
-
 static void
-update_devtab(DEV_TAB *dt, VIRTUAL *v)
+reschange_devtab(DEV_TAB *dt, RASTER *r)
 {
 	unsigned long palettesize;
-	RASTER *r = v->raster;
 
 	dt->xres	= r->w - 1;
 	dt->yres	= r->h - 1;
 	dt->wpixel	= r->wpixel;
 	dt->hpixel	= r->hpixel;
 
-	dt->cheights	= 0;
-
 	if (r->planes == 1)
 		dt->cancolor = 0;
 	else
 		dt->cancolor = 1;
 
-	dt->colors = Planes2Pens[r->planes];
+	if (r->planes < 8)
+		dt->colors = 1 << r->planes;
+	else
+		dt->colors = 256;
 
 	palettesize = (long)r->rgb_levels.red * (long)r->rgb_levels.green * (long)r->rgb_levels.blue;
 
@@ -286,22 +315,28 @@ update_devtab(DEV_TAB *dt, VIRTUAL *v)
 	else
 		dt->palette = (unsigned short)palettesize;
 
+}
+static void
+update_devtab(DEV_TAB *dt, VIRTUAL *v)
+{
+	dt->cheights	= 0;
 	return;
 }
-
 static void
 update_siztab(SIZ_TAB *st, VIRTUAL *v)
 {
 	return;
 }
-
+static void
+reschange_inqtab(INQ_TAB *it, RASTER *r)
+{
+	it->planes	= r->planes;
+	it->lut		= r->clut;
+}
 static void
 update_inqtab(INQ_TAB *it, VIRTUAL *v)
 {
-
 	it->textfx		= F_SUPPORTED;
-	it->planes		= v->driver->r.planes;
-	it->lut			= v->driver->r.clut;
 	it->mousebuttons	= v->mouseapi->buttons;
 	return;
 }
@@ -396,7 +431,18 @@ v_opnvwk(VDIPB *pb, VIRTUAL *v)
 			new->driver	= root->driver;
 			new->physical	= root->physical;
 			new->raster	= root->raster;
-			new->colinf	= root->colinf;
+
+			if (root->raster->clut)
+				new->colinf	= root->colinf;
+			else
+			{
+				new->colinf = new_colinf(root->raster);
+				if (new->colinf)
+					clone_colinf(new->colinf, root->colinf);
+				else
+					new->colinf = root->colinf;
+			}
+
 			new->kbdapi	= root->kbdapi;
 			new->mouseapi	= root->mouseapi;
 			new->timeapi	= root->timeapi;
@@ -425,15 +471,17 @@ v_clswk( VDIPB *pb, VIRTUAL *root)
 {
 	short i;
 	RASTER *r;
+	COLINF *c;
 
 /* DO NOT CLEAR 'handle' !! It indicates to the v_opnwk() that basic things are already initialized */
 	if (root->root)
 	{
 		scrnlog("Cannot close physical with virtual handle!!!!\n");
-		//log("Cannot close physical with virtual handle!!!!\n");
+		log("Cannot close physical with virtual handle!!!!\n");
 		return;
 	}
 
+	log("%s is Closing physical\n", root->procname);
 	lvs_clip(root, 0, 0);
 
 	/* Make sure that all virtual workstations are closed */
@@ -470,13 +518,16 @@ v_clswk( VDIPB *pb, VIRTUAL *root)
 
  /* ANY MEMORY ALLOCATED FOR THE PROCESS THAT OPENED THE PHYSICAL */
  /* MUST NOW BE RELEASED!!! */
-	free_mem(root->colinf);
-	root->colinf = 0;
-
 	r = root->raster;
+	c = root->colinf;
+
 	exit_console(root->con);
 	(*root->driver->dev->close)(root->driver);
-	raster_reschange(r, 0);
+
+	raster_reschange(r, c);
+	reschange_devtab(&DEV_TAB_rom, r);
+	reschange_inqtab(&INQ_TAB_rom, r);
+	linea_reschange(linea_vars, r, c);
 	change_console_resolution(root->con, r);
 	enter_console(root->con);
 
@@ -509,6 +560,13 @@ v_clsvwk( VDIPB *pb, VIRTUAL *v)
 	{
 		if (v->scratchp)
 			free_mem(v->scratchp);
+
+		/* If virtual's colinf is not the same as the root colinf,
+		*  we're in a TC/HC resolution (non-clut), and need to free
+		*  it.
+		*/
+		if (v->colinf != v->root->colinf)
+			free_mem(v->colinf);
 
 		free_mem(v);
 		entry[handle].v = 0;
@@ -543,6 +601,7 @@ vq_extnd( VDIPB *pb, VIRTUAL *v)
 		}
 		case 2:
 		{
+			log("doing scrninfreturn for %s!\n", v->procname);
 			prepare_scrninfreturn(pb, v);
 			break;
 		}

@@ -123,7 +123,7 @@ init_console(VIRTUAL *v, LINEA_VARTAB *la)
 	bzero(&console, sizeof(CONSOLE));
 
 
-	f	= sysfnt09p->font_head; //sysfnt10p;
+	f	= sysfnt10p->font_head; //sysfnt10p;
 	c->f	= f;
 	c->r	= v->raster;
 	c->drv	= v->driver;

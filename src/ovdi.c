@@ -42,7 +42,8 @@ short MiNT = 0;
 char bootdev;
 
 OVDI_DEVICE * (*devinit)(OVDI_LIB *l);
-OVDI_DEVICE *device;
+OVDI_DEVICE *device = 0;
+
 //char fontdata[1024 * 10];
 extern BASEPAGE *_base;
 
@@ -51,7 +52,7 @@ ovdi_init(void)
 {
 	long lavt, lafr, laft;
 
-	scrnlog("OVDI start adr %lx\n", _base->p_tbase);
+	scrnlog("OVDI start adr %lx, ends at adr %lx\n", _base->p_tbase, _base->p_tbase + _base->p_tlen + _base->p_blen + _base->p_dlen);
 	//log("OVDI start adr %lx\n", _base->p_tbase);
 
 	bzero(&wks1, sizeof(VIRTUAL));
@@ -105,7 +106,8 @@ oVDI( VDIPB *pb )
 	/* Opening a physical is a special case */
 	if (func == OPEN_WORKSTATION)
 	{
-		device = (*devinit)(&ovdilib);
+		if (!device)
+			device = (*devinit)(&ovdilib);
 
 		if (device)
 		{
@@ -148,7 +150,7 @@ oVDI( VDIPB *pb )
 	else
 		logit = 0;
 
-	if (logit && func == 0)
+	if (logit) // && func == 0)
 	{
 
 		//log("%s, func %d..", func);
@@ -173,7 +175,7 @@ oVDI( VDIPB *pb )
 
 	(*f)(pb, v);
 
-	if (logit && func == 0)
+	if (logit) // && func == 0)
 	{
 		log(" out %d, %d, %d, %d, %d, %d, %d, %d - %d, %d, %d, %d, %d, %d, %d, %d\n",
 			pb->intin[0], pb->intin[1], pb->intin[2], pb->intin[3],

@@ -346,9 +346,9 @@ set_xmf_color(XMFORM *xmf)
 		b = xmf->bg_col;
 		if (b > mc)
 			b = mc;
-		
-		xmf->fg_pix = c->pixelvalues[f];
-		xmf->bg_pix = c->pixelvalues[b];
+
+		xmf->fg_pix = c->pixelvalues[c->color_vdi2hw[f]];
+		xmf->bg_pix = c->pixelvalues[c->color_vdi2hw[b]];
 	}
 }	
 			

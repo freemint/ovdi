@@ -21,9 +21,15 @@ lvsl_color( VIRTUAL *v, short color)
 	register short maxcolor, planes;
 
 	planes = v->raster->planes;
-	maxcolor = Planes2Pens[planes];
-	color = color < maxcolor ? color : maxcolor - 1;
+	maxcolor = v->colinf->pens;
+
+	if (color < 0)
+		color = 0;
+	else if (color >= maxcolor)
+		color = maxcolor - 1;
+
 	color = v->colinf->color_vdi2hw[color];
+
 	v->linedat.color[0] = v->linedat.color[1] = color;
 	v->linedat.color[2] = v->linedat.color[3] = planes > 8 ? 0x0 : 0xff;
 	v->line.color = color;
@@ -35,9 +41,15 @@ lvsl_bgcolor( VIRTUAL *v, short color)
 	register short maxcolor, planes;
 
 	planes = v->raster->planes;
-	maxcolor = Planes2Pens[planes];
-	color = color < maxcolor ? color : maxcolor - 1;
+	maxcolor = v->colinf->pens;
+
+	if (color < 0)
+		color = 0;
+	else if (color >= maxcolor)
+		color = maxcolor - 1;
+
 	color = v->colinf->color_vdi2hw[color];
+
 	v->linedat.bgcol[0] = v->linedat.bgcol[1] = color;
 	v->linedat.bgcol[2] = v->linedat.bgcol[3] = planes > 8 ? 0xff : 0x0;
 	v->line.bgcol = color;

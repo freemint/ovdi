@@ -79,7 +79,6 @@ vst_color( VDIPB *pb, VIRTUAL *v)
 {
 	lvst_color( v, pb->intin[0]);
 	pb->intout[0] = v->colinf->color_hw2vdi[v->font.color];
-
 	pb->contrl[N_INTOUT] = 1;
 	return;
 }
@@ -89,8 +88,12 @@ lvst_color( VIRTUAL *v, register short color)
 {
 	register short maxcolor;
 
-	maxcolor = Planes2Pens[v->raster->planes];
-	color = color < maxcolor ? color : maxcolor - 1;
+	maxcolor = v->colinf->pens;
+	if (color < 0)
+		color = 0;
+	else if (color >= maxcolor)
+		color = maxcolor - 1;
+
 	v->font.color = v->colinf->color_vdi2hw[color];
 	return;
 }

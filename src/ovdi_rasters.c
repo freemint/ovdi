@@ -214,7 +214,7 @@ init_colinf(RASTER *r, COLINF *c)
 
 	if (r->planes < 8)
 	{
-		pens = r->planes << 1;
+		pens = 1 << r->planes;
 
 		c->color_vdi2hw[1] = pens - 1;
 		c->color_hw2vdi[pens - 1] = 1;
@@ -241,6 +241,23 @@ init_colinf(RASTER *r, COLINF *c)
 	}
 }
 
+void
+clone_colinf(COLINF *dst, COLINF *src)
+{
+	short i;
+
+	for (i = 0; i < 256; i++)
+	{
+		dst->color_vdi2hw[i]	= src->color_vdi2hw[i];
+		dst->color_hw2vdi[i]	= src->color_hw2vdi[i];
+		dst->request_rgb[i]	= src->request_rgb[i];
+		dst->actual_rgb[i]	= src->actual_rgb[i];
+		dst->pixelvalues[i]	= src->pixelvalues[i];
+	}
+	dst->pens	= src->pens;
+	dst->planes	= src->planes;
+}
+	
 static short
 setup_drawers_jumptable(OVDI_DRAWERS *src, OVDI_DRAWERS *dst, short planes)
 {
@@ -460,4 +477,3 @@ setup_drawers_jumptable(OVDI_DRAWERS *src, OVDI_DRAWERS *dst, short planes)
 
 	return 0;
 }
-

@@ -238,7 +238,6 @@ enable_mouse(void)
 
 	(*m->pdapi->start)();			/* start the mouse device driver */
 	m->flags |= MDRV_ENABLED;	/* Indicate mouse is enabled */
-	return;
 }
 static void
 disable_mouse(void)
@@ -251,7 +250,6 @@ disable_mouse(void)
 		(*m->pdapi->stop)();			/* stop the mouse device driver */
 		m->flags &= ~MDRV_ENABLED;	/* Indicate mouse is disabled */
 	}
-	return;
 }
 
 /* Let the mouse driver know about resolution changes, and fetch
@@ -301,8 +299,6 @@ set_xmf_res(RASTER *r, COLINF *c)
 
 	show_mouse_curs(0);
 	m->interrupt--;
-
-	return;
 }
 
 /* Grab data from a standard mform structure, as used by */
@@ -342,7 +338,6 @@ set_new_mform(MFORM *mf)
 
 	show_mouse_curs(0);
 	m->interrupt--;
-	return;
 }
 static void
 set_xmf_color(XMFORM *xmf)
@@ -419,8 +414,6 @@ mouse_relative_move(short x, short y)
 	);
 
 	m->flags |= MC_MOVED;
-
-	return;
 }
 
 void
@@ -466,8 +459,6 @@ mouse_absolute_move(short x, short y)
 	);
 
 	m->flags |= MC_MOVED;
-
-	return;
 }
 
 void
@@ -477,27 +468,23 @@ mouse_buttons_change(unsigned short bs)
 	register unsigned short nbs __asm__ ("d0") = bs;
 	register unsigned short obs = m->current_bs;
 
+	if (nbs != obs)
+	{
+		__asm__ volatile
+		("
+			movem.l	d1-d7/a0-a6,-(sp)
+			move.l	%1,a0
+			jsr	(a0)
+			movem.l	(sp)+,d1-d7/a0-a6
+		"	:
+			: "d"(nbs),"a"(m->la->user_but)
+			: "d0","d1","a0"
+		);
 
-	if (nbs == obs)
-		return;
-
-	__asm__ volatile
-	("
-		movem.l	d1-d7/a0-a6,-(sp)
-		move.l	%1,a0
-		jsr	(a0)
-		movem.l	(sp)+,d1-d7/a0-a6
-	"	:
-		: "d"(nbs),"a"(m->la->user_but)
-		: "d0","d1","a0"
-	);
-
-	
-	m->current_bs = nbs;
-	m->changed_bs ^= nbs;
-	m->last_bs = m->changed_bs;
-
-	return;
+		m->current_bs = nbs;
+		m->changed_bs ^= nbs;
+		m->last_bs = m->changed_bs;
+	}
 }
 
 static void
@@ -512,12 +499,14 @@ check_coords(MOUSEDRV *m)
 		m->current_y = m->min_y;
 	else if (m->current_y > m->max_y)
 		m->current_y = m->max_y;
-	return;
 }
-	
+#if 0
 static short speed_tab[] =
 { 0, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 5, 5, 6, 6, 14, 255, 255 };
-
+#else
+static short speed_tab[] =
+{ 0, 255, 255, 2, 2, 2, 3, 3, 3, 4, 4, 5, 5, 6, 6, 14, 255, 255 };
+#endif
 static void
 scale_mouse(MOUSEDRV *m, short x, short y)
 {
@@ -542,16 +531,14 @@ scale_mouse(MOUSEDRV *m, short x, short y)
 	st = (short *)&speed_tab;
 	while (idx > *st++)
 		x_off++;
-
+	
 	//nx *= 3;
 	nx *= x_off;
 	//ny *= 3;
 	ny *= x_off;
-
+	
 	m->current_x += nx;
 	m->current_y += ny;
-
-	return;
 }
 
 void
@@ -589,7 +576,6 @@ reset_mouse_curs()
 {
 	enable_mouse_curs();
 	show_mouse_curs(0);
-	return;
 }
 
 static void
@@ -601,7 +587,6 @@ enable_mouse_curs()
 	m->flags |= MC_ENABLED;
 	m->interrupt = 0;
 	//show_mouse_curs(1);
-	return;
 }
 
 static void
@@ -612,7 +597,6 @@ disable_mouse_curs(void)
 	hide_mouse_curs();
 	m->flags &= ~MC_ENABLED;
 	m->interrupt = 1;
-	return;
 }
 	
 static void
@@ -662,7 +646,6 @@ hide_mouse_curs(void)
 		m->hide_ct++;
 	}
 	m->interrupt--;
-	return;
 }
 
 static unsigned long
@@ -685,8 +668,6 @@ get_mouse_coordinates(short *xy)
 
 	*xy++	= m->current_x;
 	*xy	= m->current_y;
-
-	return;
 }
 
 static unsigned long
@@ -718,8 +699,6 @@ set_mouse_vector(short vecnum, unsigned long vector)
 	}
 	return oldvec;
 }
-
-			
 
 static void
 mdonothing()

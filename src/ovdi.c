@@ -179,7 +179,7 @@ ovdi_init(void)
 	*/
 	loadparse_ovdi_cnf();
 
-#if 1
+#if 0
 	{
 		long fh;
 		VF_FACE *vff;

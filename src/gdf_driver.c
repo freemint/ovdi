@@ -348,8 +348,8 @@ get_size_metrics( FONT_HEAD *f, VF_SIZE_METRICS *m )
 	 * 16.16 fixed fload scales used to scale directly from
 	 * design space to 1/64th of a device space pixel
 	 */
-	m->x_scale	= 1 << 16;
-	m->y_scale	= 1 << 16;
+	m->x_scale	= 1L << 16;
+	m->y_scale	= 1L << 16;
 	
 	m->top		= (long)f->top << 6;
 	m->ascent	= (long)f->ascent << 6;

@@ -9,7 +9,7 @@
 void
 rectfill( VIRTUAL *v, VDIRECT *corners, PatAttr *ptrn )
 {
-	register short x1, y1, x2, y2;
+	register short x1, x2, y1, y2;
 	VDIRECT clipped;
 
 	clipped = *corners;
@@ -17,16 +17,29 @@ rectfill( VIRTUAL *v, VDIRECT *corners, PatAttr *ptrn )
 	if (!clipbox (&clipped, &v->clip))
 		return;
 
-	x1 = clipped.x1;
-	x2 = clipped.x2;
+	x1 = v->fill.interior;
+	x2 = *ptrn->data;
 
-	y1 = clipped.y1;
-	y2 = clipped.y2;
+	if (	(x1 == FIS_SOLID || x1 == FIS_HOLLOW
+		|| (ptrn->height == 1 && ptrn->width == 16 && (x2 == 0xffff || x2 == 0)) )
+		&&  v->drawers->draw_solid_rect
+	   )
+	{
+		y1 = ptrn->wrmode;
+		x2 = x1 == FIS_SOLID ? ptrn->color[y1] : ptrn->bgcol[y1];
 
-	if (v->fill.interior == FIS_SOLID && v->drawers->draw_solid_rect)
-		(*v->drawers->draw_solid_rect)(v->raster, (short *)&clipped, ptrn);
+		(*v->drawers->draw_solid_rect)(v->raster, (short *)&clipped, y1, x2);
+	}
 	else
+	{
+		x1 = clipped.x1;
+		x2 = clipped.x2;
+
+		y1 = clipped.y1;
+		y2 = clipped.y2;
+
 		draw_mspans( v, x1, x2, y1, y2, ptrn);
+	}
 #if 0
 	for (y = y1; y <= y2; y++)
 		draw_spans( v, x1, x2, y, ptrn);

@@ -66,17 +66,19 @@ struct ovdidrv_functab
 /* this structure */
 struct raster
 {
-	unsigned char	*base;
-	short		flags;
-	short		format;
-	short		w, h;
-	short		clut;
-	short		planes;
-	short		pixlen;
-	short		bypl;
-	short		wpixel, hpixel;
-	char		*pixelformat;
-	unsigned long	*pixelvalues;
+	unsigned char		*base;
+	unsigned long		lenght;
+	struct ovdi_drawers	*drawers;
+	short			flags;
+	short			format;
+	short			w, h;
+	short			clut;
+	short			planes;
+	short			pixlen;
+	short			bypl;
+	short			wpixel, hpixel;
+	char			*pixelformat;
+	unsigned long		*pixelvalues;
 };
 typedef struct raster RASTER;
 

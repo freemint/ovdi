@@ -528,6 +528,7 @@ ovdidev_open(OVDI_DEVICE *dev, short dev_id)
 	drv->vram_start		= x->base;
 	drv->vram_size		= x->mem_size;
 	drv->scr_size		= x->scrn_siz;
+	drv->r.lenght		= x->scrn_siz;
 	drv->r.base		= x->scr_base;
 	drv->dev		= dev;
 	drv->r.flags		= R_IS_SCREEN | R_IN_VRAM;

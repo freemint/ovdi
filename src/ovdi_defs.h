@@ -19,8 +19,9 @@ struct	currfont
 {
 	short	defid;
 	short	defht;
+	struct	xgdf_head *current;
 	struct	font_head *header;
-	struct	font_head *loaded;
+	struct	xgdf_head *loaded;
 	short	color;
 	short	bgcol;
 	short	wrmode;
@@ -107,10 +108,11 @@ struct virtual
 	char			*scratchp;		/* Pointer to text scratch buffer	*/
 	short			scratchs;		/* Offset to large text buffer		*/
 
-	struct font_head	*fring;
+	struct xgdf_head	*fring;
 	struct currfont		font;
 
 	struct ovdi_drawers	*drawers;
+	struct ovdi_drawers	*odrawers[32];
 	struct ovdi_utils	*utils;
 
 	struct fill_attribs	fill;
@@ -191,6 +193,25 @@ struct ovdi_lib
 /* *************************************************************************** */
 /* *************************************************************************** */
 /* *************************************************************************** */
+struct rop_pb
+{
+	short	sx1, sy1, sx2, sy2;
+	short	dx1, dy1, dx2, dy2;
+
+
+	void	*s_addr;
+	short	s_is_scrn;
+	short	s_bypl;
+	short	s_w, s_h;
+
+	void	*d_addr;
+	short	d_is_scrn;
+	short	d_bypl;
+	short	d_w, d_h;
+};
+typedef struct rop_pb ROP_PB;
+
+	
 
 typedef void (*draw_mc)			(register XMFORM *xmf, register short x, register short y);
 typedef void (*undraw_mc)		(register XMSAVE *xms);
@@ -218,22 +239,22 @@ struct pixel_blits
 
 struct raster_blits
 {
-	void (*all_white)	(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
-	void (*s_and_d)		(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
-	void (*s_and_notd)	(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
-	void (*s_only)		(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
-	void (*nots_and_d)	(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
-	void (*d_only)		(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
-	void (*s_xor_d)		(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
-	void (*s_or_d)		(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
-	void (*not_sord)	(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
-	void (*not_sxord)	(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
-	void (*not_d)		(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
-	void (*s_or_notd)	(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
-	void (*not_s)		(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
-	void (*nots_or_d)	(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
-	void (*not_sandd)	(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
-	void (*all_black)	(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
+	void (*all_white)	(ROP_PB *);
+	void (*s_and_d)		(ROP_PB *);
+	void (*s_and_notd)	(ROP_PB *);
+	void (*s_only)		(ROP_PB *);
+	void (*nots_and_d)	(ROP_PB *);
+	void (*d_only)		(ROP_PB *);
+	void (*s_xor_d)		(ROP_PB *);
+	void (*s_or_d)		(ROP_PB *);
+	void (*not_sord)	(ROP_PB *);
+	void (*not_sxord)	(ROP_PB *);
+	void (*not_d)		(ROP_PB *);
+	void (*s_or_notd)	(ROP_PB *);
+	void (*not_s)		(ROP_PB *);
+	void (*nots_or_d)	(ROP_PB *);
+	void (*not_sandd)	(ROP_PB *);
+	void (*all_black)	(ROP_PB *);
 };
 
 struct wr_modes
@@ -253,7 +274,7 @@ struct wr_modes
 #endif
 
 typedef void	(*pixel_blit)(unsigned char *addr, long data);
-typedef void	(*raster_blit)(unsigned char *srcbase, short srcbypl, unsigned char *dstbase, short dstbypl, short width, short height, short dir);
+typedef void	(*raster_blit)(ROP_PB *);
 
 //typedef void		(*draw_pixel)(unsigned char *adr, long data);
 //typedef long		(*read_pixel)(unsigned char *adr);
@@ -296,7 +317,7 @@ struct ovdi_drawers
 	void		(*put_pixel)		( unsigned char *base, short bypl, short x, short y, unsigned long data);
 	unsigned long	(*get_pixel)		( unsigned char *base, short bypl, short x, short y);
 
-	void		(*draw_solid_rect)	( RASTER *r, short *corners, PatAttr *ptrn);
+	void		(*draw_solid_rect)	( RASTER *r, short *corners, short wrmode, short color);
 	/*pixel_blits	vdi_pixels;*/
 	pixel_blits	drp;
 	pixel_blits	dlp;

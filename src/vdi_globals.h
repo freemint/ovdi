@@ -1,6 +1,7 @@
 #ifndef	_VDI_GLOBALS_H
 #define _VDI_GLOBALS_H
 
+#include "gdf_defs.h"
 #include "vdi_defs.h"
 #include "linea.h"
 
@@ -16,9 +17,13 @@ typedef	struct cookie COOKIE;
 #endif
 #define CJAR	((struct cookie **)0x5A0L);
 
-extern	struct font_head *sysfnt08p;
-extern	struct font_head *sysfnt09p;
-extern	struct font_head *sysfnt10p;
+extern	struct xgdf_head *sysfnt08p;
+extern	struct xgdf_head *sysfnt09p;
+extern	struct xgdf_head *sysfnt10p;
+
+extern	struct xgdf_head xsystemfont08;
+extern	struct xgdf_head xsystemfont09;
+extern	struct xgdf_head xsystemfont10;
 
 extern	char bootdev;
 extern	short MiNT;
@@ -34,9 +39,6 @@ extern	SIZ_TAB SIZ_TAB_rom;
 extern	OVDI_VTAB v_vtab[];
 extern	VIRTUAL wks1;
 extern	VIRTUAL	la_wks;
-
-extern	OVDI_DRAWERS root_drawers;
-extern	OVDI_UTILS root_utils;
 
 extern	RGB_LIST rgb_levels;
 extern	RGB_LIST rgb_bits;

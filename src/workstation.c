@@ -98,8 +98,20 @@ static OVDI_UTILS defutils =
 	{0,0,0,0}
 };
 
+static OVDI_UTILS	root_utils;
+static OVDI_DRAWERS	root_drawers;
+static OVDI_DRAWERS	drawers_1b;
+static OVDI_DRAWERS	drawers_2b;
+static OVDI_DRAWERS	drawers_4b;
+static OVDI_DRAWERS	drawers_8b;
+static OVDI_DRAWERS	drawers_15b;
+static OVDI_DRAWERS	drawers_16b;
+static OVDI_DRAWERS	drawers_24b;
+static OVDI_DRAWERS	drawers_32b;
 
-static short setup_engine_jumptables(VIRTUAL *v, OVDI_DRAWERS *drawers, OVDI_UTILS *utils);
+
+
+static short setup_drawers_jumptable(OVDI_DRAWERS *src, OVDI_DRAWERS *dst, short planes);
 static void update_devtab(DEV_TAB *, VIRTUAL *);
 static void update_inqtab(INQ_TAB *, VIRTUAL *);
 static void update_siztab(SIZ_TAB *, VIRTUAL *);
@@ -154,15 +166,32 @@ v_opnwk(VDIPB *pb, VIRTUAL *wk, VIRTUAL *lawk, struct ovdi_device *dev)
 		RASTER *r;
 		PatAttr *ptrn;
 
-		drawers		= &root_drawers;
-		utils		= &root_utils;
 
 		r = (RASTER *)&drv->r;
 		wk->driver = drv;
 		wk->physical = drv;
 		wk->raster = r;
-		wk->drawers = drawers;
-		wk->utils = utils;
+
+	/* Check for necessary functions which the current graphics card driver */
+	/* didnt have 								*/
+
+		setup_drawers_jumptable(drv->drawers_1b, &drawers_1b, 1);
+		wk->odrawers[1] = &drawers_1b;
+		setup_drawers_jumptable(drv->drawers_8b, &drawers_8b, 8);
+		wk->odrawers[8] = &drawers_8b;
+		setup_drawers_jumptable(drv->drawers_15b, &drawers_15b, 15);
+		wk->odrawers[15] = &drawers_15b;
+		setup_drawers_jumptable(drv->drawers_16b, &drawers_16b, 16);
+		wk->odrawers[16] = &drawers_16b;
+
+		drawers		= wk->odrawers[r->planes];
+		wk->drawers	= drawers;
+		r->drawers	= drawers;
+
+		utils		= &root_utils;
+		*utils		= defutils;
+		wk->utils	= utils;
+
 
 		if (scrsizmm_x)
 			r->wpixel = (scrsizmm_x * 1000) / r->w;
@@ -173,10 +202,6 @@ v_opnwk(VDIPB *pb, VIRTUAL *wk, VIRTUAL *lawk, struct ovdi_device *dev)
 			r->hpixel = (scrsizmm_y * 1000) / r->h;
 		else
 			r->hpixel = 278;
-
-	/* Check for necessary functions which the current graphics card driver */
-	/* didnt have 								*/
-		setup_engine_jumptables(wk, drawers, utils);
 
 	/* Check for available color indipendant driver services */
 		if (!drv->add_vbifunc) /* Check if driver has VBI api, if not, use generic built in stuff */
@@ -209,9 +234,9 @@ v_opnwk(VDIPB *pb, VIRTUAL *wk, VIRTUAL *lawk, struct ovdi_device *dev)
 
 		if (r->planes < 8)
 		{
-			VDI2HW_colorindex[1] = 15;
-			HW2VDI_colorindex[15] = 1;
-			pens = 16;
+			pens = Planes2Pens[r->planes];
+			VDI2HW_colorindex[1] = pens - 1;
+			HW2VDI_colorindex[pens - 1] = 1;
 		}
 		else
 		{
@@ -241,10 +266,13 @@ v_opnwk(VDIPB *pb, VIRTUAL *wk, VIRTUAL *lawk, struct ovdi_device *dev)
 		ptrn->expanded = 0;
 		ptrn->color[0] = ptrn->color[1] = VDI2HW_colorindex[0];
 		ptrn->bgcol[0] = ptrn->bgcol[1] = VDI2HW_colorindex[1];
-		if (r->planes > 8) {
+		if (r->planes > 8)
+		{
 			ptrn->color[2] = ptrn->color[3] = 0x0;
 			ptrn->bgcol[2] = ptrn->bgcol[3] = 0xff;
-		} else {
+		}
+		else
+		{
 			ptrn->color[2] = ptrn->color[3] = 0xff;
 			ptrn->bgcol[2] = ptrn->bgcol[3] = 0x0;
 		}
@@ -261,10 +289,13 @@ v_opnwk(VDIPB *pb, VIRTUAL *wk, VIRTUAL *lawk, struct ovdi_device *dev)
 		ptrn->expanded = 0;
 		ptrn->color[0] = ptrn->color[1] = VDI2HW_colorindex[1];
 		ptrn->bgcol[0] = ptrn->bgcol[1] = VDI2HW_colorindex[0];
-		if (r->planes > 8) {
+		if (r->planes > 8)
+		{
 			ptrn->color[2] = ptrn->color[3] = 0x00;
 			ptrn->bgcol[2] = ptrn->bgcol[3] = 0xff;
-		} else {
+		}
+		else
+		{
 			ptrn->color[2] = ptrn->color[3] = 0xff;
 			ptrn->bgcol[2] = ptrn->bgcol[3] = 0x0;
 		}
@@ -346,136 +377,169 @@ error:	{
 }
 
 static short
-setup_engine_jumptables(VIRTUAL *v, OVDI_DRAWERS *drawers, OVDI_UTILS *utils)
+setup_drawers_jumptable(OVDI_DRAWERS *src, OVDI_DRAWERS *dst, short planes)
 {
 	short i;
-	OVDI_DRAWERS *drw;
-	OVDI_UTILS *utl;
 
-	*drawers = defdrawers;
-	*utils = defutils;
+	*dst = defdrawers;
 
-	switch (v->raster->planes)
+	switch (planes)
 	{
-		case 8:
+		case 1:
 		{
-			drw = v->driver->drawers_8b;
-
 			for (i = 0; i < 16; i++)
 			{
-				if (drw->pixel_blits[i])
-					drawers->pixel_blits[i] = drw->pixel_blits[i];
+				if (src->pixel_blits[i])
+					dst->pixel_blits[i] = src->pixel_blits[i];
 				else
-					drawers->pixel_blits[i] = rt_ops_8b[i];
+					dst->pixel_blits[i] = rt_ops_1b[i];
 
-				if (drw->raster_blits[i])
-					drawers->raster_blits[i] = drw->raster_blits[i];
+				if (src->raster_blits[i])
+					dst->raster_blits[i] = src->raster_blits[i];
 				else
-					drawers->raster_blits[i] = rops_8b[i];
+					dst->raster_blits[i] = rops_1b[i];
 			}
 
-			if (drw->draw_mcurs)
-				drawers->draw_mcurs = drw->draw_mcurs;
+			if (src->draw_mcurs)
+				dst->draw_mcurs = src->draw_mcurs;
 			else
-				drawers->draw_mcurs = draw_mousecurs_8b;
+				dst->draw_mcurs = 0; //draw_mousecurs_8b;
 
-			if (drw->undraw_mcurs)
-				drawers->undraw_mcurs = drw->undraw_mcurs;
+			if (src->undraw_mcurs)
+				dst->undraw_mcurs = src->undraw_mcurs;
 			else
-				drawers->undraw_mcurs = restore_msave_8b;
+				dst->undraw_mcurs = 0; //restore_msave_8b;
 
-			if (drw->put_pixel)
-				drawers->put_pixel = drw->put_pixel;
+			if (src->put_pixel)
+				dst->put_pixel = src->put_pixel;
 			else
-				drawers->put_pixel = put_pixel_8b;
+				dst->put_pixel = put_pixel_1b;
 
-			if (drw->get_pixel)
-				drawers->get_pixel = drw->get_pixel;
+			if (src->get_pixel)
+				dst->get_pixel = src->get_pixel;
 			else
-				drawers->get_pixel = get_pixel_8b;
+				dst->get_pixel = get_pixel_1b;
 
-			if (drw->draw_solid_rect)
-				drawers->draw_solid_rect = drw->draw_solid_rect;
+			if (src->draw_solid_rect)
+				dst->draw_solid_rect = src->draw_solid_rect;
 			else
-				drawers->draw_solid_rect = draw_solid_rect_8b;
+				dst->draw_solid_rect = 0; //draw_solid_rect_8b;
+
+			break;
+		}
+		case 8:
+		{
+			for (i = 0; i < 16; i++)
+			{
+				if (src->pixel_blits[i])
+					dst->pixel_blits[i] = src->pixel_blits[i];
+				else
+					dst->pixel_blits[i] = rt_ops_8b[i];
+
+				if (src->raster_blits[i])
+					dst->raster_blits[i] = src->raster_blits[i];
+				else
+					dst->raster_blits[i] = rops_8b[i];
+			}
+
+			if (src->draw_mcurs)
+				dst->draw_mcurs = src->draw_mcurs;
+			else
+				dst->draw_mcurs = draw_mousecurs_8b;
+
+			if (src->undraw_mcurs)
+				dst->undraw_mcurs = src->undraw_mcurs;
+			else
+				dst->undraw_mcurs = restore_msave_8b;
+
+			if (src->put_pixel)
+				dst->put_pixel = src->put_pixel;
+			else
+				dst->put_pixel = put_pixel_8b;
+
+			if (src->get_pixel)
+				dst->get_pixel = src->get_pixel;
+			else
+				dst->get_pixel = get_pixel_8b;
+
+			if (src->draw_solid_rect)
+				dst->draw_solid_rect = src->draw_solid_rect;
+			else
+				dst->draw_solid_rect = draw_solid_rect_8b;
 
 			break;
 		}
 		case 15:
 		{
-			drw = v->driver->drawers_16b;
-
 			for (i = 0; i < 16; i++)
 			{
-				if (drw->pixel_blits[i])
-					drawers->pixel_blits[i] = drw->pixel_blits[i];
+				if (src->pixel_blits[i])
+					dst->pixel_blits[i] = src->pixel_blits[i];
 				else
-					drawers->pixel_blits[i] = rt_ops_16b[i];
+					dst->pixel_blits[i] = rt_ops_16b[i];
 
-				if (drw->raster_blits[i])
-					drawers->raster_blits[i] = drw->raster_blits[i];
+				if (src->raster_blits[i])
+					dst->raster_blits[i] = src->raster_blits[i];
 				else
-					drawers->raster_blits[i] = rops_16b[i];
+					dst->raster_blits[i] = rops_16b[i];
 			}
 
-			if (drw->draw_mcurs)
-				drawers->draw_mcurs = drw->draw_mcurs;
+			if (src->draw_mcurs)
+				dst->draw_mcurs = src->draw_mcurs;
 			else
-				drawers->draw_mcurs = draw_mousecurs_16b;
+				dst->draw_mcurs = draw_mousecurs_16b;
 
-			if (drw->undraw_mcurs)
-				drawers->undraw_mcurs = drw->undraw_mcurs;
+			if (src->undraw_mcurs)
+				dst->undraw_mcurs = src->undraw_mcurs;
 			else
-				drawers->undraw_mcurs = restore_msave_16b;
+				dst->undraw_mcurs = restore_msave_16b;
 
-			if (drw->put_pixel)
-				drawers->put_pixel = drw->put_pixel;
+			if (src->put_pixel)
+				dst->put_pixel = src->put_pixel;
 			else
-				drawers->put_pixel = put_pixel_16b;
+				dst->put_pixel = put_pixel_16b;
 
-			if (drw->get_pixel)
-				drawers->get_pixel = drw->get_pixel;
+			if (src->get_pixel)
+				dst->get_pixel = src->get_pixel;
 			else
-				drawers->get_pixel = get_pixel_16b;
+				dst->get_pixel = get_pixel_16b;
 
 			break;
 		}
 		case 16:
 		{
-			drw = v->driver->drawers_16b;
-
 			for (i = 0; i < 16; i++)
 			{
-				if (drw->pixel_blits[i])
-					drawers->pixel_blits[i] = drw->pixel_blits[i];
+				if (src->pixel_blits[i])
+					dst->pixel_blits[i] = src->pixel_blits[i];
 				else
-					drawers->pixel_blits[i] = rt_ops_16b[i];
+					dst->pixel_blits[i] = rt_ops_16b[i];
 
-				if (drw->raster_blits[i])
-					drawers->raster_blits[i] = drw->raster_blits[i];
+				if (src->raster_blits[i])
+					dst->raster_blits[i] = src->raster_blits[i];
 				else
-					drawers->raster_blits[i] = rops_16b[i];
+					dst->raster_blits[i] = rops_16b[i];
 			}
 
-			if (drw->draw_mcurs)
-				drawers->draw_mcurs = drw->draw_mcurs;
+			if (src->draw_mcurs)
+				dst->draw_mcurs = src->draw_mcurs;
 			else
-				drawers->draw_mcurs = draw_mousecurs_16b;
+				dst->draw_mcurs = draw_mousecurs_16b;
 
-			if (drw->undraw_mcurs)
-				drawers->undraw_mcurs = drw->undraw_mcurs;
+			if (src->undraw_mcurs)
+				dst->undraw_mcurs = src->undraw_mcurs;
 			else
-				drawers->undraw_mcurs = restore_msave_16b;
+				dst->undraw_mcurs = restore_msave_16b;
 
-			if (drw->put_pixel)
-				drawers->put_pixel = drw->put_pixel;
+			if (src->put_pixel)
+				dst->put_pixel = src->put_pixel;
 			else
-				drawers->put_pixel = put_pixel_16b;
+				dst->put_pixel = put_pixel_16b;
 
-			if (drw->get_pixel)
-				drawers->get_pixel = drw->get_pixel;
+			if (src->get_pixel)
+				dst->get_pixel = src->get_pixel;
 			else
-				drawers->get_pixel = get_pixel_16b;
+				dst->get_pixel = get_pixel_16b;
 
 			break;
 		}
@@ -501,27 +565,33 @@ setup_engine_jumptables(VIRTUAL *v, OVDI_DRAWERS *drawers, OVDI_UTILS *utils)
 
 	}
 
- /* Construct .. ahem .. something .. yeh. */
-	drawers->drp[0] = drawers->pixel_blits[3];
-	drawers->drp[1] = drawers->pixel_blits[3];
-	drawers->drp[2] = drawers->pixel_blits[3];
-	drawers->drp[3] = 0;
-	drawers->drp[4] = drawers->pixel_blits[6];
-	drawers->drp[5] = drawers->pixel_blits[6];
-	drawers->drp[6] = 0;
-	drawers->drp[7] = drawers->pixel_blits[3];
+ /* DRP - Draw Raster Point, used for vrt_cpyfm(). */
+	/* MD_REPLACE */
+	dst->drp[0] = dst->pixel_blits[3];
+	dst->drp[1] = dst->pixel_blits[3];
+	/* MD_TRANS */
+	dst->drp[2] = dst->pixel_blits[3];
+	dst->drp[3] = 0;
+	/* MD_EOR */
+	dst->drp[4] = dst->pixel_blits[6];
+	dst->drp[5] = dst->pixel_blits[6];
+	/* MD_ERASE */
+	dst->drp[6] = 0;
+	dst->drp[7] = dst->pixel_blits[3];
 
-	drawers->dlp[0] = drawers->pixel_blits[3];
-	drawers->dlp[1] = drawers->pixel_blits[3];
-
-	drawers->dlp[2] = drawers->pixel_blits[3];
-	drawers->dlp[3] = 0;
-
-	drawers->dlp[4] = drawers->pixel_blits[6];
-	drawers->dlp[5] = 0;
-
-	drawers->dlp[6] = drawers->pixel_blits[3];
-	drawers->dlp[7] = 0;
+ /* DLP - used for Lines, patterns, etc... */
+	/* MD_REPLACE */
+	dst->dlp[0] = dst->pixel_blits[3];
+	dst->dlp[1] = dst->pixel_blits[3];
+	/* MD_TRANS */
+	dst->dlp[2] = dst->pixel_blits[3];
+	dst->dlp[3] = 0;
+	/* MD_EOR */
+	dst->dlp[4] = dst->pixel_blits[6];
+	dst->dlp[5] = 0;
+	/* MD_ERASE */
+	dst->dlp[6] = dst->pixel_blits[3];
+	dst->dlp[7] = 0;
 
 	return 0;
 }
@@ -625,7 +695,7 @@ v_opnvwk(VDIPB *pb, VIRTUAL *v)
 {
 	VIRTUAL *root, *new;
 	OVDI_VTAB *entry;
-	short handle, pid;
+	short i, handle, pid;
 
 	handle = 0;
 	pid = -1;
@@ -634,8 +704,6 @@ v_opnvwk(VDIPB *pb, VIRTUAL *v)
 
 	if (new)
 	{
-		short i;
-
 		entry = v_vtab;
 
 		for (i = 2; i < MAX_VIRTUALS; i++)
@@ -678,6 +746,9 @@ v_opnvwk(VDIPB *pb, VIRTUAL *v)
 			new->rgb_bits		= root->rgb_bits;
 			new->drawers		= root->drawers;
 			new->utils		= root->utils;
+
+			for (i = 0; i < 32; i++)
+				new->odrawers[i] = root->odrawers[i];
 
 			setup_virtual(pb, new, root);
 			lvst_load_fonts(new);
@@ -1012,6 +1083,7 @@ prepare_stdreturn( VDIPB *pb, VIRTUAL *v)
 void
 lv_clrwk(VIRTUAL *virtual)
 {
+	short tmp;
 	VIRTUAL *v;
 	VDIRECT corners;
 
@@ -1023,7 +1095,10 @@ lv_clrwk(VIRTUAL *virtual)
 	corners.x2 = v->raster->w - 1;
 	corners.y2 = v->raster->h - 1;
 
+	tmp = v->fill.interior;
+	v->fill.interior = FIS_SOLID;
 	rectfill( v, &corners, &WhiteRect);
+	v->fill.interior = tmp;
 
 	return;
 }
@@ -1188,11 +1263,12 @@ setup_fonts(VIRTUAL *v, SIZ_TAB *st, DEV_TAB *dt)
 {
 	if (!sysfnt08p)
 	{
+		short i;
 		long size;
 		char *fnptrs, *fnptrd, *fdnptr;
 		char fname[40];
-
 		FONT_HEAD *f1;
+		XGDF_HEAD *xf;
 
 		st->minwchar = st->minhchar = 0x7fff;
 		st->maxwchar = st->maxhchar = 0;
@@ -1206,29 +1282,42 @@ setup_fonts(VIRTUAL *v, SIZ_TAB *st, DEV_TAB *dt)
 		v->font.num	= 1;
 
 		f1 = (FONT_HEAD *)&systemfont08;
+		xf = &xsystemfont08;
+		xf->links = 1;
+		xf->font_head = f1;
+		for (i = 0; i < 256; i++)
+			xf->cache[i] = 0;
 		fixup_font(f1);
-		sysfnt08p = f1;
+		sysfnt08p = xf; //f1;
 		f1->id = 1;
 
 		f1 = (FONT_HEAD *)&systemfont09;
+		xf = &xsystemfont09;
+		xf->links = 1;
+		xf->font_head = f1;
+		for (i = 0; i < 256; i++)
+			xf->cache[i] = 0;
 		fixup_font(f1);
-		sysfnt09p = f1;
+		sysfnt09p = xf; //f1;
 		f1->id = 1;
-
-		if ((add_font(sysfnt08p, f1)) == 1)
+		if ((add_font(sysfnt08p, xf)) == 1) //f1)) == 1)
 			v->font.num++;
 
 		f1 = (FONT_HEAD *)&systemfont10;
+		xf = &xsystemfont10;
+		xf->links = 1;
+		xf->font_head = f1;
+		for (i = 0; i < 256; i++)
+			xf->cache[i] = 0;
 		fixup_font(f1);
-		sysfnt10p = f1;
+		sysfnt10p = xf; //f1;
 		f1->id = 1;
-
-		if ((add_font(sysfnt08p, f1)) == 1)
+		if ((add_font(sysfnt08p, xf)) == 1) //f1)) == 1)
 			v->font.num++;
 
 		v->fring = sysfnt08p;
-		v->font.defid = sysfnt10p->id;
-		v->font.defht = sysfnt10p->top;		
+		v->font.defid = sysfnt10p->font_head->id;
+		v->font.defht = sysfnt10p->font_head->top;
 		v->font.lcount = 0;
 		v->font.loaded = 0;
 
@@ -1249,18 +1338,21 @@ setup_fonts(VIRTUAL *v, SIZ_TAB *st, DEV_TAB *dt)
 
 				*fnptrd++ = *fnptrs++;
 
-				if (!load_font(&fname[0], &size, (long *)&f1))
+				if (!load_font(&fname[0], &size, (long *)&xf)) //f1))
 				{
-					fixup_font(f1);
+					fixup_font(xf->font_head); //f1);
+
+					for (i = 0; i < 256; i++)
+						xf->cache[i] = 0;
 
 					if (v->font.loaded)
 					{
-						if ((add_font(v->font.loaded, f1)) == 1)
+						if ((add_font(v->font.loaded, xf)) == 1) //f1)) == 1)
 							v->font.lcount++;
 					}
 					else
 					{
-						v->font.loaded = f1;
+						v->font.loaded = xf; //f1;
 						v->font.lcount++;
 					}
 
@@ -1276,9 +1368,10 @@ setup_fonts(VIRTUAL *v, SIZ_TAB *st, DEV_TAB *dt)
 		//log("Loaded %d fontfaces\n", v->font.lcount);
 
 		//log("*** Font-ring (sysfonts): ***\n");
-		f1 = sysfnt08p;
-		while(f1)
+		xf = sysfnt08p; //f1 = sysfnt08p;
+		while(xf) //f1)
 		{
+			f1 = xf->font_head;
 			//log("  id %d, point %d, height %d, name %s\n", f1->id, f1->point, f1->top, f1->name);
 
 			if (f1->max_char_width < st->minwchar)
@@ -1291,14 +1384,14 @@ setup_fonts(VIRTUAL *v, SIZ_TAB *st, DEV_TAB *dt)
 			if (f1->top > st->maxhchar)
 				st->maxhchar = f1->top;
 
-			f1 = f1->next;
+			xf = xf->next; //f1 = f1->next;
 		}
 		//log("*** Loaded fonts: ***\n");
-		f1 = v->font.loaded;
-		while(f1)
+		xf = v->font.loaded; //f1 = v->font.loaded;
+		while(xf)
 		{
 			//log("  id %d, point %d, height %d, name %s\n", f1->id, f1->point, f1->top, f1->name);
-			f1 = f1->next;
+			xf = xf->next;
 		}
 
 		dt->faces = v->font.num;

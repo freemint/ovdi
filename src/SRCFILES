@@ -49,6 +49,7 @@ HEADER = \
 	workstation.h \
 	xbios.h \
 	xcb.h \
+	1b_driver.h \
 \
 	4b_driver.h \
 \
@@ -95,6 +96,7 @@ COBJS = \
 	v_time.c \
 	workstation.c \
 	xbios.c \
+	1b_driver.c \
 \
 	4b_driver.c \
 \
@@ -111,7 +113,10 @@ SOBJS = \
 	lineaasm.s \
 	mousedrv_asm.s \
 	xbiosasm.s \
-	xcb_calls.s
+	xcb_calls.s \
+\
+	8b_drvasm.s
+
 
 SSOBJS = \
 	startup.S \

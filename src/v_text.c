@@ -131,7 +131,7 @@ int
 lvst_font( VIRTUAL *v, short id)
 {
 
-	FONT_HEAD *sf, *lf;
+	XGDF_HEAD *sf, *lf;
 	short sr, lr;
 
 
@@ -147,10 +147,11 @@ lvst_font( VIRTUAL *v, short id)
 
 	if (sr == 1)
 	{
-		v->font.header = sf;
-		v->font.scaled = 0;
-		v->font.sclsts = 0;
-		get_font_chrfx_ofst(sf, v->font.style, &v->font.fx_x_ofst, &v->font.fx_y_ofst);
+		v->font.header	= sf->font_head;
+		v->font.current	= sf;
+		v->font.scaled	= 0;
+		v->font.sclsts	= 0;
+		get_font_chrfx_ofst(sf->font_head, v->font.style, &v->font.fx_x_ofst, &v->font.fx_y_ofst);
 		//display("set font1 %s", sf->name);
 		return 1;
 	}
@@ -164,10 +165,11 @@ lvst_font( VIRTUAL *v, short id)
 
 		if (lr == 1)
 		{
-			v->font.header = lf;
-			v->font.scaled = 0;
-			v->font.sclsts = 0;
-			get_font_chrfx_ofst(sf, v->font.style, &v->font.fx_x_ofst, &v->font.fx_y_ofst);
+			v->font.header	= lf->font_head;
+			v->font.current	= lf;
+			v->font.scaled	= 0;
+			v->font.sclsts	= 0;
+			get_font_chrfx_ofst(lf->font_head, v->font.style, &v->font.fx_x_ofst, &v->font.fx_y_ofst);
 			//display("set font2 %s", lf->name);
 			return 1;
 		}
@@ -183,7 +185,8 @@ lvst_font( VIRTUAL *v, short id)
 	if (sr == 2)
 	{
 	/* scale font here */
-		v->font.header = sf;
+		v->font.header	= sf->font_head;
+		v->font.current	= sf;
 		if (v->font.pts)
 			(void)lvst_point( v, v->font.size );
 		else
@@ -225,7 +228,8 @@ vst_point( VDIPB *pb, VIRTUAL *v )
 int
 lvst_point ( VIRTUAL *v, short point )
 {
-	FONT_HEAD *sf, *lf;
+	XGDF_HEAD *sf, *lf;
+	FONT_HEAD *fnth;
 	short sr, lr;
 
 	lr = 0;
@@ -234,11 +238,13 @@ lvst_point ( VIRTUAL *v, short point )
 
 	if (sr == 1)
 	{
-		v->font.header = sf;
-		v->font.size = sf->point;
-		v->font.scaled = 0;
-		v->font.sclsts = 0;
-		get_font_chrfx_ofst(sf, v->font.style, &v->font.fx_x_ofst, &v->font.fx_y_ofst);
+		fnth		= sf->font_head;
+		v->font.header	= fnth;
+		v->font.current	= sf;
+		v->font.size	= fnth->point;
+		v->font.scaled	= 0;
+		v->font.sclsts	= 0;
+		get_font_chrfx_ofst(fnth, v->font.style, &v->font.fx_x_ofst, &v->font.fx_y_ofst);
 		return 1;
 	}
 
@@ -247,11 +253,13 @@ lvst_point ( VIRTUAL *v, short point )
 
 	if (lr == 1)
 	{
-		v->font.header = lf;
-		v->font.size = lf->point;
-		v->font.scaled = 0;
-		v->font.sclsts = 0;
-		get_font_chrfx_ofst(sf, v->font.style, &v->font.fx_x_ofst, &v->font.fx_y_ofst);
+		fnth		= lf->font_head;
+		v->font.header	= fnth;
+		v->font.current	= lf;
+		v->font.size	= fnth->point;
+		v->font.scaled	= 0;
+		v->font.sclsts	= 0;
+		get_font_chrfx_ofst(fnth, v->font.style, &v->font.fx_x_ofst, &v->font.fx_y_ofst);
 		return 1;
 	}
 
@@ -263,11 +271,13 @@ lvst_point ( VIRTUAL *v, short point )
 
 	if (sr ==  2)
 	{
-		v->font.header = sf;
-		v->font.size = sf->point;
-		v->font.scaled = 0;
-		v->font.sclsts = 0;
-		get_font_chrfx_ofst(sf, v->font.style, &v->font.fx_x_ofst, &v->font.fx_y_ofst);
+		fnth		= sf->font_head;
+		v->font.header	= fnth;
+		v->font.current = sf;
+		v->font.size	= fnth->point;
+		v->font.scaled	= 0;
+		v->font.sclsts	= 0;
+		get_font_chrfx_ofst(fnth, v->font.style, &v->font.fx_x_ofst, &v->font.fx_y_ofst);
 		return 1;
 	}
 
@@ -300,7 +310,8 @@ vst_height( VDIPB *pb, VIRTUAL *v )
 int
 lvst_height ( VIRTUAL *v, short height )
 {
-	FONT_HEAD *sf, *lf;
+	XGDF_HEAD *sf, *lf;
+	FONT_HEAD *fnth;
 	short sr, lr;
 
 	lr = 0;
@@ -309,11 +320,13 @@ lvst_height ( VIRTUAL *v, short height )
 
 	if (sr == 1)
 	{
-		v->font.header = sf;
-		v->font.size = sf->top;
-		v->font.scaled = 0;
-		v->font.sclsts = 0;
-		get_font_chrfx_ofst(sf, v->font.style, &v->font.fx_x_ofst, &v->font.fx_y_ofst);
+		fnth		= sf->font_head;
+		v->font.header	= fnth;
+		v->font.current	= sf;
+		v->font.size	= fnth->top;
+		v->font.scaled	= 0;
+		v->font.sclsts	= 0;
+		get_font_chrfx_ofst(fnth, v->font.style, &v->font.fx_x_ofst, &v->font.fx_y_ofst);
 		return 1;
 	}
 
@@ -322,11 +335,13 @@ lvst_height ( VIRTUAL *v, short height )
 
 	if (lr == 1)
 	{
-		v->font.header = lf;
-		v->font.size = lf->top;
-		v->font.scaled = 0;
-		v->font.sclsts = 0;
-		get_font_chrfx_ofst(sf, v->font.style, &v->font.fx_x_ofst, &v->font.fx_y_ofst);
+		fnth		= lf->font_head;
+		v->font.header	= fnth;
+		v->font.current = lf;
+		v->font.size	= fnth->top;
+		v->font.scaled	= 0;
+		v->font.sclsts	= 0;
+		get_font_chrfx_ofst(fnth, v->font.style, &v->font.fx_x_ofst, &v->font.fx_y_ofst);
 		return 1;
 	}
 
@@ -338,11 +353,13 @@ lvst_height ( VIRTUAL *v, short height )
 
 	if (sr ==  2)
 	{
-		v->font.header = sf;
-		v->font.size = sf->top;
-		v->font.scaled = 0;
-		v->font.sclsts = 0;
-		get_font_chrfx_ofst(sf, v->font.style, &v->font.fx_x_ofst, &v->font.fx_y_ofst);
+		fnth		= sf->font_head;
+		v->font.header	= fnth;
+		v->font.current = sf;
+		v->font.size	= fnth->top;
+		v->font.scaled	= 0;
+		v->font.sclsts	= 0;
+		get_font_chrfx_ofst(fnth, v->font.style, &v->font.fx_x_ofst, &v->font.fx_y_ofst);
 		return 1;
 	}
 
@@ -545,22 +562,24 @@ vqt_name( VDIPB *pb, VIRTUAL *v)
 	short *dfname;
 	short index;
 	FONT_HEAD *f;
+	XGDF_HEAD *xf;
 
 
-	index = find_fontbyindex( v->fring, pb->intin[0], (long *)&f);
+	index = find_fontbyindex( v->fring, pb->intin[0], (long *)&xf);
 
 	if (index)
 	{
 		if (v->font.loaded)
 		{
-			index = find_fontbyindex( v->font.loaded, index, (long *)&f);
+			index = find_fontbyindex( v->font.loaded, index, (long *)&xf);
 			if (index)
-				f = v->fring;
+				xf = v->fring;
 		}
 		else
-			f = v->fring;
+			xf = v->fring;
 	}
 
+	f = xf->font_head;
 	dfname = (short *)&pb->intout[1];
 	for (i = 0, sfname = (unsigned char *)&f->name, dfname = (short *)&pb->intout[1]; (*dfname++ = *sfname++); i++){}
 

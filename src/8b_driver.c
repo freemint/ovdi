@@ -176,16 +176,15 @@ ALL_BLACK(unsigned char *addr, long data)
 }
 
 void
-draw_solid_rect_8b(RASTER *r, short *corners, PatAttr *ptrn)
+draw_solid_rect_8b(RASTER *r, short *corners, short wrmode, short color)
 {
 	unsigned char *dst, *d;
-	short i, bypl, dx, dy, wrmode;
+	short i, bypl, dx, dy;
 	unsigned long pixel;
 
-	wrmode = ptrn->wrmode;
 	bypl = r->bypl;
-	pixel = ptrn->color[wrmode] & 0xff;
-	pixel |= ((long)pixel << 24) | ((long)pixel << 16) | (pixel << 8);
+	pixel = color & 0xff;
+	pixel |= (pixel << 24) | (pixel << 16) | (pixel << 8);
 	dx = corners[2] - corners[0] + 1;
 	dy = corners[3] - corners[1] + 1;
 
@@ -257,23 +256,24 @@ draw_solid_rect_8b(RASTER *r, short *corners, PatAttr *ptrn)
 	}
 }
 
+//extern void asm_rb_S_ONLY_08(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
 /* *************** RASTER OPERATIONS **************** */
-static void rb_ALL_WHITE	(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
-static void rb_S_AND_D		(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
-static void rb_S_AND_NOTD	(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
-static void rb_S_ONLY		(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
-static void rb_NOTS_AND_D	(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
-static void rb_D_ONLY		(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
-static void rb_S_XOR_D		(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
-static void rb_S_OR_D		(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
-static void rb_NOT_SORD		(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
-static void rb_NOT_SXORD	(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
-static void rb_NOT_D		(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
-static void rb_S_OR_NOTD	(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
-static void rb_NOT_S		(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
-static void rb_NOTS_OR_D	(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
-static void rb_NOT_SANDD	(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
-static void rb_ALL_BLACK	(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
+static void rb_ALL_WHITE	(ROP_PB *);
+static void rb_S_AND_D		(ROP_PB *);
+static void rb_S_AND_NOTD	(ROP_PB *);
+static void rb_S_ONLY		(ROP_PB *);
+static void rb_NOTS_AND_D	(ROP_PB *);
+static void rb_D_ONLY		(ROP_PB *);
+static void rb_S_XOR_D		(ROP_PB *);
+static void rb_S_OR_D		(ROP_PB *);
+static void rb_NOT_SORD		(ROP_PB *);
+static void rb_NOT_SXORD	(ROP_PB *);
+static void rb_NOT_D		(ROP_PB *);
+static void rb_S_OR_NOTD	(ROP_PB *);
+static void rb_NOT_S		(ROP_PB *);
+static void rb_NOTS_OR_D	(ROP_PB *);
+static void rb_NOT_SANDD	(ROP_PB *);
+static void rb_ALL_BLACK	(ROP_PB *);
 
 raster_blit rops_8b[] =
 {
@@ -295,619 +295,872 @@ raster_blit rops_8b[] =
 	rb_ALL_BLACK
 };
 
-
-
 static void
-rb_ALL_WHITE(unsigned char *srcptr, register short srcbypl,
-		unsigned char *dstptr, register short dstbypl,
-		short width, short height, short dir)
+rb_ALL_WHITE(ROP_PB *rpb)
 {
-	register unsigned char /**srcp,*/ *dstp;
-	register short i, j;
+	register short i, width, height, dbpl;
+	register unsigned char *dst, *d;
 
-	if (dir)
+	width	= rpb->sx2 - rpb->sx1 + 1;
+	height	= rpb->sy2 - rpb->sy1 + 1;
+
+	dst = (unsigned char *)rpb->d_addr + (long)(((long)rpb->dy2 * rpb->d_bypl) + (long)rpb->dx2 + 1);
+
+	dbpl = rpb->d_bypl;
+
+	for (; height > 0; height--)
 	{
-		for (i = height; i > 0; i--)
+		d = dst;
+		for (i = width >> 4; i > 0; i--)
 		{
-
-			//srcp = (unsigned char *)srcptr;
-			dstp = (unsigned char *)dstptr;
-
-			for (j = width; j > 0; j--)
-				*dstp-- = 0x0;
-
-			//srcptr += srcbypl;
-			dstptr -= dstbypl;
+			*(long *)--((long *)d) = 0L;
+			*(long *)--((long *)d) = 0L;
+			*(long *)--((long *)d) = 0L;
+			*(long *)--((long *)d) = 0L;
 		}
-	}
-	else
-	{
-		for (i = height; i > 0; i--)
-		{
+		for (i = width & 0xf; i > 0; i--)
+			*(char *)--((char *)d) = 0;
 
-			//srcp = (unsigned char *)srcptr;
-			dstp = (unsigned char *)dstptr;
-
-			for (j = width; j > 0; j--)
-				*dstp++ = 0x0;
-
-			//srcptr += srcbypl;
-			dstptr += dstbypl;
-		}
+		dst -= dbpl;
 	}
 }
 
 static void
-rb_S_AND_D(	unsigned char *srcptr, register short srcbypl,
-		unsigned char *dstptr, register short dstbypl,
-		short width, short height, short dir)
+rb_S_AND_D(ROP_PB *rpb)
 {
-	register unsigned char *srcp, *dstp;
-	register short i, j;
+	register short i, width, height, sbpl, dbpl;
+	register unsigned char *dst, *src, *d, *s;
 
-	if (dir)
+	width	= rpb->sx2 - rpb->sx1 + 1;
+	height	= rpb->sy2 - rpb->sy1 + 1;
+
+	src = (unsigned char *)rpb->s_addr + (long)(((long)rpb->sy1 * rpb->s_bypl) + (long)rpb->sx1);
+	dst = (unsigned char *)rpb->d_addr + (long)(((long)rpb->dy1 * rpb->d_bypl) + (long)rpb->dx1);
+
+	sbpl = rpb->s_bypl;
+	dbpl = rpb->d_bypl;
+
+	if (src < dst)
 	{
-		for (i = height; i > 0; i--)
+		src += width;
+		src += (long)(height - 1) * sbpl;
+
+		dst += width;
+		dst += (long)(height - 1) * dbpl;
+
+		for (; height > 0; height--)
 		{
-
-			srcp = (unsigned char *)srcptr;
-			dstp = (unsigned char *)dstptr;
-
-			for (j = width; j > 0; j--)
-				*dstp-- &= *srcp--;
-
-			srcptr -= srcbypl;
-			dstptr -= dstbypl;
-		}
-	}
-	else
-	{
-		for (i = height; i > 0; i--)
-		{
-
-			srcp = (unsigned char *)srcptr;
-			dstp = (unsigned char *)dstptr;
-
-			for (j = width; j > 0; j--)
-				*dstp++ &= *srcp++;
-
-			srcptr += srcbypl;
-			dstptr += dstbypl;
-		}
-	}
-}
-static void
-rb_S_AND_NOTD(unsigned char *srcptr, register short srcbypl,
-		unsigned char *dstptr, register short dstbypl,
-		short width, short height, short dir)
-{
-	register unsigned char *srcp, *dstp;
-	register short i, j;
-
-	if (dir)
-	{
-		for (i = height; i > 0; i--)
-		{
-
-			srcp = (unsigned char *)srcptr;
-			dstp = (unsigned char *)dstptr;
-
-			for (j = width; j > 0; j--)
-				*dstp-- = *srcp-- & (~*dstp);
-
-			srcptr -= srcbypl;
-			dstptr -= dstbypl;
-		}
-	}
-	else
-	{
-		for (i = height; i > 0; i--)
-		{
-
-			srcp = (unsigned char *)srcptr;
-			dstp = (unsigned char *)dstptr;
-
-			for (j = width; j > 0; j--)
-				*dstp++ = *srcp++ & (~*dstp);
-
-			srcptr += srcbypl;
-			dstptr += dstbypl;
-		}
-	}
-}
-static void
-rb_S_ONLY(	unsigned char *srcptr, register short srcbypl,
-		unsigned char *dstptr, register short dstbypl,
-		short width, short height, short dir)
-{
-	register unsigned char *srcp, *dstp;
-	register short i, j;
-
-	if (dir)
-	{
-		for (i = height; i > 0; i--)
-		{
-
-			srcp = (void *)((char *)srcptr + 1);
-			dstp = (void *)((char *)dstptr + 1);
-			
-			for (j = width >> 4; j > 0; j--)
+			s = src;
+			d = dst;
+			for (i = width >> 4; i > 0; i--)
 			{
-				*(long *)--((long *)dstp) = *(long *)--((long *)srcp);
-				*(long *)--((long *)dstp) = *(long *)--((long *)srcp);
-				*(long *)--((long *)dstp) = *(long *)--((long *)srcp);
-				*(long *)--((long *)dstp) = *(long *)--((long *)srcp);
+				*(long *)--((long *)d) &= *(long *)--((long *)s);
+				*(long *)--((long *)d) &= *(long *)--((long *)s);
+				*(long *)--((long *)d) &= *(long *)--((long *)s);
+				*(long *)--((long *)d) &= *(long *)--((long *)s);
 			}
-			for (j = width & 0xf; j > 0; j--)
-				*(char *)--dstp = *(char *)--srcp;
-#if 0			
-			for (j = width; j > 0; j--)
-				*dstp-- = *srcp--;
-#endif
-			srcptr -= srcbypl;
-			dstptr -= dstbypl;
+			for (i = width & 0xf; i > 0; i--)
+				*(char *)--((char *)d) &= *(char *)--((char *)s);
+
+			src -= sbpl;
+			dst -= dbpl;
 		}
 	}
 	else
 	{
-		for (i = height; i > 0; i--)
+		for (; height > 0; height--)
 		{
-
-			srcp = (unsigned char *)srcptr;
-			dstp = (unsigned char *)dstptr;
-
-			for (j = width >> 4; j > 0; j--)
+			s = src;
+			d = dst;
+			for (i = width >> 4; i > 0; i--)
 			{
-				*(long *)((long *)dstp)++ = *(long *)((long *)srcp)++;
-				*(long *)((long *)dstp)++ = *(long *)((long *)srcp)++;
-				*(long *)((long *)dstp)++ = *(long *)((long *)srcp)++;
-				*(long *)((long *)dstp)++ = *(long *)((long *)srcp)++;
+				*(long *)((long *)d)++ &= *(long *)((long *)s)++;
+				*(long *)((long *)d)++ &= *(long *)((long *)s)++;
+				*(long *)((long *)d)++ &= *(long *)((long *)s)++;
+				*(long *)((long *)d)++ &= *(long *)((long *)s)++;
 			}
-			for (j = width & 0xf; j > 0; j--)
-				*dstp++ = *srcp++;
+			for (i = width & 0xf; i > 0; i--)
+				*(char *)((char *)d)++ &= *(char *)((char *)s)++;
+
+			src += sbpl;
+			dst += dbpl;
+		}
+	}
+}
+static void
+rb_S_AND_NOTD(ROP_PB *rpb)
+{
+	register short i, width, height, sbpl, dbpl;
+	register unsigned char *dst, *src, *d, *s;
+
+	width	= rpb->sx2 - rpb->sx1 + 1;
+	height	= rpb->sy2 - rpb->sy1 + 1;
+
+	src = (unsigned char *)rpb->s_addr + (long)(((long)rpb->sy1 * rpb->s_bypl) + (long)rpb->sx1);
+	dst = (unsigned char *)rpb->d_addr + (long)(((long)rpb->dy1 * rpb->d_bypl) + (long)rpb->dx1);
+
+	sbpl = rpb->s_bypl;
+	dbpl = rpb->d_bypl;
+
+	if (src < dst)
+	{
+		src += width;
+		src += (long)(height - 1) * sbpl;
+
+		dst += width;
+		dst += (long)(height - 1) * dbpl;
+
+		for (; height > 0; height--)
+		{
+			s = src;
+			d = dst;
+			for (i = width >> 4; i > 0; i--)
+			{
+				*(long *)--((long *)d) = *(long *)--((long *)s) & ~*(long *)d;
+				*(long *)--((long *)d) = *(long *)--((long *)s) & ~*(long *)d;
+				*(long *)--((long *)d) = *(long *)--((long *)s) & ~*(long *)d;
+				*(long *)--((long *)d) = *(long *)--((long *)s) & ~*(long *)d;
+			}
+			for (i = width & 0xf; i > 0; i--)
+				*(char *)--((char *)d) = *(char *)--((char *)s) & ~*(char *)d;
+
+			src -= sbpl;
+			dst -= dbpl;
+		}
+	}
+	else
+	{
+		for (; height > 0; height--)
+		{
+			s = src;
+			d = dst;
+			for (i = width >> 4; i > 0; i--)
+			{
+				*(long *)((long *)d)++ = *(long *)((long *)s)++ & ~*(long *)d;
+				*(long *)((long *)d)++ = *(long *)((long *)s)++ & ~*(long *)d;
+				*(long *)((long *)d)++ = *(long *)((long *)s)++ & ~*(long *)d;
+				*(long *)((long *)d)++ = *(long *)((long *)s)++ & ~*(long *)d;
+			}
+			for (i = width & 0xf; i > 0; i--)
+				*(char *)((char *)d)++ = *(char *)((char *)s)++ & ~*(char *)d;
+
+			src += sbpl;
+			dst += dbpl;
+		}
+	}
+}
+static void
+rb_S_ONLY(ROP_PB *rpb)
+{
+	register short i, width, height, sbpl, dbpl;
+	register unsigned char *dst, *src, *d, *s;
+
+	width	= rpb->sx2 - rpb->sx1 + 1;
+	height	= rpb->sy2 - rpb->sy1 + 1;
+
+	if (width <= 0 || height <= 0)
+	{
+		scrnlog("S_ONLY - Keh?!\n");
+		return;
+	}
+
+	src = (unsigned char *)rpb->s_addr + (long)(((long)rpb->sy1 * rpb->s_bypl) + (long)rpb->sx1);
+	dst = (unsigned char *)rpb->d_addr + (long)(((long)rpb->dy1 * rpb->d_bypl) + (long)rpb->dx1);
+
+	sbpl = rpb->s_bypl;
+	dbpl = rpb->d_bypl;
+
+	if (src < dst)
+	{
+		src += width;
+		src += (long)(height - 1) * sbpl;
+
+		dst += width;
+		dst += (long)(height - 1) * dbpl;
+
+		for (; height > 0; height--)
+		{
+			s = src;
+			d = dst;
 #if 0
-			for (j = width; j > 0; j--)
-				*dstp++ = *srcp++;
+			for (i = width; i > 0; i--)
+				*--d = *--s;
+#else
+			for (i = (unsigned short)width >> 4; i > 0; i--)
+			{
+				*(unsigned long *)--((long *)d) = *(unsigned long *)--((long *)s);
+				*(unsigned long *)--((long *)d) = *(unsigned long *)--((long *)s);
+				*(unsigned long *)--((long *)d) = *(unsigned long *)--((long *)s);
+				*(unsigned long *)--((long *)d) = *(unsigned long *)--((long *)s);
+			}
+			for (i = width & 0xf; i > 0; i--)
+				*(unsigned char *)--((char *)d) = *(char *)--((unsigned char *)s);
 #endif
-			srcptr += srcbypl;
-			dstptr += dstbypl;
-		}
-	}
-}
-static void
-rb_NOTS_AND_D(unsigned char *srcptr, register short srcbypl,
-		unsigned char *dstptr, register short dstbypl,
-		short width, short height, short dir)
-{
-	register unsigned char *srcp, *dstp;
-	register short i, j;
-
-	if (dir)
-	{
-		for (i = height; i > 0; i--)
-		{
-
-			srcp = (unsigned char *)srcptr;
-			dstp = (unsigned char *)dstptr;
-
-			for (j = width; j > 0; j--)
-				*dstp-- &= ~(*srcp--);
-
-			srcptr -= srcbypl;
-			dstptr -= dstbypl;
+			src -= sbpl;
+			dst -= dbpl;
 		}
 	}
 	else
 	{
-		for (i = height; i > 0; i--)
+		for (; height > 0; height--)
 		{
-
-			srcp = (unsigned char *)srcptr;
-			dstp = (unsigned char *)dstptr;
-
-			for (j = width; j > 0; j--)
-				*dstp++ &= ~(*srcp++);
-
-			srcptr += srcbypl;
-			dstptr += dstbypl;
+			s = src;
+			d = dst;
+#if 0
+			for (i = width; i > 0; i--)
+				*d++ = *s++;
+#else
+			for (i = (unsigned short)width >> 4; i > 0; i--)
+			{
+				*(unsigned long *)((long *)d)++ = *(unsigned long *)((long *)s)++;
+				*(unsigned long *)((long *)d)++ = *(unsigned long *)((long *)s)++;
+				*(unsigned long *)((long *)d)++ = *(unsigned long *)((long *)s)++;
+				*(unsigned long *)((long *)d)++ = *(unsigned long *)((long *)s)++;
+			}
+			for (i = width & 0xf; i > 0; i--)
+				*(unsigned char *)((char *)d)++ = *(unsigned char *)((char *)s)++;
+#endif
+			src += sbpl;
+			dst += dbpl;
 		}
 	}
 }
 static void
-rb_D_ONLY(	unsigned char *srcptr, register short srcbypl,
-		unsigned char *dstptr, register short dstbypl,
-		short width, short height, short dir)
+rb_NOTS_AND_D(ROP_PB *rpb)
+{
+	register short i, width, height, sbpl, dbpl;
+	register unsigned char *dst, *src, *d, *s;
+
+	width	= rpb->sx2 - rpb->sx1 + 1;
+	height	= rpb->sy2 - rpb->sy1 + 1;
+
+	src = (unsigned char *)rpb->s_addr + (long)(((long)rpb->sy1 * rpb->s_bypl) + (long)rpb->sx1);
+	dst = (unsigned char *)rpb->d_addr + (long)(((long)rpb->dy1 * rpb->d_bypl) + (long)rpb->dx1);
+
+	sbpl = rpb->s_bypl;
+	dbpl = rpb->d_bypl;
+
+	if (src < dst)
+	{
+		src += width;
+		src += (long)(height - 1) * sbpl;
+
+		dst += width;
+		dst += (long)(height - 1) * dbpl;
+
+		for (; height > 0; height--)
+		{
+			s = src;
+			d = dst;
+			for (i = width >> 4; i > 0; i--)
+			{
+				*(long *)--((long *)d) &= ~*(long *)--((long *)s);
+				*(long *)--((long *)d) &= ~*(long *)--((long *)s);
+				*(long *)--((long *)d) &= ~*(long *)--((long *)s);
+				*(long *)--((long *)d) &= ~*(long *)--((long *)s);
+			}
+			for (i = width & 0xf; i > 0; i--)
+				*(char *)--((char *)d) &= ~*(char *)--((char *)s);
+
+			src -= sbpl;
+			dst -= dbpl;
+		}
+	}
+	else
+	{
+		for (; height > 0; height--)
+		{
+			s = src;
+			d = dst;
+			for (i = width >> 4; i > 0; i--)
+			{
+				*(long *)((long *)d)++ &= ~*(long *)((long *)s)++;
+				*(long *)((long *)d)++ &= ~*(long *)((long *)s)++;
+				*(long *)((long *)d)++ &= ~*(long *)((long *)s)++;
+				*(long *)((long *)d)++ &= ~*(long *)((long *)s)++;
+			}
+			for (i = width & 0xf; i > 0; i--)
+				*(char *)((char *)d)++ &= ~*(char *)((char *)s)++;
+
+			src += sbpl;
+			dst += dbpl;
+		}
+	}
+}
+static void
+rb_D_ONLY(ROP_PB *rpb)
 {
 	return;
 }
 static void
-rb_S_XOR_D(	unsigned char *srcptr, register short srcbypl,
-		unsigned char *dstptr, register short dstbypl,
-		short width, short height, short dir)
+rb_S_XOR_D(ROP_PB *rpb)
 {
-	register unsigned char *srcp, *dstp;
-	register short i, j;
+	register short i, width, height, sbpl, dbpl;
+	register unsigned char *dst, *src, *d, *s;
 
-	if (dir)
+	width	= rpb->sx2 - rpb->sx1 + 1;
+	height	= rpb->sy2 - rpb->sy1 + 1;
+
+	src = (unsigned char *)rpb->s_addr + (long)(((long)rpb->sy1 * rpb->s_bypl) + (long)rpb->sx1);
+	dst = (unsigned char *)rpb->d_addr + (long)(((long)rpb->dy1 * rpb->d_bypl) + (long)rpb->dx1);
+
+	sbpl = rpb->s_bypl;
+	dbpl = rpb->d_bypl;
+
+	if (src < dst)
 	{
-		for (i = height; i > 0; i--)
+		src += width;
+		src += (long)(height - 1) * sbpl;
+
+		dst += width;
+		dst += (long)(height - 1) * dbpl;
+
+		for (; height > 0; height--)
 		{
+			s = src;
+			d = dst;
+			for (i = width >> 4; i > 0; i--)
+			{
+				*(long *)--((long *)d) ^= *(long *)--((long *)s);
+				*(long *)--((long *)d) ^= *(long *)--((long *)s);
+				*(long *)--((long *)d) ^= *(long *)--((long *)s);
+				*(long *)--((long *)d) ^= *(long *)--((long *)s);
+			}
+			for (i = width & 0xf; i > 0; i--)
+				*(char *)--((char *)d) ^= *(char *)--((char *)s);
 
-			srcp = (unsigned char *)srcptr;
-			dstp = (unsigned char *)dstptr;
-
-			for (j = width; j > 0; j--)
-				*dstp-- ^= *srcp--;
-
-			srcptr -= srcbypl;
-			dstptr -= dstbypl;
+			src -= sbpl;
+			dst -= dbpl;
 		}
 	}
 	else
 	{
-		for (i = height; i > 0; i--)
+		for (; height > 0; height--)
 		{
+			s = src;
+			d = dst;
+			for (i = width >> 4; i > 0; i--)
+			{
+				*(long *)((long *)d)++ ^= *(long *)((long *)s)++;
+				*(long *)((long *)d)++ ^= *(long *)((long *)s)++;
+				*(long *)((long *)d)++ ^= *(long *)((long *)s)++;
+				*(long *)((long *)d)++ ^= *(long *)((long *)s)++;
+			}
+			for (i = width & 0xf; i > 0; i--)
+				*(char *)((char *)d)++ ^= *(char *)((char *)s)++;
 
-			srcp = (unsigned char *)srcptr;
-			dstp = (unsigned char *)dstptr;
-
-			for (j = width; j > 0; j--)
-				*dstp++ ^= *srcp++;
-
-			srcptr += srcbypl;
-			dstptr += dstbypl;
+			src += sbpl;
+			dst += dbpl;
 		}
 	}
 }
 static void
-rb_S_OR_D(	unsigned char *srcptr, register short srcbypl,
-		unsigned char *dstptr, register short dstbypl,
-		short width, short height, short dir)
+rb_S_OR_D(ROP_PB *rpb)
 {
-	register unsigned char *srcp, *dstp;
-	register short i, j;
+	short height;
+	register short i, width, sbpl, dbpl;
+	register char *dst, *src, *s, *d;
 
-	if (dir)
+	width	= rpb->sx2 - rpb->sx1 + 1;
+	height	= rpb->sy2 - rpb->sy1 + 1;
+
+	if (width <= 0 || height <= 0)
 	{
-		for (i = height; i > 0; i--)
+		scrnlog("S_OR_D - Keh?!\n");
+		return;
+	}
+	sbpl = rpb->s_bypl;
+	dbpl = rpb->d_bypl;
+
+	src = (unsigned char *)rpb->s_addr + (long)(((long)rpb->sy1 * rpb->s_bypl) + (long)rpb->sx1);
+	dst = (unsigned char *)rpb->d_addr + (long)(((long)rpb->dy1 * rpb->d_bypl) + (long)rpb->dx1);
+
+	if (src < dst)
+	{
+		src += width;
+		src += (long)(height - 1) * sbpl;
+
+		dst += width;
+		dst += (long)(height - 1) * dbpl;
+		
+		for (; height > 0; height--)
 		{
+			s = src;
+			d = dst;
 
-			srcp = (unsigned char *)srcptr;
-			dstp = (unsigned char *)dstptr;
+#if 0
+			for (i = width; i > 0; i--)
+				*--d |= *--s;
+#else
 
-			for (j = width; j > 0; j--)
-				*dstp-- |= *srcp--;
-
-			srcptr -= srcbypl;
-			dstptr -= dstbypl;
+			for (i = (unsigned short)width >> 4; i > 0; i--)
+			{
+				*(unsigned long *)--((long *)d) |= *(unsigned long *)--((long *)s);
+				*(unsigned long *)--((long *)d) |= *(unsigned long *)--((long *)s);
+				*(unsigned long *)--((long *)d) |= *(unsigned long *)--((long *)s);
+				*(unsigned long *)--((long *)d) |= *(unsigned long *)--((long *)s);
+			}
+			for (i = width & 0xf; i > 0; i--)
+				*(unsigned char *)--((char *)d) |= *(unsigned char *)--((char *)s);
+#endif
+			src -= sbpl;
+			dst -= dbpl;
 		}
 	}
 	else
 	{
-		for (i = height; i > 0; i--)
+		for (; height > 0; height--)
 		{
+			s = src;
+			d = dst;
 
-			srcp = (unsigned char *)srcptr;
-			dstp = (unsigned char *)dstptr;
-
-			for (j = width; j > 0; j--)
-				*dstp++ |= *srcp++;
-
-			srcptr += srcbypl;
-			dstptr += dstbypl;
+#if 0
+			for (i = width; i > 0; i--)
+				*d++ |= *s++;
+#else
+			for (i = (unsigned short)width >> 4; i > 0; i--)
+			{
+				*(unsigned long *)((long *)d)++ |= *(unsigned long *)((long *)s)++;
+				*(unsigned long *)((long *)d)++ |= *(unsigned long *)((long *)s)++;
+				*(unsigned long *)((long *)d)++ |= *(unsigned long *)((long *)s)++;
+				*(unsigned long *)((long *)d)++ |= *(unsigned long *)((long *)s)++;
+			}
+			for (i = width & 0xf; i > 0; i--)
+				*(unsigned char *)((char *)d)++ |= *(char *)((unsigned char *)s)++;
+#endif
+			src += sbpl;
+			dst += dbpl;
 		}
 	}
 }
 static void
-rb_NOT_SORD(	unsigned char *srcptr, register short srcbypl,
-		unsigned char *dstptr, register short dstbypl,
-		short width, short height, short dir)
+rb_NOT_SORD(ROP_PB *rpb)
 {
-	register unsigned char *srcp, *dstp;
-	register short i, j;
+	register short i, width, height, sbpl, dbpl;
+	register unsigned char *dst, *src, *d, *s;
 
-	if (dir)
+	width	= rpb->sx2 - rpb->sx1 + 1;
+	height	= rpb->sy2 - rpb->sy1 + 1;
+
+	src = (unsigned char *)rpb->s_addr + (long)(((long)rpb->sy1 * rpb->s_bypl) + (long)rpb->sx1);
+	dst = (unsigned char *)rpb->d_addr + (long)(((long)rpb->dy1 * rpb->d_bypl) + (long)rpb->dx1);
+
+	sbpl = rpb->s_bypl;
+	dbpl = rpb->d_bypl;
+
+	if (src < dst)
 	{
-		for (i = height; i > 0; i--)
+		src += width;
+		src += (long)(height - 1) * sbpl;
+
+		dst += width;
+		dst += (long)(height - 1) * dbpl;
+
+		for (; height > 0; height--)
 		{
+			s = src;
+			d = dst;
+			for (i = width >> 4; i > 0; i--)
+			{
+				*(long *)--((long *)d) = ~(*(long *)--((long *)s) | *(long *)d);
+				*(long *)--((long *)d) = ~(*(long *)--((long *)s) | *(long *)d);
+				*(long *)--((long *)d) = ~(*(long *)--((long *)s) | *(long *)d);
+				*(long *)--((long *)d) = ~(*(long *)--((long *)s) | *(long *)d);
+			}
+			for (i = width & 0xf; i > 0; i--)
+				*(char *)--((char *)d) = ~(*(char *)--((char *)s) | *(char *)d);
 
-			srcp = (unsigned char *)srcptr;
-			dstp = (unsigned char *)dstptr;
-
-			for (j = width; j > 0; j--)
-				*dstp-- = ~(*srcp-- | *dstp);
-
-			srcptr -= srcbypl;
-			dstptr -= dstbypl;
+			src -= sbpl;
+			dst -= dbpl;
 		}
 	}
 	else
 	{
-		for (i = height; i > 0; i--)
+		for (; height > 0; height--)
 		{
+			s = src;
+			d = dst;
+			for (i = width >> 4; i > 0; i--)
+			{
+				*(long *)((long *)d)++ = ~(*(long *)((long *)s)++ | *(long *)d);
+				*(long *)((long *)d)++ = ~(*(long *)((long *)s)++ | *(long *)d);
+				*(long *)((long *)d)++ = ~(*(long *)((long *)s)++ | *(long *)d);
+				*(long *)((long *)d)++ = ~(*(long *)((long *)s)++ | *(long *)d);
+			}
+			for (i = width & 0xf; i > 0; i--)
+				*(char *)((char *)d)++ = ~(*(char *)((char *)s)++ | *(char *)d);
 
-			srcp = (unsigned char *)srcptr;
-			dstp = (unsigned char *)dstptr;
-
-			for (j = width; j > 0; j--)
-				*dstp++ = ~(*srcp++ | *dstp);
-
-			srcptr += srcbypl;
-			dstptr += dstbypl;
+			src += sbpl;
+			dst += dbpl;
 		}
 	}
 }
 static void
-rb_NOT_SXORD(unsigned char *srcptr, register short srcbypl,
-		unsigned char *dstptr, register short dstbypl,
-		short width, short height, short dir)
+rb_NOT_SXORD(ROP_PB *rpb)
 {
-	register unsigned char *srcp, *dstp;
-	register short i, j;
+	register short i, width, height, sbpl, dbpl;
+	register unsigned char *dst, *src, *d, *s;
 
-	if (dir)
+	width	= rpb->sx2 - rpb->sx1 + 1;
+	height	= rpb->sy2 - rpb->sy1 + 1;
+
+	src = (unsigned char *)rpb->s_addr + (long)(((long)rpb->sy1 * rpb->s_bypl) + (long)rpb->sx1);
+	dst = (unsigned char *)rpb->d_addr + (long)(((long)rpb->dy1 * rpb->d_bypl) + (long)rpb->dx1);
+
+	sbpl = rpb->s_bypl;
+	dbpl = rpb->d_bypl;
+
+	if (src < dst)
 	{
-		for (i = height; i > 0; i--)
+		src += width;
+		src += (long)(height - 1) * sbpl;
+
+		dst += width;
+		dst += (long)(height - 1) * dbpl;
+
+		for (; height > 0; height--)
 		{
+			s = src;
+			d = dst;
+			for (i = width >> 4; i > 0; i--)
+			{
+				*(long *)--((long *)d) = ~(*(long *)--((long *)s) ^ *(long *)d);
+				*(long *)--((long *)d) = ~(*(long *)--((long *)s) ^ *(long *)d);
+				*(long *)--((long *)d) = ~(*(long *)--((long *)s) ^ *(long *)d);
+				*(long *)--((long *)d) = ~(*(long *)--((long *)s) ^ *(long *)d);
+			}
+			for (i = width & 0xf; i > 0; i--)
+				*(char *)--((char *)d) = ~(*(char *)--((char *)s) ^ *(char *)d);
 
-			srcp = (unsigned char *)srcptr;
-			dstp = (unsigned char *)dstptr;
-
-			for (j = width; j > 0; j--)
-				*dstp-- = ~(*srcp-- ^ *dstp);
-
-			srcptr -= srcbypl;
-			dstptr -= dstbypl;
+			src -= sbpl;
+			dst -= dbpl;
 		}
 	}
 	else
 	{
-		for (i = height; i > 0; i--)
+		for (; height > 0; height--)
 		{
+			s = src;
+			d = dst;
+			for (i = width >> 4; i > 0; i--)
+			{
+				*(long *)((long *)d)++ = ~(*(long *)((long *)s)++ ^ *(long *)d);
+				*(long *)((long *)d)++ = ~(*(long *)((long *)s)++ ^ *(long *)d);
+				*(long *)((long *)d)++ = ~(*(long *)((long *)s)++ ^ *(long *)d);
+				*(long *)((long *)d)++ = ~(*(long *)((long *)s)++ ^ *(long *)d);
+			}
+			for (i = width & 0xf; i > 0; i--)
+				*(char *)((char *)d)++ = ~(*(char *)((char *)s)++ ^ *(char *)d);
 
-			srcp = (unsigned char *)srcptr;
-			dstp = (unsigned char *)dstptr;
-
-			for (j = width; j > 0; j--)
-				*dstp++ = ~(*srcp++ ^ *dstp);
-
-			srcptr += srcbypl;
-			dstptr += dstbypl;
+			src += sbpl;
+			dst += dbpl;
 		}
 	}
 }
 static void
-rb_NOT_D(	unsigned char *srcptr, register short srcbypl,
-		unsigned char *dstptr, register short dstbypl,
-		short width, short height, short dir)
+rb_NOT_D(ROP_PB *rpb)
 {
-	register unsigned char /**srcp,*/ *dstp;
-	register short i, j;
+	register short i, width, height, dbpl;
+	register unsigned char *dst, *d;
 
-	if (dir)
+	width	= rpb->sx2 - rpb->sx1 + 1;
+	height	= rpb->sy2 - rpb->sy1 + 1;
+
+	dst = (unsigned char *)rpb->d_addr + (long)(((long)rpb->sy2 * rpb->d_bypl) + (long)(rpb->sx2 + 1));
+
+	dbpl = rpb->d_bypl;
+
+	for (; height > 0; height--)
 	{
-		for (i = height; i > 0; i--)
+		d = dst;
+		for (i = width >> 4; i > 0; i--)
 		{
+			*(long *)--((long *)d) = ~*(long *)d;
+			*(long *)--((long *)d) = ~*(long *)d;
+			*(long *)--((long *)d) = ~*(long *)d;
+			*(long *)--((long *)d) = ~*(long *)d;
+		}
+		for (i = width & 0xf; i > 0; i--)
+			*(char *)--((char *)d) = ~*(char *)d;
 
-//			srcp = (unsigned char *)srcptr;
-			dstp = (unsigned char *)dstptr;
+		dst -= dbpl;
+	}
+}
+static void
+rb_S_OR_NOTD(ROP_PB *rpb)
+{
+	register short i, width, height, sbpl, dbpl;
+	register unsigned char *dst, *src, *d, *s;
 
-			for (j = width; j > 0; j--)
-				*dstp-- = ~*dstp;
+	width	= rpb->sx2 - rpb->sx1 + 1;
+	height	= rpb->sy2 - rpb->sy1 + 1;
 
-//			srcptr -= srcbypl;
-			dstptr -= dstbypl;
+	src = (unsigned char *)rpb->s_addr + (long)(((long)rpb->sy1 * rpb->s_bypl) + (long)rpb->sx1);
+	dst = (unsigned char *)rpb->d_addr + (long)(((long)rpb->dy1 * rpb->d_bypl) + (long)rpb->dx1);
+
+	sbpl = rpb->s_bypl;
+	dbpl = rpb->d_bypl;
+
+	if (src < dst)
+	{
+		src += width;
+		src += (long)(height - 1) * sbpl;
+
+		dst += width;
+		dst += (long)(height - 1) * dbpl;
+
+		for (; height > 0; height--)
+		{
+			s = src;
+			d = dst;
+			for (i = width >> 4; i > 0; i--)
+			{
+				*(long *)--((long *)d) = *(long *)--((long *)s) | ~*(long *)d;
+				*(long *)--((long *)d) = *(long *)--((long *)s) | ~*(long *)d;
+				*(long *)--((long *)d) = *(long *)--((long *)s) | ~*(long *)d;
+				*(long *)--((long *)d) = *(long *)--((long *)s) | ~*(long *)d;
+			}
+			for (i = width & 0xf; i > 0; i--)
+				*(char *)--((char *)d) = *(char *)--((char *)s) | ~*(char *)d;
+
+			src -= sbpl;
+			dst -= dbpl;
 		}
 	}
 	else
 	{
-		for (i = height; i > 0; i--)
+		for (; height > 0; height--)
 		{
+			s = src;
+			d = dst;
+			for (i = width >> 4; i > 0; i--)
+			{
+				*(long *)((long *)d)++ = *(long *)((long *)s)++ | ~*(long *)d;
+				*(long *)((long *)d)++ = *(long *)((long *)s)++ | ~*(long *)d;
+				*(long *)((long *)d)++ = *(long *)((long *)s)++ | ~*(long *)d;
+				*(long *)((long *)d)++ = *(long *)((long *)s)++ | ~*(long *)d;
+			}
+			for (i = width & 0xf; i > 0; i--)
+				*(char *)((char *)d)++ = *(char *)((char *)s)++ | ~*(char *)d;
 
-//			srcp = (unsigned char *)srcptr;
-			dstp = (unsigned char *)dstptr;
-
-			for (j = width; j > 0; j--)
-				*dstp++ = ~*dstp;
-
-//			srcptr += srcbypl;
-			dstptr += dstbypl;
+			src += sbpl;
+			dst += dbpl;
 		}
 	}
 }
 static void
-rb_S_OR_NOTD(unsigned char *srcptr, register short srcbypl,
-		unsigned char *dstptr, register short dstbypl,
-		short width, short height, short dir)
+rb_NOT_S(ROP_PB *rpb)
 {
-	register unsigned char *srcp, *dstp;
-	register short i, j;
+	register short i, width, height, sbpl, dbpl;
+	register unsigned char *dst, *src, *d, *s;
 
-	if (dir)
+	width	= rpb->sx2 - rpb->sx1 + 1;
+	height	= rpb->sy2 - rpb->sy1 + 1;
+
+	src = (unsigned char *)rpb->s_addr + (long)(((long)rpb->sy1 * rpb->s_bypl) + (long)rpb->sx1);
+	dst = (unsigned char *)rpb->d_addr + (long)(((long)rpb->dy1 * rpb->d_bypl) + (long)rpb->dx1);
+
+	sbpl = rpb->s_bypl;
+	dbpl = rpb->d_bypl;
+
+	if (src < dst)
 	{
-		for (i = height; i > 0; i--)
+		src += width;
+		src += (long)(height - 1) * sbpl;
+
+		dst += width;
+		dst += (long)(height - 1) * dbpl;
+
+		for (; height > 0; height--)
 		{
+			s = src;
+			d = dst;
+			for (i = width >> 4; i > 0; i--)
+			{
+				*(long *)--((long *)d) = ~*(long *)--((long *)s);
+				*(long *)--((long *)d) = ~*(long *)--((long *)s);
+				*(long *)--((long *)d) = ~*(long *)--((long *)s);
+				*(long *)--((long *)d) = ~*(long *)--((long *)s);
+			}
+			for (i = width & 0xf; i > 0; i--)
+				*(char *)--((char *)d) = ~*(char *)--((char *)s);
 
-			srcp = (unsigned char *)srcptr;
-			dstp = (unsigned char *)dstptr;
-
-			for (j = width; j > 0; j--)
-				*dstp-- = *srcp-- | ~(*dstp);
-
-			srcptr -= srcbypl;
-			dstptr -= dstbypl;
+			src -= sbpl;
+			dst -= dbpl;
 		}
 	}
 	else
 	{
-		for (i = height; i > 0; i--)
+		for (; height > 0; height--)
 		{
+			s = src;
+			d = dst;
+			for (i = width >> 4; i > 0; i--)
+			{
+				*(long *)((long *)d)++ = ~*(long *)((long *)s)++;
+				*(long *)((long *)d)++ = ~*(long *)((long *)s)++;
+				*(long *)((long *)d)++ = ~*(long *)((long *)s)++;
+				*(long *)((long *)d)++ = ~*(long *)((long *)s)++;
+			}
+			for (i = width & 0xf; i > 0; i--)
+				*(char *)((char *)d)++ = ~*(char *)((char *)s)++;
 
-			srcp = (unsigned char *)srcptr;
-			dstp = (unsigned char *)dstptr;
-
-			for (j = width; j > 0; j--)
-				*dstp++ = *srcp++ | ~(*dstp);
-
-			srcptr += srcbypl;
-			dstptr += dstbypl;
+			src += sbpl;
+			dst += dbpl;
 		}
 	}
 }
 static void
-rb_NOT_S(	unsigned char *srcptr, register short srcbypl,
-		unsigned char *dstptr, register short dstbypl,
-		short width, short height, short dir)
+rb_NOTS_OR_D(ROP_PB *rpb)
 {
-	register unsigned char *srcp, *dstp;
-	register short i, j;
+	register short i, width, height, sbpl, dbpl;
+	register unsigned char *dst, *src, *d, *s;
 
-	if (dir)
+	width	= rpb->sx2 - rpb->sx1 + 1;
+	height	= rpb->sy2 - rpb->sy1 + 1;
+
+	src = (unsigned char *)rpb->s_addr + (long)(((long)rpb->sy1 * rpb->s_bypl) + (long)rpb->sx1);
+	dst = (unsigned char *)rpb->d_addr + (long)(((long)rpb->dy1 * rpb->d_bypl) + (long)rpb->dx1);
+
+	sbpl = rpb->s_bypl;
+	dbpl = rpb->d_bypl;
+
+	if (src < dst)
 	{
-		for (i = height; i > 0; i--)
+		src += width;
+		src += (long)(height - 1) * sbpl;
+
+		dst += width;
+		dst += (long)(height - 1) * dbpl;
+
+		for (; height > 0; height--)
 		{
+			s = src;
+			d = dst;
+			for (i = width >> 4; i > 0; i--)
+			{
+				*(long *)--((long *)d) = ~*(long *)--((long *)s) | *(long *)d;
+				*(long *)--((long *)d) = ~*(long *)--((long *)s) | *(long *)d;
+				*(long *)--((long *)d) = ~*(long *)--((long *)s) | *(long *)d;
+				*(long *)--((long *)d) = ~*(long *)--((long *)s) | *(long *)d;
+			}
+			for (i = width & 0xf; i > 0; i--)
+				*(char *)--((char *)d) = ~*(char *)--((char *)s) | *(char *)d;
 
-			srcp = (unsigned char *)srcptr;
-			dstp = (unsigned char *)dstptr;
-
-			for (j = width; j > 0; j--)
-				*dstp-- = ~(*srcp--);
-
-			srcptr -= srcbypl;
-			dstptr -= dstbypl;
+			src -= sbpl;
+			dst -= dbpl;
 		}
 	}
 	else
 	{
-		for (i = height; i > 0; i--)
+		for (; height > 0; height--)
 		{
+			s = src;
+			d = dst;
+			for (i = width >> 4; i > 0; i--)
+			{
+				*(long *)((long *)d)++ = ~*(long *)((long *)s)++ | *(long *)d;
+				*(long *)((long *)d)++ = ~*(long *)((long *)s)++ | *(long *)d;
+				*(long *)((long *)d)++ = ~*(long *)((long *)s)++ | *(long *)d;
+				*(long *)((long *)d)++ = ~*(long *)((long *)s)++ | *(long *)d;
+			}
+			for (i = width & 0xf; i > 0; i--)
+				*(char *)((char *)d)++ = ~*(char *)((char *)s)++ | *(char *)d;
 
-			srcp = (unsigned char *)srcptr;
-			dstp = (unsigned char *)dstptr;
-
-			for (j = width; j > 0; j--)
-				*dstp++ = ~(*srcp++);
-
-			srcptr += srcbypl;
-			dstptr += dstbypl;
+			src += sbpl;
+			dst += dbpl;
 		}
 	}
 }
 static void
-rb_NOTS_OR_D(unsigned char *srcptr, register short srcbypl,
-		unsigned char *dstptr, register short dstbypl,
-		short width, short height, short dir)
+rb_NOT_SANDD(ROP_PB *rpb)
 {
-	register unsigned char *srcp, *dstp;
-	register short i, j;
+	register short i, width, height, sbpl, dbpl;
+	register unsigned char *dst, *src, *d, *s;
 
-	if (dir)
+	width	= rpb->sx2 - rpb->sx1 + 1;
+	height	= rpb->sy2 - rpb->sy1 + 1;
+
+	src = (unsigned char *)rpb->s_addr + (long)(((long)rpb->sy1 * rpb->s_bypl) + (long)rpb->sx1);
+	dst = (unsigned char *)rpb->d_addr + (long)(((long)rpb->dy1 * rpb->d_bypl) + (long)rpb->dx1);
+
+	sbpl = rpb->s_bypl;
+	dbpl = rpb->d_bypl;
+
+	if (src < dst)
 	{
-		for (i = height; i > 0; i--)
+		src += width;
+		src += (long)(height - 1) * sbpl;
+
+		dst += width;
+		dst += (long)(height - 1) * dbpl;
+
+		for (; height > 0; height--)
 		{
+			s = src;
+			d = dst;
+			for (i = width >> 4; i > 0; i--)
+			{
+				*(long *)--((long *)d) = ~(*(long *)--((long *)s) & *(long *)d);
+				*(long *)--((long *)d) = ~(*(long *)--((long *)s) & *(long *)d);
+				*(long *)--((long *)d) = ~(*(long *)--((long *)s) & *(long *)d);
+				*(long *)--((long *)d) = ~(*(long *)--((long *)s) & *(long *)d);
+			}
+			for (i = width & 0xf; i > 0; i--)
+				*(char *)--((char *)d) = ~(*(char *)--((char *)s) & *(char *)d);
 
-			srcp = (unsigned char *)srcptr;
-			dstp = (unsigned char *)dstptr;
-
-			for (j = width; j > 0; j--)
-				*dstp-- |= ~(*srcp--);
-
-			srcptr -= srcbypl;
-			dstptr -= dstbypl;
+			src -= sbpl;
+			dst -= dbpl;
 		}
 	}
 	else
 	{
-		for (i = height; i > 0; i--)
+		for (; height > 0; height--)
 		{
+			s = src;
+			d = dst;
+			for (i = width >> 4; i > 0; i--)
+			{
+				*(long *)((long *)d)++ = ~(*(long *)((long *)s)++ & *(long *)d);
+				*(long *)((long *)d)++ = ~(*(long *)((long *)s)++ & *(long *)d);
+				*(long *)((long *)d)++ = ~(*(long *)((long *)s)++ & *(long *)d);
+				*(long *)((long *)d)++ = ~(*(long *)((long *)s)++ & *(long *)d);
+			}
+			for (i = width & 0xf; i > 0; i--)
+				*(char *)((char *)d)++ = ~(*(char *)((char *)s)++ & *(char *)d);
 
-			srcp = (unsigned char *)srcptr;
-			dstp = (unsigned char *)dstptr;
-
-			for (j = width; j > 0; j--)
-				*dstp++ |= ~(*srcp++);
-
-			srcptr += srcbypl;
-			dstptr += dstbypl;
+			src += sbpl;
+			dst += dbpl;
 		}
 	}
 }
 static void
-rb_NOT_SANDD(unsigned char *srcptr, register short srcbypl,
-		unsigned char *dstptr, register short dstbypl,
-		short width, short height, short dir)
+rb_ALL_BLACK(ROP_PB *rpb)
 {
-	register unsigned char *srcp, *dstp;
-	register short i, j;
+	register short i, width, height, dbpl;
+	register unsigned char *dst, *d;
 
-	if (dir)
+	width	= rpb->sx2 - rpb->sx1 + 1;
+	height	= rpb->sy2 - rpb->sy1 + 1;
+
+	dst = (unsigned char *)rpb->d_addr + (long)(((long)rpb->dy2 * rpb->d_bypl) + (long)rpb->dx2 + 1);
+
+	dbpl = rpb->d_bypl;
+
+	for (; height > 0; height--)
 	{
-		for (i = height; i > 0; i--)
+		d = dst;
+		for (i = width >> 4; i > 0; i--)
 		{
-
-			srcp = (unsigned char *)srcptr;
-			dstp = (unsigned char *)dstptr;
-
-			for (j = width; j > 0; j--)
-				*dstp-- = ~(*srcp-- & *dstp);
-
-			srcptr -= srcbypl;
-			dstptr -= dstbypl;
+			*(long *)--((long *)d) = 0xffffffffL;
+			*(long *)--((long *)d) = 0xffffffffL;
+			*(long *)--((long *)d) = 0xffffffffL;
+			*(long *)--((long *)d) = 0xffffffffL;
 		}
-	}
-	else
-	{
-		for (i = height; i > 0; i--)
-		{
+		for (i = width & 0xf; i > 0; i--)
+			*(char *)--((char *)d) = 0xff;
 
-			srcp = (unsigned char *)srcptr;
-			dstp = (unsigned char *)dstptr;
-
-			for (j = width; j > 0; j--)
-				*dstp++ = ~(*srcp++ & *dstp);
-
-			srcptr += srcbypl;
-			dstptr += dstbypl;
-		}
-	}
-}
-static void
-rb_ALL_BLACK(unsigned char *srcptr, register short srcbypl,
-		unsigned char *dstptr, register short dstbypl,
-		short width, short height, short dir)
-{
-	register unsigned char /**srcp,*/ *dstp;
-	register short i, j;
-
-	if (dir)
-	{
-		for (i = height; i > 0; i--)
-		{
-
-//			srcp = (unsigned char *)srcptr;
-			dstp = (unsigned char *)dstptr;
-
-			for (j = width; j > 0; j--)
-				*dstp-- = 0;
-
-//			srcptr -= srcbypl;
-			dstptr -= dstbypl;
-		}
-	}
-	else
-	{
-		for (i = height; i > 0; i--)
-		{
-
-//			srcp = (unsigned char *)srcptr;
-			dstp = (unsigned char *)dstptr;
-
-			for (j = width; j > 0; j--)
-				*dstp++ = 0xff;
-
-//			srcptr += srcbypl;
-			dstptr += dstbypl;
-		}
+		dst -= dbpl;
 	}
 }
 
@@ -1149,7 +1402,7 @@ draw_mousecurs_8b(register XMFORM *mf, register short x, register short y)
 		}
 	}	
 
-	//display("x %d, y %d, widht %d, height %d, xoff %d, yoff %d\n", x, y, width, height, xoff, yoff);
+	//display("x %d, y %d, width %d, height %d, xoff %d, yoff %d\n", x, y, width, height, xoff, yoff);
 
 	return;
 }

@@ -1,6 +1,7 @@
 #ifndef _TABLES_H
 #define _TABLES_H
 
+#include "gdf_defs.h"
 #include "ovdi.h"
 #include "ovdi_defs.h"
 #include "vdi_defs.h"
@@ -20,17 +21,19 @@
 short	scrsizmm_x;
 short	scrsizmm_y;
 
-struct	font_head *sysfnt08p = 0;
-struct	font_head *sysfnt09p = 0;
-struct	font_head *sysfnt10p = 0;
+struct	xgdf_head *sysfnt08p = 0;
+struct	xgdf_head *sysfnt09p = 0;
+struct	xgdf_head *sysfnt10p = 0;
+
+struct	xgdf_head xsystemfont08;
+struct	xgdf_head xsystemfont09;
+struct	xgdf_head xsystemfont10;
 
 LINEA_VARTAB	*linea_vars;
 LINEA_VARTAB	la_vt;
 VIRTUAL		wks1;
 VIRTUAL		la_wks;
 RASTER		root_raster;
-OVDI_DRAWERS	root_drawers;
-OVDI_UTILS	root_utils;
 RGB_LIST	rgb_levels;
 RGB_LIST	rgb_bits;
 long		realpixels[256];

@@ -15,10 +15,11 @@ load_font( char *fn, long *size, long *loc)
 {
 	long fs, lbytes;
 	char *b = nextfont;
+	XGDF_HEAD *xf;
 
 	fs = get_file_size(fn);
 
-	if (total_fsize + fs > sizeof(fonts_buffer))
+	if (total_fsize + fs + sizeof(XGDF_HEAD) > sizeof(fonts_buffer))
 	{
 		log("fontbuffer exhausted!\n");
 		return -1;
@@ -27,20 +28,25 @@ load_font( char *fn, long *size, long *loc)
 	if (fs < 0)
 		return fs;
 
+	xf = (XGDF_HEAD *)b;
+	b += sizeof(XGDF_HEAD);
+
 	lbytes = load_file( fn, fs, b );
 
 	if (lbytes < 0)
 		return lbytes;
 
-	nextfont += lbytes+3;
+	xf->font_head = (FONT_HEAD *)b;
+
+	nextfont += lbytes+3 + sizeof(XGDF_HEAD);
 	(long)nextfont &= (long)0xfffffffcUL;
 
-	total_fsize += lbytes;
+	total_fsize += lbytes + sizeof(XGDF_HEAD);;
 
 	if (size)
 		*size = lbytes;
 	if (loc)
-		*loc = (long)b;
+		*loc = (long)xf;
 
 	return 0;
 }
@@ -105,9 +111,9 @@ fixup_font( FONT_HEAD *font )
 /* Returns 1 if font added was a new face */
 /* Returns -1 if font already existed in chain */
 short
-add_font( FONT_HEAD *start, FONT_HEAD *new)
+add_font( XGDF_HEAD *start, XGDF_HEAD *new) //FONT_HEAD *start, FONT_HEAD *new)
 {
-	FONT_HEAD *f, *closest, *prev;
+	XGDF_HEAD *f, *closest, *prev;
 	unsigned short diff;
 
 	f = start;
@@ -117,18 +123,18 @@ add_font( FONT_HEAD *start, FONT_HEAD *new)
 
 	do
 	{
-		if (f->id == new->id)
+		if (f->font_head->id == new->font_head->id)
 		{
-			if (f->point == new->point)
+			if (f->font_head->point == new->font_head->point)
 				return -1;
 
 			if (closest)
 			{
 				unsigned short d;
 
-				if (f->point > new->point)
+				if (f->font_head->point > new->font_head->point)
 				{
-					d = f->point - new->point;
+					d = f->font_head->point - new->font_head->point;
 					if (d < diff)
 					{
 						closest = prev;
@@ -137,7 +143,7 @@ add_font( FONT_HEAD *start, FONT_HEAD *new)
 				}
 				else
 				{
-					d = new->point - f->point;
+					d = new->font_head->point - f->font_head->point;
 					if (d < diff)
 					{
 						closest = f;
@@ -147,15 +153,15 @@ add_font( FONT_HEAD *start, FONT_HEAD *new)
 			}
 			else
 			{
-				if (f->point > new->point)
+				if (f->font_head->point > new->font_head->point)
 				{
 					closest = prev;
-					diff = f->point - new->point;
+					diff = f->font_head->point - new->font_head->point;
 				}
 				else
 				{
 					closest = f;
-					diff = new->point - f->point;
+					diff = new->font_head->point - f->font_head->point;
 				}
 			}
 		}
@@ -178,10 +184,10 @@ add_font( FONT_HEAD *start, FONT_HEAD *new)
 }
 
 short
-find_fontbyindex ( FONT_HEAD *start, short index, long *ret)
+find_fontbyindex ( XGDF_HEAD *start, short index, long *ret)
 {
 	register short previd;
-	register FONT_HEAD *f, *p;
+	register XGDF_HEAD *f, *p;
 
 	f = p = start;
 	previd = 0xffff;
@@ -191,9 +197,9 @@ find_fontbyindex ( FONT_HEAD *start, short index, long *ret)
 	{
 		p = f;
 
-		if (previd != f->id)
+		if (previd != f->font_head->id)
 		{
-			previd = f->id;
+			previd = f->font_head->id;
 			index--;
 		}
 		else
@@ -207,14 +213,11 @@ find_fontbyindex ( FONT_HEAD *start, short index, long *ret)
 
 	return index;	/* Will return 0 if successful */
 }
-		
-	
-	
 
 short
-find_fontbypoint ( FONT_HEAD *start, short id, short point, long *ret )
+find_fontbypoint ( XGDF_HEAD *start, short id, short point, long *ret )
 {
-	FONT_HEAD *f, *closest, *cu, *cd;
+	XGDF_HEAD *f, *closest, *cu, *cd;
 	unsigned short d, du, dd;
 
 	f = start;
@@ -223,18 +226,18 @@ find_fontbypoint ( FONT_HEAD *start, short id, short point, long *ret )
 
 	do
 	{
-		if (f->id == id)
+		if (f->font_head->id == id)
 		{
-			if (f->point == point)
+			if (f->font_head->point == point)
 			{
 				if (ret)
 					*ret = (long)f;
 				return 1;
 			}
 
-			if (f->point > point)
+			if (f->font_head->point > point)
 			{
-				d = f->point - point;
+				d = f->font_head->point - point;
 				if (d < du)
 				{
 					du = d;
@@ -243,7 +246,7 @@ find_fontbypoint ( FONT_HEAD *start, short id, short point, long *ret )
 			}
 			else
 			{
-				d = point - f->point;
+				d = point - f->font_head->point;
 				if (d < dd)
 				{
 					dd = d;
@@ -275,9 +278,9 @@ find_fontbypoint ( FONT_HEAD *start, short id, short point, long *ret )
 /* found. If it returns 2, the font whose size was closest to the request is	*/
 /* is returned. */
 short
-find_fontbyheight ( FONT_HEAD *start, short id, short height, long *ret )
+find_fontbyheight ( XGDF_HEAD *start, short id, short height, long *ret )
 {
-	FONT_HEAD *f, *closest, *cu, *cd;
+	XGDF_HEAD *f, *closest, *cu, *cd;
 	unsigned short d, du, dd;
 
 	f = start;
@@ -286,18 +289,18 @@ find_fontbyheight ( FONT_HEAD *start, short id, short height, long *ret )
 
 	do
 	{
-		if (f->id == id)
+		if (f->font_head->id == id)
 		{
-			if (f->top == height)
+			if (f->font_head->top == height)
 			{
 				if (ret)
 					*ret = (long)f;
 				return 1;
 			}
 
-			if (f->top > height)
+			if (f->font_head->top > height)
 			{
-				d = f->top - height;
+				d = f->font_head->top - height;
 				if (d < du)
 				{
 					du = d;
@@ -306,7 +309,7 @@ find_fontbyheight ( FONT_HEAD *start, short id, short height, long *ret )
 			}
 			else
 			{
-				d = height - f->top;
+				d = height - f->font_head->top;
 				if (d < dd)
 				{
 					dd = d;

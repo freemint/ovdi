@@ -41,6 +41,10 @@ extern void LineA_SeedFill(void);
 
 extern void LineA_Handler(void);
 
+extern short systemfont08[];
+extern short systemfont09[];
+extern short systemfont10[];
+
 void linea_handler(short);
 void linea_plot_pixel(void);
 long linea_get_pixel(void);
@@ -80,9 +84,9 @@ void *linea_functab[] =
 
 FONT_HEAD *linea_fonts[] =
 {
-	(FONT_HEAD *)&sysfnt08p,
-	(FONT_HEAD *)&sysfnt09p,
-	(FONT_HEAD *)&sysfnt10p,
+	(FONT_HEAD *)&systemfont08,
+	(FONT_HEAD *)&systemfont09,
+	(FONT_HEAD *)&systemfont10,
 	(FONT_HEAD *)0
 };
 /* This is the remaining LineA variable table initialization. */
@@ -93,7 +97,7 @@ init_linea_vartab(VIRTUAL *v, LINEA_VARTAB *la)
 	register short i;
 	register short *dst;
 
-	la->cur_font = v->fring;
+	la->cur_font = sysfnt10p->font_head; //v->fring->;
 
 	memcpy(&la->inq, &INQ_TAB_rom, sizeof(INQ_TAB));
 	memcpy(&la->dev, &DEV_TAB_rom, sizeof(DEV_TAB));
@@ -110,9 +114,9 @@ init_linea_vartab(VIRTUAL *v, LINEA_VARTAB *la)
 
 	la->cur_work = v;
 
-	la->def_font = la->cur_font = sysfnt10p;
-	la->font_ring[0] = sysfnt08p;
-	la->font_ring[1] = sysfnt10p;
+	la->def_font = la->cur_font = sysfnt10p->font_head;
+	la->font_ring[0] = sysfnt08p->font_head;
+	la->font_ring[1] = sysfnt10p->font_head;
 	la->font_ring[2] = 0;
 	la->font_ring[3] = 0;
 	la->font_count = 3;

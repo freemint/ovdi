@@ -6,6 +6,10 @@
 #include "rasters.h"
 #include "vdi_defs.h"
 
+unsigned short font_cache[512*1024L];
+unsigned long used_fntcache = 0L;
+unsigned short *nextfree = (short *)&font_cache;
+
 void
 output_gdftext( VIRTUAL *v, POINT *xy, short *text, short textlen, short jlen, short wf, short cf)
 {
@@ -14,18 +18,19 @@ output_gdftext( VIRTUAL *v, POINT *xy, short *text, short textlen, short jlen, s
 	short x1, y1, x2, y2, tmp, left_offset, right_offset, nxt_x1;
 	long sc, sw, sca, swa, scs, sws;
 	register VDIRECT clp, src, dst;
-	MFDB fontd, screen;
+	MFDB /*fontd,*/ screen;
 	MFDB *fmfdb;
 	short colors[2];
 	short coords[8];
-
 	FONT_HEAD *f;
+	XGDF_HEAD *xf;
 
-	fmfdb = &fontd;
+	//fmfdb = &fontd;
 
-	f = v->font.header;
-	x1 = xy->x;
-	y1 = xy->y;
+	f	= v->font.header;
+	xf	= v->font.current;
+	x1	= xy->x;
+	y1	= xy->y;
 
 	strwidth = gdf_string_width(f, text, textlen);
 
@@ -34,8 +39,8 @@ output_gdftext( VIRTUAL *v, POINT *xy, short *text, short textlen, short jlen, s
 		register short *p = text;
 		short dwx, dcx;
 
-		spaces = 0;
-		words = 1;
+		spaces	= 0;
+		words	= 1;
 		for (i = textlen; i > 0; i--)
 		{
 			if (*p++ == 0x20 || *p == 0)
@@ -48,39 +53,39 @@ output_gdftext( VIRTUAL *v, POINT *xy, short *text, short textlen, short jlen, s
 
 		if (cf && textlen > 1)
 		{
-			dcx = jlen - strwidth;
-			charx = dcx / textlen;
-			rmcharx = dcx % textlen;
+			dcx	= jlen - strwidth;
+			charx	= dcx / textlen;
+			rmcharx	= dcx % textlen;
 
 			if (dcx < 0)
 			{
-				direction = -1;
-				rmcharx = 0 - rmcharx;
+				direction	= -1;
+				rmcharx		= 0 - rmcharx;
 			}
 			else
 				direction = 1;
 
-			wordx = charx;
-			rmwordx = rmcharx;
+			wordx	= charx;
+			rmwordx	= rmcharx;
 		}
 		else if (wf && spaces)
 		{
-			dwx = jlen - strwidth;
-			wordx = dwx / spaces;
-			rmwordx = dwx % spaces;
+			dwx	= jlen - strwidth;
+			wordx	= dwx / spaces;
+			rmwordx	= dwx % spaces;
 
 			if (dwx < 0)
 			{
-				direction = -1;
-				rmwordx = 0 - rmwordx;
+				direction	= -1;
+				rmwordx		= 0 - rmwordx;
 			}
 			else
-				direction = 1;
+				direction	= 1;
 
-			charx = 0;
-			rmcharx = 0;
+			charx	= 0;
+			rmcharx	= 0;
 		}
-		width = jlen;
+		width	= jlen;
 	}
 	else
 	{
@@ -203,7 +208,21 @@ output_gdftext( VIRTUAL *v, POINT *xy, short *text, short textlen, short jlen, s
 	coords[1] = src.y1, coords[3] = src.y2;
 	coords[5] = clp.y1, coords[7] = clp.y2;
 
-	expand_gdf_font( f, &fontd, *text++ & 0xff, (long)0);
+/* CACHE SHIT */
+	chr = *text++ & 0xff;
+	if (xf->cache[chr])
+		fmfdb = &xf->cache[chr]->mfdb;
+	else
+	{
+		GDF_CACHED *cache;
+
+		expand_gdf_font( f, 0, chr, (long *)&cache);
+		xf->cache[chr] = cache;
+		fmfdb = &cache->mfdb;
+	}
+/* END */
+//	expand_gdf_font( f, fmfdb/*&fontd*/, *text++ & 0xff, (long)0);
+
 	nxt_x1 = dst.x1;
 
 	if (nxt_x1 > v->clip.x2)
@@ -216,7 +235,7 @@ output_gdftext( VIRTUAL *v, POINT *xy, short *text, short textlen, short jlen, s
 		coords[6] = tmp > v->clip.x2 ? v->clip.x2 : tmp;
 		coords[0] = coords[4] - nxt_x1;
 		coords[2] = coords[6] - nxt_x1;
-		rt_cpyfm( v, &fontd, &screen, coords, v->font.color, v->font.bgcol, v->font.wrmode);
+		rt_cpyfm( v, fmfdb/*&fontd*/, &screen, coords, v->font.color, v->font.bgcol, v->font.wrmode);
 	}
 
 	if (!(textlen--))
@@ -264,7 +283,20 @@ output_gdftext( VIRTUAL *v, POINT *xy, short *text, short textlen, short jlen, s
 		if (nxt_x1 > v->clip.x2)
 			return;
 
-		expand_gdf_font( f, &fontd, chr, (long)0);
+	/* CACHE SHIT */
+		if (xf->cache[chr])
+			fmfdb = &xf->cache[chr]->mfdb;
+		else
+		{
+			GDF_CACHED *cache;
+
+			expand_gdf_font( f, 0, chr, (long *)&cache);
+			xf->cache[chr] = cache;
+			fmfdb = &cache->mfdb;
+		}
+/* END */
+//		expand_gdf_font( f, fmfdb/*&fontd*/, chr, (long)0);
+
 		tmp = nxt_x1 + (fmfdb->fd_w - 1);
 
 		if (tmp >= v->clip.x1)
@@ -273,7 +305,7 @@ output_gdftext( VIRTUAL *v, POINT *xy, short *text, short textlen, short jlen, s
 			coords[4] = nxt_x1 < v->clip.x1 ? v->clip.x1 : nxt_x1;
 			coords[0] = coords[4] - nxt_x1;
 			coords[2] = coords[6] - nxt_x1;
-			rt_cpyfm( v, (MFDB *)&fontd, (MFDB *)&screen, (short *)coords, v->font.color, v->font.bgcol, v->font.wrmode);
+			rt_cpyfm( v, fmfdb, (MFDB *)&screen, (short *)coords, v->font.color, v->font.bgcol, v->font.wrmode);
 		}
 	}
 	return;
@@ -291,17 +323,24 @@ expand_gdf_font( FONT_HEAD *f, MFDB *font, short chr, long *ret)
 	short x1, x2, woffset, cwidth;
 	short strtbits, groups, endbits, spans, spanm, ebm;
 	unsigned short fdat;
+	GDF_CACHED *cachent;
 
-	if (font)
-		fmfdb = font;
-	else
-	{
-		fmfdb = (MFDB *)nxtfdb;
-		nxtfdb += sizeof(MFDB) >> 1;
-	}
 
 	fdatptr = (unsigned short *)f->dat_table;
-	edatptr = (unsigned short *)nxtfdb;
+
+	if (font)
+	{
+		fmfdb = font;
+		edatptr = (unsigned short *)&fontdatabuff;
+	}
+	else
+	{
+		cachent		=  (GDF_CACHED *)nextfree;
+		nextfree	+= ((sizeof(GDF_CACHED))) >> 1;
+		fmfdb		=  &cachent->mfdb;
+		edatptr		=  nextfree;
+		used_fntcache	+= sizeof(GDF_CACHED);
+	}
 
 	if (chr < f->first_ade || chr > f->last_ade)
 		chr = 0x3f;
@@ -312,7 +351,7 @@ expand_gdf_font( FONT_HEAD *f, MFDB *font, short chr, long *ret)
 	cwidth = x2 - x1;
 	x2--;
 
-	fmfdb->fd_addr = &fontdatabuff;
+	fmfdb->fd_addr = edatptr;
 	fmfdb->fd_w = cwidth;
 	fmfdb->fd_h = f->form_height;
 	fmfdb->fd_wdwidth = (cwidth + 15) >> 4;
@@ -321,6 +360,12 @@ expand_gdf_font( FONT_HEAD *f, MFDB *font, short chr, long *ret)
 	fmfdb->fd_r1 = 0;
 	fmfdb->fd_r2 = 0;
 	fmfdb->fd_r3 = 0;
+
+	if (!font)
+	{
+		nextfree	+= ((long)fmfdb->fd_w * fmfdb->fd_h);
+		used_fntcache	+= (long)fmfdb->fd_w * fmfdb->fd_h << 1;
+	}
 
 	woffset = x1 >> 4;
 	x1 &= 15;
@@ -390,6 +435,11 @@ expand_gdf_font( FONT_HEAD *f, MFDB *font, short chr, long *ret)
 	}
 
 	if (ret)
-		*ret = (long)fmfdb;
+	{
+		if (font)
+			*ret = (long)fmfdb;
+		else
+			*ret = (long)cachent;
+	}
 	return;
 }

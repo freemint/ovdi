@@ -206,11 +206,13 @@ abline (VIRTUAL *v, struct vdirect *pnts, PatAttr *ptrn)
 
 	if (planes < 8)
 	{
+		short shift, bitcount;
 
 		xinc = planes << 1;
 		addr = (unsigned char *)r->base + ((long)y1 * r->bypl) + ( (long)(x1 >> 4) * xinc);
-		msk = 0x8000 >> (x1 & 0xf);
-		bit = msk;
+		
+		shift	= x1 & 0xf;
+		bitcount = 16 - shift;
 
 		if (dx >= dy)
 		{
@@ -224,14 +226,20 @@ abline (VIRTUAL *v, struct vdirect *pnts, PatAttr *ptrn)
 				if (linemask & 1)
 				{
 					if (dlp_fg)
-						(*dlp_fg)(addr, (long)(((long)bit<<16)|fgcol));
+						(*dlp_fg)(addr, (long)(((long)shift<<16)|fgcol));
 				}
 				else if (dlp_bg)
-					(*dlp_bg)(addr, (long)(((long)bit<<16)|fgcol));
+					(*dlp_bg)(addr, (long)(((long)shift<<16)|fgcol));
 
-				bit = bit >> 1 | bit << 15;
-				if (bit & 0x8000)
+				if (!(bitcount--))
+				{
+					bitcount = 16;
 					addr += xinc;
+					shift = 0;
+				}
+				else
+					shift++;
+
 				eps += e1;
 				if (eps >= 0)
 				{

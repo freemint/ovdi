@@ -111,7 +111,7 @@ init_console(VIRTUAL *v, LINEA_VARTAB *la)
 
 	bzero(&console, sizeof(CONSOLE));
 
-	f = sysfnt09p; //sysfnt10p;
+	f = sysfnt09p->font_head; //sysfnt10p;
 	c->f = f;
 	c->v = v;
 	c->la = la;

@@ -3,7 +3,7 @@
 #
 
 SHELL = /bin/sh
-SUBDIRS = avbi bioskbd et6k_nova etvtim ikbdmouse nova generic
+SUBDIRS = avbi bioskbd et6k_nova etvtim ikbdmouse nova gfx_tt generic
 
 srcdir = .
 top_srcdir = ../

@@ -42,10 +42,10 @@ extern	short MiNT;
 extern	short scrsizmm_x;
 extern	short scrsizmm_y;
 extern	LINEA_VARTAB *linea_vars;
-//extern	VIRTUAL wks1;
-//extern	VIRTUAL	la_wks;
 extern	PatAttr WhiteRect;
 extern	PatAttr BlackRect;
+extern	struct pattern_data WRdata;
+extern	struct pattern_data BRdata;
 
 extern	char *vdi_fontlist;
 extern	struct gdf_membuff loaded_vdi_gdfs;

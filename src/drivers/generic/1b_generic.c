@@ -56,6 +56,474 @@ static void NOTS_OR_D	(unsigned char *addr, long data);
 static void NOT_SANDD	(unsigned char *addr, long data);
 static void ALL_BLACK	(unsigned char *addr, long data);
 
+static void
+rb_S_ONLY_new(ROP_PB *rpb)
+{
+	unsigned short begmask, endmask, p0;
+	int shift, swords, dwords, sbpl, dbpl, height;
+	unsigned short *s, *d;
+
+	sbpl = (rpb->s_bypl >> 1);
+	dbpl = (rpb->d_bypl >> 1);
+	height = rpb->sy2 - rpb->sy1 + 1;
+	s = (unsigned short *)rpb->s_addr + (long)(rpb->sx1 >> 4) + (long)((long)rpb->sy1 * sbpl);
+	d = (unsigned short *)rpb->d_addr + (long)(rpb->dx1 >> 4) + (long)((long)rpb->dy1 * dbpl);
+	swords	= (((rpb->sx1 & 0xf) + (rpb->sx2 - rpb->sx1 + 1) + 15) >> 4) - 1;
+	dwords	= (((rpb->dx1 & 0xf) + (rpb->sx2 - rpb->sx1 + 1) + 15) >> 4) - 1;
+
+	if (s < d)
+	{
+		s = (unsigned short *)rpb->s_addr + (long)(rpb->sx2 >> 4) + (long)((long)rpb->sy2 * sbpl);
+		d = (unsigned short *)rpb->d_addr + (long)(rpb->dx2 >> 4) + (long)((long)rpb->dy2 * dbpl);
+		sbpl -= swords + 1;
+		dbpl -= dwords + 1;
+		begmask = 0xffff << (15 - (rpb->dx2 & 0xf));
+		endmask = 0xffff >> (rpb->dx1 & 0xf);
+		shift	= (rpb->sx2 & 0xf) - (rpb->dx2 & 0xf);
+		if (!shift)
+		{
+			if (begmask == 0xffff)
+			{
+				if (endmask == 0xffff)
+				{
+					if (!swords)
+					{
+						for (; height > 0; height--)
+						{
+							*d-- = *s--;
+							d -= dbpl, s -= sbpl;
+						}
+					}
+					else
+					{		
+						for (; height > 0; height--)
+						{
+							for (swords = dwords + 1; swords > 0; swords--)
+								*d-- = *s--;
+							d -= dbpl, s -= sbpl;
+						}
+					}
+				}
+				else // endif (endmask == 0xffff)
+				{
+					if (!swords)
+					{
+						for (; height > 0; height--)
+						{
+							*d-- = (*d & ~ endmask) | (*s-- & endmask);
+							d -= dbpl, s -= sbpl;
+						}
+					}
+					else
+					{
+						for (; height > 0; height--)
+						{
+							for (swords = dwords; swords > 0; swords--)
+								*d-- = *s--;
+							*d-- = (*d & ~endmask) | (*s-- & endmask);
+							d -= dbpl, s -= sbpl;
+						}
+					}
+				}
+			}
+			else // endif (begmask == 0xffff)
+			{
+				if (endmask == 0xffff)
+				{
+					if (!swords)
+					{
+						for (; height > 0; height--)
+						{
+							*d-- = (*d & ~begmask) | (*s-- & begmask);
+							d -= dbpl, s -= sbpl;
+						}
+					}
+					else
+					{		
+						for (; height > 0; height--)
+						{
+							*d-- = (*d & ~begmask) | (*s-- & begmask);
+							for (swords = dwords; swords > 0; swords--)
+								*d-- = *s--;
+							d -= dbpl, s -= sbpl;
+						}
+					}
+				}
+				else // (endmask == 0xffff)
+				{
+					if (!swords)
+					{
+						begmask &= endmask;
+						for (; height > 0; height--)
+						{
+							*d-- = (*d & ~ endmask) | (*s-- & endmask);
+							d -= dbpl, s -= sbpl;
+						}
+					}
+					else
+					{
+						for (; height > 0; height--)
+						{
+							*d-- = (*d & ~begmask) | (*s-- & begmask);
+							for (swords = dwords - 1; swords > 0; swords--)
+								*d-- = *s--;
+							*d-- = (*d & ~endmask) | (*s-- & endmask);
+							d -= dbpl, s -= sbpl;
+						}
+					}
+				}
+			}
+		}
+		else if (shift > 0)
+		{
+			int rshift = 16 - shift;
+
+			if (swords == dwords)
+			{
+				if (!swords)
+				{
+					begmask &= endmask;
+					for (; height > 0; height--)
+					{
+						*d-- = (*d & ~begmask) | ((*s-- << shift) & begmask);
+						d -= dbpl, s -= sbpl;
+					}
+				}
+				else
+				{
+					for (; height > 0; height--)
+					{
+						p0 = *s--;
+						*d-- = (*d & ~begmask) | ((p0 << shift) & begmask);
+						for (dwords = swords; dwords > 1; dwords--)
+						{
+							unsigned short tmp;
+							tmp = *s--;
+							*d-- = (p0 >> rshift) | (tmp << shift);
+							p0 = tmp;
+						}
+						*d-- = (*d & ~endmask) | ( ((p0 >> rshift) | (*s-- << shift)) & endmask);
+						d -= dbpl, s -= sbpl;
+					}
+				}
+			}
+			else /* more dest than src words */
+			{
+				if (!swords)
+				{
+					begmask &= endmask;
+					for (; height > 0; height--)
+					{
+						p0 = *s--;
+						*d-- = (*d & ~begmask) | ((p0 << shift) & begmask);
+						*d-- = (*d & ~endmask) | ((p0 >> rshift) & endmask);
+						d -= dbpl, s -= sbpl;
+					}
+				}
+				else
+				{
+					for (; height > 0; height--)
+					{
+						p0 = *s--;
+						*d-- = (*d & ~begmask) | ((p0 << shift) & begmask);
+						for (dwords = swords; dwords > 0; dwords--)
+						{
+							unsigned short tmp;
+							tmp = *s--;
+							*d-- = (p0 >> rshift) | (tmp << shift);
+							p0 = tmp;
+						}
+						*d-- = (*d & ~endmask) | ((p0 >> rshift) & endmask);
+						d -= dbpl, s -= sbpl;
+					}
+				}
+			}
+		}
+		else /* shift <= 0 */
+		{
+			int rshift;
+
+			shift = -shift;
+			rshift = 16 - shift;
+
+			if (dwords == swords)
+			{
+				if (!dwords)
+				{
+					begmask &= endmask;
+					for (; height > 0; height--)
+					{
+						*d-- = (*d & ~begmask) | (*s-- & begmask);
+						d -= dbpl, s -= sbpl;
+					}
+				}
+				else
+				{
+					for (; height > 0; height--)
+					{
+						p0 = *s--;
+						*d-- = (*d & ~begmask) | ( ((p0 >> shift) | (*s << rshift)) & begmask);
+						p0 = *s--;
+						for (swords = dwords; swords > 1; swords--)
+						{
+							unsigned short tmp;
+							tmp = *s--;
+							*d-- = (p0 >> shift) | (tmp << rshift);
+							p0 = tmp;
+						}
+						*d-- = (*d & ~endmask) | ((p0 >> shift) & endmask);
+						d -= dbpl, s -= sbpl;
+					}
+				}
+			}
+			else /* more src words */
+			{
+				if (!dwords)
+				{
+					begmask &= endmask;
+					for (; height > 0; height--)
+					{
+						p0 = *s--;
+						*d-- = (*d & ~begmask) | (((p0 >> shift) | (*s-- << rshift)) & begmask);
+						d -= dbpl, s -= sbpl;
+					}
+				}
+				else
+				{
+					for (; height > 0; height--)
+					{
+						p0 = *s--;
+						*d-- = (*d & ~begmask) | (((p0 >> shift) | (*s << rshift)) & begmask);
+						p0 = *s--;
+						for (swords = dwords; swords > 1; swords--)
+						{
+							unsigned short tmp;
+							tmp = *s--;
+							*d-- = (p0 >> shift) | (tmp << rshift);
+							p0 = tmp;
+						}
+						*d-- = (*d & ~endmask) | (((p0 >> shift) | (*s-- << rshift)) & endmask);
+						d -= dbpl, s -= sbpl;
+					}
+				}
+			}
+		}			
+	}
+	else // endif (s < d)
+	{
+		sbpl -= swords + 1;
+		dbpl -= dwords + 1;
+		begmask = 0xffff >> (rpb->dx1 & 0xf);
+		endmask = 0xffff << (15 - (rpb->dx2 & 0xf));
+		shift	= (rpb->dx1 & 0xf) - (rpb->sx1 & 0xf);
+
+		if (!shift)
+		{
+			int i;
+
+			if (begmask == 0xffff)
+			{
+				if (endmask == 0xffff)
+				{
+					for (;height > 0; height--)
+					{
+						for (i = swords + 1; i > 0; i--)
+							*d++ = *s++;
+						d += dbpl, s += sbpl;
+					}
+				}
+				else
+				{
+					for (;height > 0; height--)
+					{
+						for (i = swords; i > 0; i--)
+							*d++ = *s++;
+						*d++ = (*d & ~endmask) | (*s++ & endmask);
+						d += dbpl, s += sbpl;
+					}
+				}
+			}
+			else
+			{
+				if (endmask == 0xffff)
+				{
+					if (!swords)
+					{
+						for (; height > 0; height--)
+						{
+							*d++ = (*d & ~begmask) | (*s++ & begmask);
+							d += dbpl, s += sbpl;
+						}
+					}
+					else
+					{
+						for (; height > 0; height--)
+						{
+							*d++ = (*d & ~begmask) | (*s++ & begmask);
+							for (i = swords; i > 0; i--)
+								*d++ = *s++;
+							d += dbpl, s += sbpl;
+						}
+					}
+				}
+				else
+				{
+					if (!swords)
+					{
+						begmask &= endmask;
+						for (; height > 0; height--)
+						{
+							*d++ = (*d & ~begmask) | (*s++ & begmask);
+							d += dbpl, s += sbpl;
+						}
+					}
+					else
+					{
+						for (; height > 0; height--)
+						{
+							*d++ = (*d & ~begmask) | (*s++ & begmask);
+							for (i = swords - 1; i > 0; i--)
+								*d++ = *s++;
+							*d++ = (*d & ~endmask) | (*s++ & endmask);
+							d += dbpl, s += sbpl;
+						}
+					}
+				}
+			}
+		}
+		else if (shift > 0)
+		{
+			int rshift = 16 - shift;
+
+			if (swords == dwords)
+			{
+				if (!swords)
+				{
+					begmask &= endmask;
+					for (; height > 0; height--)
+					{
+						*d++ = (*d & ~begmask) | ((*s++ >> shift) & begmask);
+						d += dbpl, s += sbpl;
+					}
+				}
+				else
+				{
+					for (; height > 0; height--)
+					{
+						p0 = *s++;
+						*d++ = (*d & ~begmask) | ((p0 >> shift) & begmask);
+						for (swords = dwords; swords > 1; swords--)
+						{
+							unsigned short tmp;
+							tmp = *s++;
+							*d++ = (p0 << rshift) | (tmp >> shift);
+							p0 = tmp;
+						}
+						*d++ = (*d & ~endmask) | (((p0 << rshift) | (*s++ >> shift)) & endmask);
+						d += dbpl, s += sbpl;
+					}
+				}
+			}
+			else
+			{	/* should be more destination than source */
+				if (!swords)
+				{
+					for (; height > 0; height--)
+					{
+						p0 = *s++;
+						*d++ = (*d & ~begmask) | ((p0 >> shift) & begmask);
+						*d++ = (*d & ~endmask) | ((p0 << rshift) & endmask);
+						d += dbpl, s += sbpl;
+					}
+				}
+				else
+				{
+					for (; height > 0; height--)
+					{
+						p0 = *s++;
+						*d++ = (*d & ~begmask) | ((p0 >> shift) & begmask);	
+						for (dwords = swords; dwords > 0; dwords--)
+						{
+							unsigned short tmp;
+							tmp = *s++;
+							*d++ = (p0 << rshift) | (tmp >> shift);
+							p0 = tmp;
+						}
+						*d++ = (*d & ~endmask) | ((p0 << rshift) & endmask);
+						d += dbpl, s += sbpl;
+					}
+				}
+			}
+		}
+		else /* shift <= 0 */
+		{
+			int rshift;
+
+			shift = -shift;
+			rshift = 16 - shift;
+			if (swords == dwords)
+			{
+				if (!swords)
+				{
+					begmask &= endmask;
+					for (; height > 0; height--)
+					{
+						*d++ = (*d & ~begmask) | ((*s++ << shift) & begmask);
+						d += dbpl, s += sbpl;
+					}
+				}
+				else
+				{
+					for (; height > 0; height--)
+					{
+						p0 = *s++;
+						*d++ = (*d & ~begmask) | (((p0 << shift) | (*s >> rshift)) & begmask);
+						p0 = *s++;
+						for (swords = dwords; swords > 1; swords--)
+						{
+							unsigned short tmp;
+							tmp = *s++;
+							*d++ = (p0 << shift) | (tmp >> rshift);
+							p0 = tmp;
+						}
+						*d++ = (*d & ~endmask) | ((p0 << shift) & endmask);
+						d += dbpl, s += sbpl;
+					}
+				}
+			}
+			else
+			{
+				if (!dwords)
+				{
+					begmask &= endmask;
+					for (; height > 0; height--)
+					{
+						p0 = *s++;
+						*d++ = (*d & ~begmask) | (((p0 << shift) | (*s++ >> rshift)) & begmask);
+						d += dbpl, s += sbpl;
+					}
+				}
+				else
+				{
+					for (; height > 0; height--)
+					{
+						p0 = *s++;
+						*d++ = (*d & ~begmask) | (((p0 << shift) | (*s >> rshift)) & begmask);
+						p0 = *s++;
+						for (swords = dwords; swords > 1; swords--)
+						{
+							*d++ = (p0 << shift) | (*s >> rshift);
+							p0 = *s++;
+						}
+						*d++ = (*d & ~endmask) | (((p0 << shift) | (*s++ >> rshift)) & endmask);
+						d += dbpl, s += sbpl;
+					}
+				}
+			}
+		}
+	}
+}
+
 unsigned long
 get_pixel_1b(unsigned char *sb, short bpl, short x, short y)
 {
@@ -509,7 +977,7 @@ raster_blit rops_1b[] =
 	0,	/* rb_ALL_WHITE,*/
 	0,	/* rb_S_AND_D,*/
 	0,	/* rb_S_AND_NOTD,*/
-	rb_S_ONLY,
+	rb_S_ONLY_new,
 	0,	/* rb_NOTS_AND_D,*/
 	0,	/* rb_D_ONLY,*/
 	rb_S_XOR_D,
@@ -530,8 +998,8 @@ s 15, d 3, w 1, h 18
 
 s 15, d 3, w 8, h 18
 2, shift 12, hb 8, eb 0, g 0, sp 10, bm 7f8, em 7ff
-
 */
+/**/
 static void
 rb_S_ONLY(ROP_PB *rpb)
 {
@@ -548,7 +1016,10 @@ rb_S_ONLY(ROP_PB *rpb)
 	src = (unsigned short *)rpb->s_addr + (long)(rpb->sx1 >> 4) + (long)((long)rpb->sy1 * sbpl);
 	dst = (unsigned short *)rpb->d_addr + (long)(rpb->dx1 >> 4) + (long)((long)rpb->dy1 * dbpl);
 
-	if (src < dst)
+	//if (src < dst)
+	if (src >= dst)
+		rb_S_ONLY_new(rpb);
+	else
 	{
 		src = (unsigned short *)rpb->s_addr + (long)(rpb->sx2 >> 4) + (long)((long)rpb->sy2 * sbpl);
 		dst = (unsigned short *)rpb->d_addr + (long)(rpb->dx2 >> 4) + (long)((long)rpb->dy2 * dbpl);
@@ -765,6 +1236,7 @@ rb_S_ONLY(ROP_PB *rpb)
 			}
 		}
 	}
+#if 0
 	else
 	{
 		unsigned short data1;
@@ -982,6 +1454,7 @@ rb_S_ONLY(ROP_PB *rpb)
 			}		
 		}
 	}
+#endif
 }
 
 static void

@@ -169,7 +169,7 @@ v_opnwk(VDIPB *pb, VIRTUAL *wk, VIRTUAL *lawk, OVDI_HWAPI *hwapi) //struct ovdi_
 		*/
 		r->base = (*dev->setpscr)(drv, r->base);
 		drv->log_base = (*dev->setlscr)(drv, r->base);
-		*(long *)v_bas_ad = (long)r->base;
+		v_bas_ad = (long)r->base;
 
 		/*
 		 * Keep a private table of the hardware API's this physical (and later,
@@ -284,8 +284,9 @@ change_resolution(VIRTUAL *v)
 	ptrn->wwidth = 1;
 	ptrn->planes = 1;
 	ptrn->wrmode = 0;
-	ptrn->mask = 0xffff;
 	ptrn->data = &SOLID;
+	ptrn->exp_data = (unsigned short *)&WRdata.edata;
+	ptrn->mask = (unsigned short *)&WRdata.mask;
 
 	/* BLACK rectangle */
 	ptrn = &BlackRect;
@@ -307,8 +308,9 @@ change_resolution(VIRTUAL *v)
 	ptrn->wwidth = 1;
 	ptrn->planes = 1;
 	ptrn->wrmode = 0;
-	ptrn->mask = 0xffff;
 	ptrn->data = &SOLID;
+	ptrn->exp_data = (unsigned short *)&BRdata.edata;
+	ptrn->mask = (unsigned short *)&BRdata.mask;
 }
 
 static void
@@ -831,69 +833,9 @@ lv_clrwk(VIRTUAL *virtual)
 	rectfill( r, v->colinf, (VDIRECT *)&r->x1, (VDIRECT *)&r->x1, &WhiteRect, FIS_SOLID);
 
 }
-
-char fontdir[] = { "c:\\gemsys\\\0" };
-char sysfnames[] =
-{
-//	"\0\0"
-	"edms01.fnt\0"
-	"edms03.fnt\0"
-	"edms06.fnt\0"
-	"edms07.fnt\0"
-	"edms08.fnt\0"
-	"edms09.fnt\0"
-	"edms10.fnt\0"
-	"edms12.fnt\0"
-	"edms15.fnt\0"
-	"gene09.fnt\0"
-	"gene10.fnt\0"
-	"gene12.fnt\0"
-	"gene14.fnt\0"
-	"gene18.fnt\0"
-	"gene20.fnt\0"
-	"gene24.fnt\0"
-	"bagb08.fnt\0"
-	"bage08.fnt\0"
-	"bage09.fnt\0"
-	"bigt13.fnt\0"
-	"blks39.fnt\0"
-	"blue10.fnt\0"
-	"bubb14.fnt\0"
-	"bubb24.fnt\0"
-	"cair18.fnt\0"
-	"cair24.fnt\0"
-	"cali14.fnt\0"
-	"cali24.fnt\0"
-	"charcoal.fnt\0"
-	"charcpro.fnt\0"
-	"chic09.fnt\0"
-	"chic12.fnt\0"
-	"chic18.fnt\0"
-	"chords.fnt\0"
-	"cmlt14.fnt\0"
-	"cmlt18.fnt\0"
-	"cmlt36.fnt\0"
-	"connect.fnt\0"
-	"connligh.fnt\0"
-	"cour09.fnt\0"
-	"cour10.fnt\0"
-	"cour12.fnt\0"
-	"cour14.fnt\0"
-	"cour18.fnt\0"
-	"cour24.fnt\0"
-	"cubant.fnt\0"
-	"cubantlo.fnt\0"
-	"grek13.fnt\0"
-	"helv09.fnt\0"
-	"helv10.fnt\0"
-	"helv12.fnt\0"
-	"helv14.fnt\0"
-	"helv18.fnt\0"
-	"helv24.fnt\0"
-
-	"\0"
-};
-
+/*
+ * Set up things common to all workstation structures.
+*/
 static void
 setup_virtual(VDIPB *pb, VIRTUAL *v, VIRTUAL *root)
 {
@@ -929,6 +871,13 @@ setup_virtual(VDIPB *pb, VIRTUAL *v, VIRTUAL *root)
 	v->pmarker.scale = 0;
 
 /* **** Fill stuff ... */
+	v->pattern.exp_data	= (unsigned short *)&v->patdata.edata;
+	v->pattern.mask		= (unsigned short *)&v->patdata.mask;
+
+	v->udpat.data		= (unsigned short *)&v->udpatdata.data;
+	v->udpat.mask		= (unsigned short *)&v->udpatdata.mask;
+	v->udpat.exp_data	= (unsigned short *)&v->udpatdata.edata;
+
 	lvsprm_color( v, wkin->fillcolor);
 	lvsprm_bgcolor( v, 0);
 	set_fill_params( FIS_SOLID, 0, &v->perimdata, 0, 0);
@@ -1013,15 +962,7 @@ load_vdi_fonts(VIRTUAL *v, SIZ_TAB *st, DEV_TAB *dt)
 		v->font.lcount = 0;
 		v->font.loaded = 0;
 
-#if 0
-		if (vdi_fontlist)
-			fnptrs = vdi_fontlist;
-		else if (sysfnames[0])
-			fnptrs = (char *)&sysfnames[0];
-		else
-			fnptrs = 0;
-#endif
-		if (fnptrs = vdi_fontlist)
+		if ((fnptrs = vdi_fontlist))
 		{
 			long fs, size;
 			char *tmp;

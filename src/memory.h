@@ -16,6 +16,6 @@
 
 void *	_cdecl	omalloc		(unsigned long amount, short type);
 void 	_cdecl	free_mem	(void *loc);
-
+void *	_cdecl	vrmalloc	(unsigned long amount);
 
 #endif	/* _oMEMORY_C */

@@ -471,7 +471,7 @@ dev_setpscreen(OVDI_DRIVER *drv, unsigned char *scradr)
 static unsigned char *
 dev_setlscreen(OVDI_DRIVER *drv, unsigned char *logscr)
 {
-	*(long *)v_bas_ad = (long)logscr;
+	v_bas_ad = (long)logscr;
 	return logscr;
 }
 

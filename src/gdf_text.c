@@ -287,8 +287,7 @@ output_gdftext( VIRTUAL *v, POINT *xy, short *text, short textlen, short jlen, s
 
 		if (nxt_x1 > clip->x2)
 			return;
-
-	/* CACHE SHIT */
+/* CACHE SHIT */
 		if (xf->cache[chr])
 			fmfdb = &xf->cache[chr]->mfdb;
 		else

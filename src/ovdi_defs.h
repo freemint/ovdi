@@ -106,9 +106,9 @@ struct pattern_attribs
 	short		wwidth;			/* Width of fill pattern in words */
 	short		planes;			/* True if fill is multiplane */
 	short		wrmode;			/* writing mode (unused as of yet) */
-	unsigned short	mask;
-	unsigned short *data;
-	unsigned short *exp_data;
+	unsigned short	*data;
+	unsigned short	*mask;
+	unsigned short	*exp_data;
 };
 typedef struct pattern_attribs PatAttr;
 
@@ -180,9 +180,13 @@ struct pmarker_attribs
 	short		scale;	/* Current scale factor for marker data */
 };
 
+/*
+ * Used to hold 16x16 fill pattern expansions
+*/
 struct pattern_data
 {
 	unsigned short data[(2*16) * 16];
+	unsigned short mask[(2*16) * 16];
 	unsigned short edata[(2*16) * 16];
 };
 
@@ -486,7 +490,10 @@ struct vdiprimitives
 typedef struct vdiprimitives VDIPRIMITIVES;
 
 #define DRAW_SOLID_RECT_PTR(a)	(a->drawers->draw_solid_rect)
+#define FILL_16X_PTR(a)		(a->drawers->fill_16x)
+
 #define DRAW_SOLID_RECT(a,b,c,d,e)	({(*DRAW_SOLID_RECT_PTR(a))(a,b,c,d,e);})
+#define FILL_16X(a,b,c,d,e)		({(*FILL_16X_PTR(a))(a,b,c,d,e);})
 
 struct ovdi_drawers
 {
@@ -507,6 +514,8 @@ struct ovdi_drawers
 	unsigned long	(*get_pixel)		( unsigned char *base, short bypl, short x, short y);
 
 	void		(*draw_solid_rect)	( RASTER *r, COLINF *c, short *corners, short wrmode, short color);
+	void		(*fill_16x)		( RASTER *r, COLINF *c, short *corners, short wrmode, PatAttr *ptrn);
+
 	pixel_blits	drp;	/* Draw Raster Points */
 	pixel_blits	dlp;	/* Draw line Points */
 	pixel_blits	pixel_blits;

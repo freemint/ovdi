@@ -17,6 +17,34 @@ rectfill( RASTER *r, COLINF *c, VDIRECT *corners, VDIRECT *clip, PatAttr *ptrn, 
 	if (!clipbox (&clipped, clip))
 		return;
 
+	wrmode = ptrn->wrmode;
+	if (ptrn->width == 16 && FILL_16X_PTR(r))
+		FILL_16X(r, c, (short *)&clipped, interior, ptrn);
+	else
+		DRAW_MSPANS( r, c, clipped.x1, clipped.x2, clipped.y1, clipped.y2, ptrn);
+#if 0
+	{
+
+		if (ptrn->height > 1 && FILL_16X_PTR(r))
+			FILL_16X(r, c, (short *)&clipped, interior, ptrn);
+		else if (ptrn->height == 1)
+		{
+			if (DRAW_SOLID_RECT_PTR(r))
+				DRAW_SOLID_RECT(r, c, (short *)&clipped, wrmode, interior == FIS_HOLLOW ? ptrn->bgcol[wrmode] : ptrn->color[wrmode]);
+			else if (FILL_16X_PTR(r))
+				FILL_16X(r, c, (short *)&clipped, interior, ptrn);
+			else
+				goto slowashell;
+		}
+		else	
+			DRAW_MSPANS( r, c, clipped.x1, clipped.x2, clipped.y1, clipped.y2, ptrn);
+	}
+	else
+slowashell:	DRAW_MSPANS( r, c, clipped.x1, clipped.x2, clipped.y1, clipped.y2, ptrn);
+#endif		
+		
+#if 0	
+
 	color = *ptrn->data;
 
 	if (	(interior == FIS_SOLID || interior == FIS_HOLLOW
@@ -29,8 +57,11 @@ rectfill( RASTER *r, COLINF *c, VDIRECT *corners, VDIRECT *clip, PatAttr *ptrn, 
 
 		DRAW_SOLID_RECT(r, c, (short *)&clipped, wrmode, color);
 	}
+	else if (FILL_16X_PTR(r))
+		FILL_16X(r, c, (short *)&clipped, ptrn->wrmode, ptrn);
 	else
 		DRAW_MSPANS( r, c, clipped.x1, clipped.x2, clipped.y1, clipped.y2, ptrn);
+#endif
 }
 
 void

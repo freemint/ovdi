@@ -89,10 +89,17 @@ OVDI_HWAPI	hw_api;
 VIRTUAL		wks1;
 VIRTUAL		la_wks;
 
+/*
+ * Two common PatAtt, one describe a while fill,
+ * and the other describe a black fill.
+*/
 PatAttr		WhiteRect;
 PatAttr		BlackRect;
-
-/* Keep a 'root' color info structure */
+struct pattern_data WRdata;
+struct pattern_data BRdata;
+/* 
+ * Keep a 'root' color info structure
+*/
 static COLINF colinf;
 static short vdi2hw[256];
 static short hw2vdi[256];
@@ -206,7 +213,7 @@ ovdi_init(void)
 					hw->time	= t;
 				}
 
-				scrnlog("Sucessfully loaded module %s %lx\n", ndta.dta_name, b->p_tbase);
+				scrnlog("Module %s text %lx, data %lx, bss %lx\n", ndta.dta_name, b->p_tbase, b->p_dbase, b->p_bbase);
 			}
 			else
 				scrnlog("Failed to Load module %s\n", ndta.dta_name);
@@ -637,9 +644,10 @@ oVDI( VDIPB *pb )
 
 	v->func = func;		/* Store the actual VDI function */
 
+
 #if 0
 //	if ( !(strcmp("PROFILE2", v->procname)) )
-	if ( (Kbshift(-1) & 0x1) )// && func == 121)
+	if ( (Kbshift(-1) & 0x1) && !(strcmp("ATARICQ", v->procname)) )// && func == 121)
 		logit = 1;
 	else
 		logit = 0;

@@ -69,7 +69,7 @@ rb_S_ONLY_1b(ROP_PB *rpb)
 
 		if (!s_shift && !d_shift)
 		{
-			if (rpb->s_is_scrn && rpb->d_is_scrn)
+			if (rpb->s_is_scrn && rpb->d_is_scrn && !rpb->sx1 && !rpb->dx1)
 			{
 				et6k_S_ONLY_1b(rpb);
 				return;
@@ -293,7 +293,7 @@ rb_S_ONLY_1b(ROP_PB *rpb)
 		if (!s_shift && !d_shift)
 		{
 		/* source & destination starts on whole word */
-			if (rpb->s_is_scrn && rpb->d_is_scrn)
+			if (rpb->s_is_scrn && rpb->d_is_scrn && !rpb->sx1 && !rpb->dx1)
 			{
 				et6k_S_ONLY_1b(rpb);
 				return;

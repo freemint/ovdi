@@ -45,6 +45,8 @@ struct	console
 
 	const char *fontpath;
 	char fontfile[32];
+
+	struct pattern_data pd;
 };
 typedef struct console CONSOLE;
 

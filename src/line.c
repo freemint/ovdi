@@ -1208,6 +1208,7 @@ draw_spans(RASTER *r, COLINF *c, short x1, short x2, short y, PatAttr *ptrn)
 		xinc = Planes2xinc[planes - 8];
 		addr = (unsigned char *)r->base + ((long)x * xinc) + ((long)y * r->bypl);
 
+#if 0
 		if (ptrn->expanded)
 		{
 			pw = ptrn->width;
@@ -1240,6 +1241,7 @@ draw_spans(RASTER *r, COLINF *c, short x1, short x2, short y, PatAttr *ptrn)
 			}
 		}
 		else
+#endif
 		{
 			short left, right, groups;
 			register long fcol, bcol;
@@ -1510,6 +1512,7 @@ draw_mspans(RASTER *r, COLINF *c, short x1, short x2, short y1, short y2, PatAtt
 		xinc = Planes2xinc[planes - 8];
 		a = (unsigned char *)r->base + ((long)x * xinc) + ((long)y1 * r->bypl);
 
+#if 0
 		if (ptrn->expanded)
 		{
 			addr = a;
@@ -1543,6 +1546,7 @@ draw_mspans(RASTER *r, COLINF *c, short x1, short x2, short y1, short y2, PatAtt
 			}
 		}
 		else
+#endif
 		{
 			short left, right, groups;
 			register long fcol, bcol;

@@ -274,24 +274,14 @@ change_console_resolution(CONSOLE *c, RASTER *r)
 	c->pattern.wwidth	= 1;
 	c->pattern.planes	= 1;
 	c->pattern.wrmode	= 2;
-	c->pattern.mask		= 0xffff;
 	c->pattern.data		= &consfill;
+	c->pattern.exp_data	= (unsigned short *)&c->pd.edata;
+	c->pattern.mask		= (unsigned short *)&c->pd.mask;
 
 	/* Initialize the Line A variables used by the console/vt52 emulator */
-#if 0
-	la->v_cur_x	= la->v_cur_y = la->v_sav_x = la->v_sav_y = 0;
-	la->v_cel_ht	= f->top + f->bottom + 1;
-	la->v_cel_wr	= 0;	/* Not used!!! */
-	la->v_cel_mx	= ((r->x2 + 1) / f->max_cell_width) - 1; // - 1;
-	la->v_cel_my	= ((r->y2 + 1) / (f->top + f->bottom + 1)) - 1; // - 1;
-#endif
 	la->v_col_fg	= cinf->color_vdi2hw[1];
 	la->v_col_bg	= cinf->color_vdi2hw[0];
 
-#if 0
-	la->v_cur_ad	= (unsigned char *)r->base;
-	la->v_cur_of	= 0;
-#endif
 	la->textfg	= cinf->color_vdi2hw[1];
 	la->textbg	= cinf->color_vdi2hw[0];
 

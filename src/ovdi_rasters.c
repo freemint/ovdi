@@ -64,6 +64,7 @@ static OVDI_DRAWERS defdrawers =
 	0,	/* put_pixel */
 	0,	/* get_pixel */
 	0,	/* draw_solid_rect */
+	0,	/* fill_16x */
 	{ 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 },	/* drp - draw raster points */
 	{ 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 },	/* dlp - draw line points */
 	{ 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 },	/* pixel_blits */
@@ -172,6 +173,7 @@ init_raster(OVDI_DRIVER *drv, RASTER *r)
 			*r->utils = defutils;
 
 			setup_drawers_jumptable(drv->drawers_1b, r->odrawers[1], 1);
+			setup_drawers_jumptable(drv->drawers_1b, r->odrawers[4], 4);
 			setup_drawers_jumptable(drv->drawers_8b, r->odrawers[8], 8);
 			setup_drawers_jumptable(drv->drawers_15b, r->odrawers[15], 15);
 			setup_drawers_jumptable(drv->drawers_16b, r->odrawers[16], 16);
@@ -307,11 +309,9 @@ init_colinf(RASTER *r, COLINF *c)
 		c->color_vdi2hw[i] = VDI2HW_colorindex[i];
 		c->color_hw2vdi[i] = HW2VDI_colorindex[i];
 	}
-
 	if (r->planes < 8)
 	{
 		pens = 1 << r->planes;
-
 		c->color_vdi2hw[1] = pens - 1;
 		c->color_hw2vdi[pens - 1] = 1;
 	}
@@ -321,10 +321,8 @@ init_colinf(RASTER *r, COLINF *c)
 		c->color_hw2vdi[15] = 255;
 		pens = 256;
 	}
-
 	c->pens		= pens;
 	c->planes	= r->planes;
-
 	syspal	= (short *)&systempalette;
 	temp.alpha = temp.ovl = 0;
 	for (i = 0; i < pens; i++)
@@ -332,7 +330,6 @@ init_colinf(RASTER *r, COLINF *c)
 		temp.red	= *syspal++;
 		temp.green	= *syspal++;
 		temp.blue	= *syspal++;
-
 		(void)calc_vdicolor( r, c, i, &temp);
 	}
 }
@@ -423,6 +420,59 @@ setup_drawers_jumptable(OVDI_DRAWERS *src, OVDI_DRAWERS *dst, short planes)
 			else
 				dst->draw_solid_rect = draw_solid_rect_1b;
 
+			if (src->fill_16x)
+				dst->fill_16x = src->fill_16x;
+			else
+				dst->fill_16x = fill_16x_1b;
+			break;
+		}
+		case 4:
+		{
+			for (i = 0; i < 16; i++)
+			{
+				if (src->pixel_blits[i])
+					dst->pixel_blits[i] = src->pixel_blits[i];
+				else
+					dst->pixel_blits[i] = rt_ops_4b[i];
+
+				if (src->raster_blits[i])
+					dst->raster_blits[i] = src->raster_blits[i];
+				else
+					dst->raster_blits[i] = rops_4b[i];
+			}
+
+			if (src->draw_mcurs)
+				dst->draw_mcurs = src->draw_mcurs;
+			else
+				dst->draw_mcurs = draw_mousecurs_4b;
+
+			if (src->undraw_mcurs)
+				dst->undraw_mcurs = src->undraw_mcurs;
+			else
+				dst->undraw_mcurs = restore_msave_4b;
+
+			if (src->put_pixel)
+				dst->put_pixel = src->put_pixel;
+			else
+				dst->put_pixel = put_pixel_4b;
+
+			if (src->get_pixel)
+				dst->get_pixel = src->get_pixel;
+			else
+				dst->get_pixel = get_pixel_4b;
+
+#if 0
+			if (src->draw_solid_rect)
+				dst->draw_solid_rect = src->draw_solid_rect;
+			else
+				dst->draw_solid_rect = draw_solid_rect_4b;
+#endif
+
+			if (src->fill_16x)
+				dst->fill_16x = src->fill_16x;
+			else
+				dst->fill_16x = fill_16x_4b;
+
 			break;
 		}
 		case 8:
@@ -460,10 +510,17 @@ setup_drawers_jumptable(OVDI_DRAWERS *src, OVDI_DRAWERS *dst, short planes)
 			else
 				dst->get_pixel = get_pixel_8b;
 
+#if 0
 			if (src->draw_solid_rect)
 				dst->draw_solid_rect = src->draw_solid_rect;
 			else
 				dst->draw_solid_rect = draw_solid_rect_8b;
+#endif
+
+			if (src->fill_16x)
+				dst->fill_16x = src->fill_16x;
+			else
+				dst->fill_16x = fill_16x_8b;
 
 			break;
 		}

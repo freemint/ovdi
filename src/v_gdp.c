@@ -53,7 +53,6 @@ v_bar( VDIPB *pb, VIRTUAL *v)
 {
 	RASTER *r = v->raster;
 	COLINF *c = v->colinf;
-	OVDI_DRAWERS *drw = r->drawers;
 	VDIRECT *clip;
 	LINE_ATTRIBS *latr;
 	short interior;

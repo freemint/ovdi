@@ -8,6 +8,7 @@
 #include "display.h"
 #include "draw.h"
 #include "fonts.h"
+#include "gdf_defs.h"
 #include "kbddrv.h"
 #include "libkern.h"
 #include "line.h"
@@ -54,7 +55,7 @@ static OVDI_DRAWERS defdrawers =
 	0,	/* read_pixel */
 	0,	/* put_pixel */
 	0,	/* get_pixel */
-
+	0,	/* draw_solid_rect */
 	{ 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 },	/* drp - draw raster points */
 	{ 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 },	/* dlp - draw line points */
 	{ 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 },	/* pixel_blits */
@@ -392,6 +393,11 @@ setup_engine_jumptables(VIRTUAL *v, OVDI_DRAWERS *drawers, OVDI_UTILS *utils)
 				drawers->get_pixel = drw->get_pixel;
 			else
 				drawers->get_pixel = get_pixel_8b;
+
+			if (drw->draw_solid_rect)
+				drawers->draw_solid_rect = drw->draw_solid_rect;
+			else
+				drawers->draw_solid_rect = draw_solid_rect_8b;
 
 			break;
 		}

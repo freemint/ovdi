@@ -1239,7 +1239,7 @@ draw_spans(VIRTUAL *v, short x1, short x2, short y, PatAttr *ptrn)
 		if (ptrn->expanded)
 		{
 			scrnlog("pattern expanded! %s\n", v->procname);
-			pw = ptrn->width; //v->pattern.width;
+			pw = ptrn->width;
 			xind = x1 % pw;
 			patrn = (unsigned char *)ptrn->exp_data + ((y % ptrn->height) * (pw * xinc));
 
@@ -1365,3 +1365,214 @@ draw_spans(VIRTUAL *v, short x1, short x2, short y, PatAttr *ptrn)
 		}
 	}
 }
+/* Writen by Odd Skancke */
+void
+draw_mspans(VIRTUAL *v, short x1, short x2, short y1, short y2, PatAttr *ptrn)
+{
+	short x, dx, xinc, dy;
+	short planes, bypl;
+	short bgcol, fgcol;
+	short wrmode;
+	unsigned short pattern, bit;
+	unsigned char *addr;
+	int i, j;
+	register pixel_blit dpf_fg;
+	register pixel_blit dpf_bg;
+	RASTER *r;
+
+	if (x1 > x2)
+	{
+		x = x1;
+		x1 = x2;
+		x2 = x;
+	}
+
+	x = x1;
+	dx = x2 - x1 + 1;
+	dy = y2 - y1 + 1;
+
+	r = v->raster;
+
+	wrmode = ptrn->wrmode;
+	fgcol = ptrn->color[wrmode];
+	bgcol	= ptrn->bgcol[wrmode];
+
+	wrmode <<= 1;
+	dpf_fg	= v->drawers->dlp[wrmode];
+	dpf_bg	= v->drawers->dlp[wrmode + 1];
+	planes	= r->planes;
+	bypl	= r->bypl;
+
+	if (planes < 8)
+	{
+
+		xinc = planes << 1;
+		bit = 0x8000 >> (x1 & 0xf);
+
+		addr = (unsigned char *)r->base + (((long)x >> 4) * Planes2xinc[planes]) + ((long)y1 * r->bypl);
+
+		for (i = 0; i < dx; i++)
+		{
+			pattern = pattern << 1 | pattern >> 15;
+			if (pattern & 1)
+			{
+				if (dpf_fg)
+					(*dpf_fg)(addr, (long)fgcol);
+			}
+			else if (dpf_bg)
+				(*dpf_bg)(addr, (long)bgcol);
+
+			bit = bit >> 1 | bit << 15;
+
+			if (bit & 0x8000)
+				addr += xinc;
+		}
+			
+
+	}
+	else /* (planes >= 8) */
+	{
+		unsigned char *patrn, *a;
+		short xind, pw;
+
+		xinc = Planes2xinc[planes - 8];
+		a = (unsigned char *)r->base + ((long)x * xinc) + ((long)y1 * r->bypl);
+
+		if (ptrn->expanded)
+		{
+			addr = a;
+			scrnlog("pattern expanded! %s\n", v->procname);
+			pw = ptrn->width; //v->pattern.width;
+			xind = x1 % pw;
+			patrn = (unsigned char *)ptrn->exp_data + ((y1 % ptrn->height) * (pw * xinc));
+
+			for (i = 0; i < dx; i++)
+			{
+
+				fgcol = *(unsigned char *)(patrn + (xind * xinc));
+
+				xind++;
+
+				if (xind >= pw)
+					xind = 0;
+
+				if (dpf_fg)
+					(*dpf_fg)(addr, (long)fgcol);
+#if 0
+				if (pattern & 1)
+				{
+					if (dpf_fg)
+						(*dpf_fg)(addr, (long)fgcol);
+				}
+				else if (dpf_bg)
+					(*dpf_bg)(addr, (long)bgcol);
+#endif 0
+
+				addr += xinc;
+			}
+		}
+		else
+		{
+			short left, right, groups;
+			register long fcol, bcol;
+
+			if (r->clut)
+			{
+				fcol = (long)fgcol;
+				bcol = (long)bgcol;
+			}
+			else
+			{
+				fcol = r->pixelvalues[fgcol];
+				bcol = r->pixelvalues[bgcol];
+			}
+
+
+			left = 16 - (x1 & 0xf);
+			dx -= left;
+
+			if ( dx <= 0 )
+			{
+				left = left + dx;
+				groups = 0;
+				right = 0;
+			}
+			else if (dx > 15)
+			{
+				right = (x2 & 0xf) + 1;
+				groups = (dx - right) >> 4;
+			}
+			else
+			{
+				groups = 0;
+				right = dx;
+			}
+
+			for (; dy > 0; dy--)
+			{
+
+				patrn = (unsigned char *)(long)ptrn->data + ((y1 % ptrn->height) * (ptrn->wwidth << 1));
+				addr = a;
+
+				if (left)
+				{
+					pattern = x1 & 0xf ? (*(unsigned short *)patrn << ((x1 & 0xf))) | ( *(unsigned short *)patrn >> (16 - (x1 & 0xf)) ) : *(unsigned short *)patrn;
+
+					for (i = 0; i < left; i++)
+					{
+						if (pattern & 0x8000)
+						{
+							if (dpf_fg)
+								(*dpf_fg)(addr, fcol);
+						}
+						else if (dpf_bg)
+							(*dpf_bg)(addr, bcol);
+						addr += xinc;
+						pattern <<= 1;
+					}
+				}
+
+				if (groups)
+				{
+					bit = *(unsigned short *)patrn;
+
+					for (i = 0; i < groups; i++)
+					{
+						pattern = bit;
+						for (j = 0; j < 16; j++)
+						{
+							if (pattern & 0x8000)
+							{
+								if (dpf_fg)
+									(*dpf_fg)(addr, fcol);
+							}
+							else if (dpf_bg)
+								(*dpf_bg)(addr, bcol);
+							addr += xinc;
+							pattern <<= 1;
+						}
+					}
+				}
+				if (right)
+				{
+					pattern = *(unsigned short *)patrn;
+					for (i = 0; i < right; i++)
+					{
+						if (pattern & 0x8000)
+						{
+							if (dpf_fg)
+								(*dpf_fg)(addr, fcol);
+						}
+						else if (dpf_bg)
+							(*dpf_bg)(addr, bcol);
+						addr += xinc;
+						pattern <<= 1;
+					}
+				}
+				y1++;
+				a += bypl;
+			}
+		}
+	}
+}
+

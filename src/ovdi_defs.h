@@ -296,6 +296,7 @@ struct ovdi_drawers
 	void		(*put_pixel)		( unsigned char *base, short bypl, short x, short y, unsigned long data);
 	unsigned long	(*get_pixel)		( unsigned char *base, short bypl, short x, short y);
 
+	void		(*draw_solid_rect)	( RASTER *r, short *corners, PatAttr *ptrn);
 	/*pixel_blits	vdi_pixels;*/
 	pixel_blits	drp;
 	pixel_blits	dlp;

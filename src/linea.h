@@ -3,6 +3,7 @@
 
 typedef struct linea_vartab LINEA_VARTAB;
 
+#include "gdf_defs.h"
 #include "mouse.h"
 #include "ovdi_defs.h"
 #include "vdi_defs.h"

@@ -175,6 +175,87 @@ ALL_BLACK(unsigned char *addr, long data)
 	return;
 }
 
+void
+draw_solid_rect_8b(RASTER *r, short *corners, PatAttr *ptrn)
+{
+	unsigned char *dst, *d;
+	short i, bypl, dx, dy, wrmode;
+	unsigned long pixel;
+
+	wrmode = ptrn->wrmode;
+	bypl = r->bypl;
+	pixel = ptrn->color[wrmode] & 0xff;
+	pixel |= ((long)pixel << 24) | ((long)pixel << 16) | (pixel << 8);
+	dx = corners[2] - corners[0] + 1;
+	dy = corners[3] - corners[1] + 1;
+
+	d = (unsigned char *)r->base + corners[0] + (long)corners[1] * bypl;
+
+	switch (wrmode)
+	{
+		case 0: /* MD_REPLACE */
+		case 1: /* MD_TRANS */
+		{
+			for (; dy > 0; dy--)
+			{
+				dst = d;
+
+				for (i = dx >> 4; i > 0; i--)
+				{
+					*(unsigned long *)((unsigned long *)dst)++ = (long)pixel;
+					*(unsigned long *)((unsigned long *)dst)++ = (long)pixel;
+					*(unsigned long *)((unsigned long *)dst)++ = (long)pixel;
+					*(unsigned long *)((unsigned long *)dst)++ = (long)pixel;
+				}
+				for (i = dx & 0xf; i > 0; i--)
+					*(unsigned char *)((unsigned char *)dst)++ = (unsigned char)pixel;
+
+				d += bypl;
+			}
+			break;
+		}
+		case 2: /* MD_EOR */
+		{
+			for (; dy > 0; dy--)
+			{
+				dst = d;
+
+				for (i = dx >> 4; i > 0; i--)
+				{
+					*(unsigned long *)((unsigned long *)dst)++ ^= (long)pixel;
+					*(unsigned long *)((unsigned long *)dst)++ ^= (long)pixel;
+					*(unsigned long *)((unsigned long *)dst)++ ^= (long)pixel;
+					*(unsigned long *)((unsigned long *)dst)++ ^= (long)pixel;
+				}
+				for (i = dx & 0xf; i > 0; i--)
+					*(unsigned char *)((unsigned char *)dst)++ ^= (unsigned char)pixel;
+
+				d += bypl;
+			}
+			break;
+		}
+		case 3:
+		{
+			for (; dy > 0; dy--)
+			{
+				dst = d;
+
+				for (i = dx >> 4; i > 0; i--)
+				{
+					*(unsigned long *)((unsigned long *)dst)++ ^= (long)pixel;
+					*(unsigned long *)((unsigned long *)dst)++ ^= (long)pixel;
+					*(unsigned long *)((unsigned long *)dst)++ ^= (long)pixel;
+					*(unsigned long *)((unsigned long *)dst)++ ^= (long)pixel;
+				}
+				for (i = dx & 0xf; i > 0; i--)
+					*(unsigned char *)((unsigned char *)dst)++ ^= (unsigned char)pixel;
+
+				d += bypl;
+			}
+			break;
+		}
+	}
+}
 
 /* *************** RASTER OPERATIONS **************** */
 static void rb_ALL_WHITE	(unsigned char *src, short srcbypl, unsigned char *dst, short dstbypl, short w, short h, short dir);
@@ -347,12 +428,22 @@ rb_S_ONLY(	unsigned char *srcptr, register short srcbypl,
 		for (i = height; i > 0; i--)
 		{
 
-			srcp = (unsigned char *)srcptr;
-			dstp = (unsigned char *)dstptr;
-
+			srcp = (void *)((char *)srcptr + 1);
+			dstp = (void *)((char *)dstptr + 1);
+			
+			for (j = width >> 4; j > 0; j--)
+			{
+				*(long *)--((long *)dstp) = *(long *)--((long *)srcp);
+				*(long *)--((long *)dstp) = *(long *)--((long *)srcp);
+				*(long *)--((long *)dstp) = *(long *)--((long *)srcp);
+				*(long *)--((long *)dstp) = *(long *)--((long *)srcp);
+			}
+			for (j = width & 0xf; j > 0; j--)
+				*(char *)--dstp = *(char *)--srcp;
+#if 0			
 			for (j = width; j > 0; j--)
 				*dstp-- = *srcp--;
-
+#endif
 			srcptr -= srcbypl;
 			dstptr -= dstbypl;
 		}
@@ -365,9 +456,19 @@ rb_S_ONLY(	unsigned char *srcptr, register short srcbypl,
 			srcp = (unsigned char *)srcptr;
 			dstp = (unsigned char *)dstptr;
 
+			for (j = width >> 4; j > 0; j--)
+			{
+				*(long *)((long *)dstp)++ = *(long *)((long *)srcp)++;
+				*(long *)((long *)dstp)++ = *(long *)((long *)srcp)++;
+				*(long *)((long *)dstp)++ = *(long *)((long *)srcp)++;
+				*(long *)((long *)dstp)++ = *(long *)((long *)srcp)++;
+			}
+			for (j = width & 0xf; j > 0; j--)
+				*dstp++ = *srcp++;
+#if 0
 			for (j = width; j > 0; j--)
 				*dstp++ = *srcp++;
-
+#endif
 			srcptr += srcbypl;
 			dstptr += dstbypl;
 		}

@@ -2,6 +2,7 @@
 #include "console.h"
 #include "draw.h"
 #include "display.h"
+#include "gdf_defs.h"
 #include "gdf_text.h"
 #include "libkern.h"
 #include "ovdi_defs.h"
@@ -110,7 +111,7 @@ init_console(VIRTUAL *v, LINEA_VARTAB *la)
 
 	bzero(&console, sizeof(CONSOLE));
 
-	f = sysfnt10p;
+	f = sysfnt09p; //sysfnt10p;
 	c->f = f;
 	c->v = v;
 	c->la = la;

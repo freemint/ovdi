@@ -1,5 +1,6 @@
 #include "display.h"
 #include "fonts.h"
+#include "gdf_defs.h"
 #include "gdf_text.h"
 #include "ovdi_defs.h"
 #include "rasters.h"

@@ -10,6 +10,7 @@ HEADER = \
 	file.h \
 	fonts.h \
 	funcdef.h \
+	gdf_defs.h \
 	gdf_text.h \
 	global.h \
 	icb.h \

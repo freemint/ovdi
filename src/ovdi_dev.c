@@ -536,29 +536,34 @@ ovdidev_open(OVDI_DEVICE *dev, short dev_id)
 	{
 		drv->r.format		= PF_ATARI;
 		drv->r.clut		= 1;
+		drv->r.pixlen		= -1;
 	}
 	else if (drv->r.planes == 4)
 	{
 		drv->r.format		= PF_ATARI;
 		drv->r.clut		= 1;
+		drv->r.pixlen		= -4;
 	}
 	else if (drv->r.planes == 8)
 	{
 		drv->r.format		= PF_PACKED;
 		drv->r.pixelformat	= pf_nova;
 		drv->r.clut		= 1;
+		drv->r.pixlen		= 1;
 	}
 	else if (drv->r.planes == 15)
 	{
 		drv->r.format		= PF_PACKED;
 		drv->r.pixelformat	= pf_15bI;
 		drv->r.clut		= 0;
+		drv->r.pixlen		= 2;
 	}
 	else if (drv->r.planes == 16)
 	{
 		drv->r.format		= PF_PACKED;
 		drv->r.pixelformat	= pf_16bI;
 		drv->r.clut		= 0;
+		drv->r.pixlen		= 2;
 	}
 	else if (drv->r.planes == 24)
 	{
@@ -574,6 +579,7 @@ ovdidev_open(OVDI_DEVICE *dev, short dev_id)
 			drv->r.format		= PF_PACKED;
 			drv->r.pixelformat	= pf_24bI;
 		}
+		drv->r.pixlen	= 3;
 	}
 	else if (drv->r.planes == 32)
 	{
@@ -596,6 +602,7 @@ ovdidev_open(OVDI_DEVICE *dev, short dev_id)
 			drv->r.format		= PF_PACKED | PF_BS;
 			drv->r.pixelformat	= pf_32bIbs;
 		}
+		drv->r.pixlen	= 4;
 	}
 	else
 	{

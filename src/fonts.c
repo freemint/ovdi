@@ -1,6 +1,7 @@
 #include "display.h"
 #include "file.h"
 #include "fonts.h"
+#include "gdf_defs.h"
 #include "vdi_defs.h"
 
 char fonts_buffer[];

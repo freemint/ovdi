@@ -9,7 +9,7 @@
 void
 rectfill( VIRTUAL *v, VDIRECT *corners, PatAttr *ptrn )
 {
-	register short x1, y1, x2, y2, y;
+	register short x1, y1, x2, y2;
 	VDIRECT clipped;
 
 	clipped = *corners;
@@ -23,8 +23,14 @@ rectfill( VIRTUAL *v, VDIRECT *corners, PatAttr *ptrn )
 	y1 = clipped.y1;
 	y2 = clipped.y2;
 
+	if (v->fill.interior == FIS_SOLID && v->drawers->draw_solid_rect)
+		(*v->drawers->draw_solid_rect)(v->raster, (short *)&clipped, ptrn);
+	else
+		draw_mspans( v, x1, x2, y1, y2, ptrn);
+#if 0
 	for (y = y1; y <= y2; y++)
 		draw_spans( v, x1, x2, y, ptrn);
+#endif
 
 	return;
 }

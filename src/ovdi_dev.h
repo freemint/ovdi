@@ -72,6 +72,7 @@ struct raster
 	short		w, h;
 	short		clut;
 	short		planes;
+	short		pixlen;
 	short		bypl;
 	short		wpixel, hpixel;
 	char		*pixelformat;

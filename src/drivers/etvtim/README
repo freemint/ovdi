@@ -1,0 +1,9 @@
+================
+= etv_time.vdi =  Written by Odd Skancke <ozk@atari.org>
+================
+
+ This is the oVDI timer driver using the 'etv_timer' Atari-method. It should 
+ work on anything that supports 'etv_timer' vector.
+
+
+ Send tips, suggestions and bugreports to me..

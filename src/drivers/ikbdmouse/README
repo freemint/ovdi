@@ -1,0 +1,9 @@
+================
+= ikbdmice.vdi =  Written by Odd Skancke <ozk@atari.org>
+================
+
+ This is the oVDI Pointing Device driver for Atari's IKBD mouses. It needs 
+ Atari bios to work.
+
+
+ Send tips, suggestions and bugreports to me..

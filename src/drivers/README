@@ -1,0 +1,191 @@
+===============================================================================
+=                                                                             =
+=                                                                             =
+=                   HOWTO write drivers/modules for oVDI.                     =
+=                   Preliminary, written by Odd Skancke.                      =
+=                                                                             =
+=                                                                             =
+===============================================================================
+
+-----------------------------------------------------------------------------
+ ----    ----    ----        --==<< Preface >>==--        ----    ----    ----
+-----------------------------------------------------------------------------
+
+ This HOWTO is very preliminary at this time, and things will almost certainly 
+ change!
+
+-----------------------------------------------------------------------------
+ ----    ----     --==<< Driver types, basic overview. >>==--    ----    ----
+-----------------------------------------------------------------------------
+
+  oVDI depends on drivers for just about anything that has to do with hardware 
+  access. Here follows an overview of what types of driver exists for oVDI by 
+  the time of writing this text;
+
+ >>>> Vertical Blank Interrupt (VBI driver) <<<<
+
+     VBI related stuff is highly dependant on current hardware.
+     A typical VBI driver must provide the following services through a 
+     'vbiapi' structure;
+
+     install 	     - Install everything needed to make rest of services 
+                       usable by oVDI.
+     get_tics	     - Return number of VBI interrupts per second.
+     add_function    - Add a function that will be called by the VBI with a 
+                       given 'tics' intervals.
+     remove_function - Remove a function installed with add_function.
+     reset           - Clear everything installed, and 'start afresh'. This 
+                       should remove anything installed by add_function.
+     enable          - Enable VBI interrupt and function callbacks.
+     disable         - Disable VBI interrupt and function callback.
+
+ >>>> VDI system timer driver <<<<
+
+   This driver should contain the main system timer related things. The driver 
+   for Atari use etv_timer to provide system timer services. This driver is 
+   needed because oVDI should not contain any hardware specific things. The 
+   services provided by the timer driver is provided via a 'timeapi';
+
+    install          - Install everything needed to make rest of services 
+                       usable by oVDI. (On Atari this means hooking into 
+                       etv_timer, for example).
+    get_tics	     - Return number of timer events that happen per sec.
+    add_function     - Add a function that will be called at a give 'tics' 
+                       interval.
+    remove_function  - Remove a function installed by add_function.
+    set_user_tim     - Set Atari compatible user_tim vector. This is what oVDI 
+                       uses when vex_timv() is called.
+    set_next_tim     - Set Atari compativle next_tim vector.
+    reset_user_tim   - Reset user_tim handling.
+    reset_next_tim   - Reset next_tim handling.
+    reset_time       - Reset all timer handling and callbacks.
+    enable           - Enable time interrupt.
+    disable          - Disable time interrutp.
+
+ >>>> Keyboard (KDB) driver <<<<
+
+   This driver provides the keyboard input functions to oVDI via an 'kbdapi' 
+   structure. The following services must be provided;
+
+    install          - Install the driver, making the rest of the services 
+                       available to oVDI.
+    key_available    - Check if a key has been pressed.
+    get_key          - Get key.
+    wait_key         - Wait until a key has been pressed.
+    get_kbd_state    - Return keyboard shift status.
+
+ >>>> Pointing device driver (PDV) <<<<
+
+   To use a mouse (or any other pointing device), a PDV driver is needed. This 
+   driver makes up the layer 2 in a 3 layered design. Layer 1 is the main oVDI 
+   mousedriver, layer 2 is the PDV driver and layer 3 is the cursor rendering 
+   layer. Layer 3 is provided by the Graphics hardware driver, more on that 
+   below. The PDV driver provides its services via a 'pdvapi' structure;
+
+   install           - Install the driver so that the rest of the services are 
+                       available to oVDI's mousedriver (layer 1). PDV receives 
+                       a callback-function table that it needs to report 
+                       pointing device events.
+   exit              - Uninstall.
+   start             - Start reporting pointing device events to layer 1.
+   stop              - Stop reporting pointing device events to layer 1.
+
+
+ >>>> The graphics hardware driver <<<
+
+   This is the driver that drives the video-hardware.
+
+-----------------------------------------------------------------------------
+ ----    ----     --==<< oVDI loading the drivers... >>==--    ----    ----
+-----------------------------------------------------------------------------
+
+   The very first thing oVDI does when it runs, is to search for its 
+ configuration file on the boot partition, or the partition from which oVDI 
+ was started. This file is called 'ovdi.cnf', and can contain a variable 
+ called 'module_path'. If this variable is set, oVDI looks for the 
+ drivers/modules there. If not set, this path defaults to 'x:\ovdisys\', where 
+ 'x' is the bootpartition.
+
+   oVDI will now search for files with the extension '.vdi'. When such a file 
+ is found the following happens, for ALL types of drivers/modules;
+
+  Module is loaded using Pexec(3)
+  oVDI prepares a structure called module_desc wich the module will return 
+  information about itself in.
+
+struct module_desc 
+{ 
+	long	types; 
+	void	*vhw; 
+	void	*vbi; 
+	void	*pdv; 
+	void	*kbd; 
+	void	*tim; 
+	void	*res[32-5]; 
+}; 
+
+   Then the module is called, which will execute the module's init function. 
+ In the field 'types', the module sets its type according to the following 
+ definitions;
+
+#define D_VHW	0x00000001	/* Video Hardware Driver */ 
+#define D_VBI	0x00000002	/* VBI driver */ 
+#define D_PDV	0x00000004	/* Poinding DeVice driver */ 
+#define D_KBD	0x00000008	/* Keyboard driver */ 
+#define D_TIM	0x00000010	/* Timer driver */ 
+
+   This is done this way, so that one module can contain more than one driver. 
+ A module for TT, for example, can contain everything needed in one file, and 
+ the init call will set supported types, and fill in the relevant fields with 
+ pointers to the relevant API's. This is how drivers is registered with oVDI.
+
+   If more than one driver type is loaded, the 'next' field in the relevant 
+ driver API will link the API's together. Idea is to perhaps let user select 
+ which driver to use in such cases. Also, I think support for more than one 
+ grahpics card, more than one pointing device, etc. is a nice thing. I miss 
+ virtual consoles from the TT ;-) At the time of writing this, however, only 
+ the LAST driver of several loaded will be used.
+
+   At this point, all drivers should be operational. oVDI will now prepare and 
+ install its own console handler, and boot will continue.
+
+-----------------------------------------------------------------------------
+ ----    ----     ----  --==<< Drivers in detail ... >>==--     ----     ----
+-----------------------------------------------------------------------------
+
+ Now follows a detailed description of the different driver types supported or 
+ even _needed_ by oVDI up to now;
+
+ The graphics hardware driver
+
+   The graphics card driver sets bit D_VHW and places a pointer to a 
+ 'ovdi_device' structure in module_desc->vhw. This structure is defined in the 
+ file 'ovdi_defs.h'.
+
+   As soon as oVDI is done loading and checking that all driver needed are 
+ present, it calls the 'open' function to open the hardware device. This call 
+   will then return a structure 'ovdi_driver' (ovdi_defs.h), which contains 
+ all the info oVDI needs about the current hardware. 'ovdi_driver' contains 
+ pointers to a 'ovdi_drawers' (ovdi_defs.h) structure for color depths 1, 2, 
+ 4, 8, 15/16, 24 and 32 bpp modes. oVDI will now setup ovdi_drawers for each 
+ of the abovementioned modes, inserting pointers to generic functions for each 
+ function the driver does not contain (That is, a NULL ptr). Then the 
+ created/merged ovdi_drawers are attached to the raster (struct raster, 
+ ovdi_defs.h). Look at ovdi_rasters.c, functions init_raster() and 
+ setup_drawers_jumptable(). There is no minimun requirements by the driver 
+ regarding ovdi_drawers structure. Driver must provide addresses to the 
+ structures in struct ovdi_driver, but the tables themselves can be all NULL's 
+ which make oVDI fill it in with its generic drawers.
+
+
+ Now for the functions in the VHWAPI (Video HardWare API).
+
+OVDI_DRIVER * open(OVDI_DEVICE)
+
+	The driver will initialize a OVDI_DRIVER, which contains a RASTER and 
+	pointers to OVDI_DRAWERS containing function addresses the driver 
+	provides.
+
+ --- okie, this is boring, I'll continue this some other day.. ---
+
+

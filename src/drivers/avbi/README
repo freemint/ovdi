@@ -1,0 +1,9 @@
+============
+= AVBI.VDI =  Written by Odd Skancke <ozk@atari.org>
+============
+
+ This is a oVDI VBI driver for Atari hardware. It adds itself to the 
+ '_vblqueue', and should therefore work on anything that provides this 
+ mechanism.
+
+ Send tips, suggestions and bugreports to me..

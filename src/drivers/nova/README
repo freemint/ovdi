@@ -1,0 +1,9 @@
+============
+= nova.vdi =  Written by Odd Skancke <ozk@atari.org>
+============
+
+ This is the oVDI graphics hardware driver for all Nova VDI's. It uses 
+emulator.prg from the Nova package. It should work with most emulator.prg's 
+out there .. but I dont know.
+
+ Send tips, suggestions and bugreports to me..

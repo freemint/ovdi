@@ -1,0 +1,22 @@
+# This file gets included by the Makefile in this directory to determine
+# the files that should go only into source distributions.
+
+HEADER = \
+	1b_generic.h \
+	4b_generic.h \
+	8b_generic.h \
+	16b_generic.h
+	
+COBJS = \
+	1b_generic.c \
+	4b_generic.c \
+	8b_generic.c \
+	16b_generic.c
+
+
+
+SOBJS = \
+
+SSOBJS = \
+
+SRCFILES = $(HEADER) $(COBJS) $(SOBJS) $(SSOBJS)

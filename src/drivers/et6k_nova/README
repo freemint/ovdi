@@ -1,0 +1,9 @@
+================
+= etk6nova.vdi =  Written by Odd Skancke <ozk@atari.org>
+================
+
+ This is a graphics hardware driver for oVDI that uses emulator.prg for Nova 
+ET6000 package for Hades. It is of no use unless you have a Hades with an 
+ET6000. This is the only environment this driver will work under.
+
+ Send tips, suggestions and bugreports to me..

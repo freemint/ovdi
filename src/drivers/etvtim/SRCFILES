@@ -1,0 +1,12 @@
+# This file gets included by the Makefile in this directory to determine
+# the files that should go only into source distributions.
+
+HEADER = \
+
+COBJS = \
+	etv_time.c
+
+SOBJS = \
+	timeasm.s
+
+SRCFILES = $(HEADER) $(COBJS) $(SOBJS)

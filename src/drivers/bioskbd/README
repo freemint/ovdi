@@ -1,0 +1,8 @@
+===========
+= bioskbd = Written by Odd Skancke <ozk@atari.org>
+===========
+
+ This is the oVDI Keyboard driver using the Atari Bios. It should work on 
+anything that has Atari compatible Bios.
+
+ Send tips, suggestions and bugreports to me..

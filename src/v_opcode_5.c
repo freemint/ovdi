@@ -2,6 +2,7 @@
 #include "ovdi_defs.h"
 #include "vdi_defs.h"
 #include "v_escape.h"
+#include "v_mouse.h"
 #include "v_opcode_5.h"
 
 #define MAX_V5_SUBFUNCTS	210
@@ -27,8 +28,8 @@ vdi_function v5_subops[] =
 	vq_curaddress,
 	0,
 	0,
-	0,
-	0,
+	v_dspcur,
+	v_rmcur,
 
 	0,			/* 20 */
 	0,

@@ -28,5 +28,6 @@ int	lvst_font	( VIRTUAL *v, short id );
 int	lvst_point	( VIRTUAL *v, short point );
 int	lvst_height	( VIRTUAL *v, short height );
 void	lvst_rotation	( VIRTUAL *v, short angle );
+void	lvst_wrmode	( VIRTUAL *v, short wrmode );
 
 #endif /* _V_TEXT_H */

@@ -23,6 +23,7 @@ struct	currfont
 	struct	font_head *loaded;
 	short	color;
 	short	bgcol;
+	short	wrmode;
 	short	style;
 	short	angle;
 	short	fx_x_ofst;
@@ -151,8 +152,11 @@ struct virtual
 	RGB_LIST		*rgb_levels;		/* Number of levels for Red, Green, Blue, Alpha and Ovl parts */
 	RGB_LIST		*rgb_bits;		/* Number of bits used for Red, Green, Blue, Alpha and Ovl */
 
-	unsigned char		*scratchbuf0;
-	unsigned char		*scratchbuf1;
+	long			ptsbuffsiz;
+	long			spanbuffsiz;
+	short			ptsbuff[PTSBUFF_SIZ >> 1];
+	short			spanbuff[SPANBUFF_SIZ >> 1];
+
 };
 
 
@@ -215,7 +219,7 @@ struct ovdi_utils
 	short	(*code)			( POINT *input, VDIRECT *clip);
 	short	(*clip_line)		( VDIRECT *input, VDIRECT *clip);
 
-	short	(*fix_raster_coords)	( MFDB *src, MFDB *dst, short *spts, short *dpts, short *c, short sflag, short dflag);
+	short	(*fix_raster_coords)	( short *spts, short *dpts, short *c);
 
 	void	(*trnfm)		( VIRTUAL *v, MFDB *src, MFDB *dst);
 

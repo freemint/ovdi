@@ -37,6 +37,9 @@ struct ovdidrv_functab
 	short		(*get_vbitics)(void);
 	short		(*add_vbifunc)(unsigned long function, unsigned long tics);
 	void		(*remove_vbifunc)(unsigned long function);
+	void		(*reset_vbi)(void);
+	void		(*enable_vbi)(void);
+	void		(*disable_vbi)(void);
 
 	draw_mc draw_mc;
 	undraw_mc undraw_mc;

@@ -5,10 +5,10 @@
 #include "vdi_defs.h"
 #include "kbddrv.h"
 
-short key_available(void);
-unsigned long get_key(void);
-unsigned long wait_key(void);
-unsigned long get_kbd_state(void);
+static short		key_available(void);
+static short		get_key(short *asci, short *scan, long *state);
+static void		wait_key(short *asci, short *scan, long *state);
+static long		get_kbd_state(void);
 
 KBDAPI	kapi;
 
@@ -21,42 +21,52 @@ init_keyboard( VIRTUAL *v )
 	k->getkey = get_key;
 	k->waitkey = wait_key;
 	k->getks = get_kbd_state;
-
+	
 	return k;
 }
 	
 
 
-short
+static short
 key_available(void)
 {
 	return Bconstat(2);
 }
 
-unsigned long
-get_key(void)
+static short
+get_key(short *a, short *s, long *sft)
 {
 	if ( (key_available()) == 0 )
-		return -1;
+		return 0;
 	else
-		return Bconin(2);
+	{
+		long key;
+
+		key	= Bconin(2);
+		*a	= key & 0xff;
+		*s	= (key >> 16) & 0xff;
+		*sft	= Kbshift(-1);
+	}
+	return 1;
 }
 
-unsigned long
-wait_key(void)
+static void
+wait_key(short *a, short *s, long *sft)
 {
+	long key;
 
 	do {}
 	while ((key_available()) == 0);
 
-	return Bconin(2);
+	key	= Bconin(2);
+	*a	= key & 0xff;
+	*s	= (key >> 16) & 0xff;
+	*sft	= Kbshift(-1);
+	return;
 }
 
-unsigned long
+static long
 get_kbd_state(void)
 {
-	return (unsigned long)Kbshift(-1);
+	return (long)Kbshift(-1);
 }
-
-
-	

@@ -215,7 +215,7 @@ output_gdftext( VIRTUAL *v, POINT *xy, short *text, short textlen, short jlen, s
 		coords[6] = tmp > v->clip.x2 ? v->clip.x2 : tmp;
 		coords[0] = coords[4] - nxt_x1;
 		coords[2] = coords[6] - nxt_x1;
-		rt_cpyfm( v, &fontd, &screen, coords, v->font.color, v->font.bgcol, v->wrmode);
+		rt_cpyfm( v, &fontd, &screen, coords, v->font.color, v->font.bgcol, v->font.wrmode);
 	}
 
 	if (!(textlen--))
@@ -272,7 +272,7 @@ output_gdftext( VIRTUAL *v, POINT *xy, short *text, short textlen, short jlen, s
 			coords[4] = nxt_x1 < v->clip.x1 ? v->clip.x1 : nxt_x1;
 			coords[0] = coords[4] - nxt_x1;
 			coords[2] = coords[6] - nxt_x1;
-			rt_cpyfm( v, (MFDB *)&fontd, (MFDB *)&screen, (short *)coords, v->font.color, v->font.bgcol, v->wrmode);
+			rt_cpyfm( v, (MFDB *)&fontd, (MFDB *)&screen, (short *)coords, v->font.color, v->font.bgcol, v->font.wrmode);
 		}
 	}
 	return;

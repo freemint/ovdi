@@ -10,32 +10,32 @@
 
 	.text
 
-_m_abs_move:	movem.l	d0-d1/a0-a1,-(sp)
-		move.w	((1+2+2)*4)+2(sp),-(sp)
-		move.w	((1+2+2)*4)+2(sp),-(sp)
+_m_abs_move:	movem.l	d0-d2/a0-a2,-(sp)
+		move.w	((1+3+3)*4)+2(sp),-(sp)
+		move.w	((1+3+3)*4)+2(sp),-(sp)
 		jsr	_mouse_absolute_move
 		addq.w	#4,sp
-		movem.l	(sp)+,d0-d1/a0-a1
+		movem.l	(sp)+,d0-d2/a0-a2
 		rts
 
-_m_rel_move:	movem.l	d0-d1/a0-a1,-(sp)
-		move.w	((1+2+2)*4)+2(sp),-(sp)
-		move.w	((1+2+2)*4)+2(sp),-(sp)
+_m_rel_move:	movem.l	d0-d2/a0-a2,-(sp)
+		move.w	((1+3+3)*4)+2(sp),-(sp)
+		move.w	((1+3+3)*4)+2(sp),-(sp)
 		jsr	_mouse_relative_move
 		addq.w	#4,sp
-		movem.l	(sp)+,d0-d1/a0-a1
+		movem.l	(sp)+,d0-d2/a0-a2
 		rts
 
-_m_but_chg:	movem.l	d0-d1/a0-a1,-(sp)
-		move.w	((1+2+2)*4)(sp),-(sp)
+_m_but_chg:	movem.l	d0-d2/a0-a2,-(sp)
+		move.w	((1+3+3)*4)(sp),-(sp)
 		jsr	_mouse_buttons_change
 		addq.w	#2,sp
-		movem.l	(sp)+,d0-d1/a0-a1
+		movem.l	(sp)+,d0-d2/a0-a2
 		rts
 
-_m_int:		movem.l	d0-d1/a0-a1,-(sp)
+_m_int:		movem.l	d0-d2/a0-a2,-(sp)
 		jsr	_mouse_interrupt
-		movem.l	(sp)+,d0-d1/a0-a1
+		movem.l	(sp)+,d0-d2/a0-a2
 		rts
 
 

@@ -38,6 +38,22 @@ v_show_c( VDIPB *pb, VIRTUAL *v)
 }
 
 void
+v_dspcur( VDIPB *pb, VIRTUAL *v)
+{
+	(*v->mouseapi->hidemcurs)();
+	(*v->mouseapi->absmovmcurs)(pb->ptsin[0], pb->ptsin[1]);
+	(*v->mouseapi->showmcurs)(1);
+	return;
+}
+
+void
+v_rmcur( VDIPB *pb, VIRTUAL *v)
+{
+	(*v->mouseapi->hidemcurs)();
+	return;
+}
+
+void
 vq_mouse( VDIPB *pb, VIRTUAL *v)
 {
 	unsigned long bs;

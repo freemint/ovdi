@@ -1,18 +1,22 @@
+/* This is the pointing device driver for ATari-mouses  */
+
 #include <osbind.h>
 
 #include "mousedrv.h"
 
-void init_mouse_device(struct mouseapi *mapi);
+#define ON 1
+
+void init_mouse_device(struct mousedrv *);
 void exit_mouse_device(void);
 
-void start_reporting(void);
-void end_reporting(void);
+static void start_reporting(void);
+static void end_reporting(void);
 void IKBD_Mouse(char *pkt);
 extern void ikbd_mouse(void);
 
-struct mouseapi *m_api;
-
-unsigned char mparams[] =
+static struct mousedrv *m_drv;
+static short flags = 0;
+static unsigned char mparams[] =
 {
 	0,	/* topmode	*/
 	0,	/* buttons	*/
@@ -22,16 +26,16 @@ unsigned char mparams[] =
 
 
 void
-init_mouse_device(struct mouseapi *mapi)
+init_mouse_device(struct mousedrv *mdrv)
 {
-#ifndef PRG_TEST
-	m_api = mapi;
+	m_drv = mdrv;
 
-	mapi->buttons = 2;
-	mapi->wheels = 0;
+	flags		= 0;
+	mdrv->buttons	= 2;
+	mdrv->wheels	= 0;
 
-	start_reporting();
-#endif
+	mdrv->start	= start_reporting;
+	mdrv->stop	= end_reporting;
 	return;
 }
 
@@ -42,16 +46,18 @@ exit_mouse_device(void)
 	return;
 }
 
-void
+static void
 start_reporting()
 {
+	flags |= ON;
 	Initmous( 1, &mparams, &ikbd_mouse);
 	return;
 }
 
-void
+static void
 end_reporting()
 {
+	flags &= ~ON;
 	Initmous( 0, -1L, -1L);
 	return;
 }
@@ -60,30 +66,33 @@ end_reporting()
 void
 IKBD_Mouse(char *pkt)
 {
-	struct mouseapi *mapi = m_api;
-	register char *p = pkt;
+	struct mousedrv *mdrv = m_drv;
 	register unsigned short buts;
 	register short x, y;
-	unsigned char head;
+	char head;
 
-
-	head = *p++;
-
-	if ((head & 0xf8) == 0xf8)
+	if (flags & ON)
 	{
-		buts = (short)head & 3;
-		if (buts & 1)
-			buts = (buts >> 1) | 2;
-		else
-			buts = buts >> 1;
+		head = *pkt++;
 
-		(*mapi->butchg)(buts);
+		if ((head & 0xf8) == 0xf8)
+		{
+			buts = (short)head & 3;
+			if (buts & 1)
+				buts = (buts >> 1) | 2;
+			else
+				buts = buts >> 1;
+
+			(*mdrv->butchg)(buts);
 	
-		x = *p++;
-		y = *p++;
+			x = *pkt++;
+			y = *pkt;
 
-		if (x | y)
-			(*mapi->relmovmcurs)(x, y);
+			if (x | y)
+				(*mdrv->relmovmcurs)(x, y);
+		}
 	}
 	return;
 }
+	
+		

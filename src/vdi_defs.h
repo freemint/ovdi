@@ -1,6 +1,8 @@
 #ifndef _vdi_defs_h
 #define _vdi_defs_h
 
+#define PTSBUFF_SIZ		1024*4			/* Size of PTSBUFF */
+#define SPANBUFF_SIZ		(400*5*2) << 1		/* Buffer used by polygon drawers */
 #define MAX_COLOR		16
 #define MAX_LN_STYLE		 7
 #define MAX_LN_WIDTH		40
@@ -13,7 +15,7 @@
 #define MAX_FIL_HAT_INDEX	12
 #define MAX_FIL_PAT_INDEX	24
 #define MAX_MODE		 3
-#define MAX_ARC_CT		70	/* maximum number of points on circle */
+#define MAX_ARC_CT		(PTSBUFF_SIZ >> 1) / 3 /*70*/	/* maximum number of points on circle */
 
 /* wrmode definitions */
 #define MD_REPLACE	1

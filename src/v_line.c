@@ -1,6 +1,7 @@
 #include "display.h"
 #include "line.h"
 #include "vdi_globals.h"
+#include "v_attribs.h"
 #include "v_line.h"
 
 //short ptsbuff[200*5*2];
@@ -25,9 +26,16 @@ lvsl_color( VIRTUAL *v, short color)
 	color = v->color_vdi2hw[color];
 	v->line.color = color;
 	v->line.bgcol = color;
-	v->linedat.color[0] = v->linedat.color[1] = v->linedat.color[2] = v->linedat.color[3] = color;
-	//v->linedat.color[2] = v->linedat.color[3] = 0xff;
+	v->linedat.color[0] = v->linedat.color[1] = color; //v->linedat.color[2] = v->linedat.color[3] = color;
+	v->linedat.color[2] = v->linedat.color[3] = 0xff;
 	v->linedat.bgcol = color;
+	return;
+}
+
+void
+lvsl_wrmode( VIRTUAL *v, short wrmode)
+{
+	set_writingmode( wrmode, &v->linedat.wrmode);
 	return;
 }
 
@@ -105,14 +113,16 @@ vsl_width( VDIPB *pb, VIRTUAL *v)
 void
 lvsl_width( VIRTUAL *v, short width)
 {
-	if (!width)
+	if (width < 1)
 		v->line.width = 1;
 	else if (width > MAX_L_WIDTH)
-		v->line.width = MAX_L_WIDTH;
+		v->line.width = MAX_L_WIDTH | 1;
 	else
-		v->line.width = width;
+		v->line.width = width | 1;
 	return;
 }
+
+//short ptsbuff[100*10*2];
 
 void
 v_pline( VDIPB *pb, VIRTUAL *v)
@@ -120,7 +130,7 @@ v_pline( VDIPB *pb, VIRTUAL *v)
 	short wide, count;
 	POINT *in_pts;
 	VDIRECT points;
-	short ptsbuff[100*5*2];
+	//short ptsbuff[10*5*2];
 
 	count = pb->contrl[N_PTSIN];
 
@@ -139,9 +149,9 @@ v_pline( VDIPB *pb, VIRTUAL *v)
 		points.y2 = in_pts->y;
 
 		if (wide)
-			wide_line(v, (short *)&points, 2, (short *)&ptsbuff, sizeof(ptsbuff), &v->linedat );
+			wide_line(v, (short *)&points, 2, (short *)&v->spanbuff, v->spanbuffsiz, &v->linedat); //(short *)&ptsbuff, sizeof(ptsbuff), &v->linedat );
 		else
-			pline(v, (short *)&points, 2, (short *)&ptsbuff, sizeof(ptsbuff), &v->linedat);
+			pline(v, (short *)&points, 2, (short *)&v->spanbuff, v->spanbuffsiz, &v->linedat); //(short *)&ptsbuff, sizeof(ptsbuff), &v->linedat);
 
 		count--;
 	}
@@ -154,7 +164,7 @@ vql_attributes( VDIPB *pb, VIRTUAL *v)
 
 	pb->intout[0] = v->line.index + 1;
 	pb->intout[1] = v->color_hw2vdi[v->line.color];
-	pb->intout[2] = v->wrmode + 1;
+	pb->intout[2] = v->linedat.wrmode + 1;
 	pb->intout[3] = v->line.beg;
 	pb->intout[4] = v->line.end;
 	pb->ptsout[0] = v->line.width;

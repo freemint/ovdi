@@ -49,23 +49,36 @@ struct xmform
 
 struct mousedrv
 {
-	LINEA_VARTAB	*la;
-	XMFORM		*current_xmf;
-	XMSAVE		*current_xms;
-	draw_mc		draw_mcurs;
-	undraw_mc	undraw_mcurs;
-	void		(*vreschk)(short, short);
-	unsigned long	flags;
-#define MC_ENABLED	1
-#define MC_MOVED	2
-	short		hide_ct;
-	short		current_x;
-	short		current_y;
-	short		min_x, min_y, max_x, max_y;
-	unsigned short	bs_mask;
-	unsigned short	current_bs;
-	unsigned short	changed_bs;
-	unsigned short	last_bs;
+	short			buttons;
+	short			wheels;
+	
+	void			(*start)(void);
+	void			(*stop)(void);
+
+	void			(*relmovmcurs)(register short x, register short y);
+	void			(*absmovmcurs)(register short x, register short y);
+	void			(*butchg)(register unsigned short bs);
+
+	LINEA_VARTAB		*la;
+	XMFORM			*current_xmf;
+	XMSAVE			*current_xms;
+	draw_mc			draw_mcurs;
+	undraw_mc		undraw_mcurs;
+	void			(*vreschk)(short, short);
+	volatile unsigned long	flags;
+	volatile unsigned short	interrupt;
+#define MC_ENABLED	0x01
+#define MC_MOVED	0x02
+#define MDRV_ENABLED	0x04
+#define MC_INT		0x80
+	volatile short		hide_ct;
+	volatile short		current_x;
+	volatile short		current_y;
+	short			min_x, min_y, max_x, max_y;
+	unsigned short		bs_mask;
+	volatile unsigned short	current_bs;
+	volatile unsigned short	changed_bs;
+	volatile unsigned short	last_bs;
 
 };
 
@@ -74,6 +87,9 @@ struct mouseapi
 	short		buttons;
 	short		wheels;
 	
+	void		(*enable)(void);
+	void		(*disable)(void);
+
 	void		(*setxmfres)(VIRTUAL *v);
 	void		(*setnewmform)(VIRTUAL *v, MFORM *mf);
 	void		(*resetmcurs)();
@@ -99,6 +115,6 @@ struct mouseapi
 
 MOUSEAPI * init_mouse	(VIRTUAL *v, LINEA_VARTAB *la);
 
-extern void init_mouse_device	(MOUSEAPI *mapi);
+extern void init_mouse_device	(MOUSEDRV *mdrv);
 
 #endif	/* _OVDI_MOUSEDRV_H */

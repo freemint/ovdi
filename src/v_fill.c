@@ -6,6 +6,7 @@
 #include "polygon.h"
 #include "rasters.h"
 #include "vdi_globals.h"
+#include "v_attribs.h"
 #include "v_fill.h"
 #include "styles.h"
 
@@ -51,6 +52,27 @@ lvsprm_color( VIRTUAL *v, short color)
 	v->perimdata.bgcol = v->color_vdi2hw[0];
 	v->perimdata.color[0] = v->perimdata.color[1] = color;
 	v->perimdata.color[2] = v->perimdata.color[3] = 0xff;
+	return;
+}
+
+void
+lvsf_wrmode( VIRTUAL *v, short wrmode )
+{
+	set_writingmode( wrmode, &v->pattern.wrmode);
+	return;
+}
+
+void
+lvsprm_wrmode( VIRTUAL *v, short wrmode )
+{
+	set_writingmode( wrmode, &v->perimdata.wrmode);
+	return;
+}
+
+void
+lvsudf_wrmode( VIRTUAL *v, short wrmode )
+{
+	set_writingmode( wrmode, &v->udpat.wrmode);
 	return;
 }
 
@@ -101,12 +123,12 @@ vsf_udpat( VDIPB *pb, VIRTUAL *v )
 void
 v_fillarea( VDIPB *pb, VIRTUAL *v)
 {
-	short ptsbuff[100*5*2];
+	//short ptsbuff[10*5*2];
 
 	if (pb->contrl[N_PTSIN] < 2)
 		return;
 
-	filled_poly(    v, &pb->ptsin[0], pb->contrl[N_PTSIN], (short *)&ptsbuff, sizeof(ptsbuff), 
+	filled_poly(    v, &pb->ptsin[0], pb->contrl[N_PTSIN], (short *)&v->spanbuff, v->spanbuffsiz, //(short *)&ptsbuff, sizeof(ptsbuff), 
 			v->fill.interior == FIS_USER ? &v->udpat : &v->pattern);
 
 	return;
@@ -235,12 +257,12 @@ set_udfill( VIRTUAL *v, short planes, short *ud, short width, short height)
 			v->udpat.expanded = 0;
 		else if (planes == v->raster->planes)
 		{
-			log("set_udfill: Multiplane fill for pid %d - %s\n", v->pid, v->procname);
+			//log("set_udfill: Multiplane fill for pid %d - %s\n", v->pid, v->procname);
 			v->udpat.expanded = 1;
 		}
 		else
 		{
-			log("set_udfill: Forcing ROM pattern for '%s'\n", v->procname);
+			//log("set_udfill: Forcing ROM pattern for '%s'\n", v->procname);
 			src = (short *)&ROM_UD_PATRN;
 			v->udpat.expanded = 0;
 			width = 16;

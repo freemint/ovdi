@@ -61,7 +61,7 @@ v_bar( VDIPB *pb, VIRTUAL *v)
 
 	if (v->fill.perimeter)
 	{
-		short ptsbuff[100*5*2];
+		short ptsbuff[10*5*2];
 
 		coords[4] = coords[2];
 		coords[5] = coords[7] = coords[3];
@@ -77,11 +77,11 @@ v_bar( VDIPB *pb, VIRTUAL *v)
 void
 v_arc( VDIPB *pb, VIRTUAL *v)
 {
-	short points[MAX_ARC_CT * 3];
+	//short points[MAX_ARC_CT * 3];
 
 	draw_arc( v, 	pb->ptsin[0], pb->ptsin[1], pb->ptsin[6], 
 			pb->intin[0], pb->intin[1],
-			(short *)&points,
+			(short *)&v->ptsbuff, //(short *)&points,
 			v->fill.interior == FIS_USER ? &v->udpat : &v->pattern);
 
 	return;
@@ -91,11 +91,11 @@ v_arc( VDIPB *pb, VIRTUAL *v)
 void
 v_pieslice( VDIPB *pb, VIRTUAL *v)
 {
-	short points[MAX_ARC_CT * 3];
+	//short points[MAX_ARC_CT * 3];
 
 	draw_pieslice( v, pb->ptsin[0], pb->ptsin[1], pb->ptsin[6],
 			  pb->intin[0], pb->intin[1],
-			  (short *)&points,
+			  (short *)&v->ptsbuff, //(short *)&points,
 			  v->fill.interior == FIS_USER ? &v->udpat : &v->pattern);
 
 	return;
@@ -105,10 +105,10 @@ v_pieslice( VDIPB *pb, VIRTUAL *v)
 void
 v_circle( VDIPB *pb, VIRTUAL *v)
 {
-	short points[MAX_ARC_CT * 3];
+	//short points[MAX_ARC_CT * 3];
 
 	draw_circle( v, pb->ptsin[0], pb->ptsin[1], pb->ptsin[4],
-			(short *)&points,
+			(short *)&v->ptsbuff, //(short *)&points,
 			v->fill.interior == FIS_USER ? &v->udpat : &v->pattern);
 
 
@@ -119,10 +119,10 @@ v_circle( VDIPB *pb, VIRTUAL *v)
 void
 v_ellipse( VDIPB *pb, VIRTUAL *v)
 {
-	short points[MAX_ARC_CT *3];
+	//short points[MAX_ARC_CT *3];
 
 	draw_ellipse( v, pb->ptsin[0], pb->ptsin[1], pb->ptsin[2], pb->ptsin[3],
-			(short *)&points,
+			(short *)&v->ptsbuff, //(short *)&points,
 			v->fill.interior == FIS_USER ? &v->udpat : &v->pattern);
 
 
@@ -133,11 +133,11 @@ v_ellipse( VDIPB *pb, VIRTUAL *v)
 void
 v_ellarc( VDIPB *pb, VIRTUAL *v)
 {
-	short points[MAX_ARC_CT * 3];
+	//short points[MAX_ARC_CT * 3];
 
 	draw_ellipsearc( v,	pb->ptsin[0], pb->ptsin[1], pb->ptsin[2], pb->ptsin[3],
 				pb->intin[0], pb->intin[1],
-				(short *)&points,
+				(short *)&v->ptsbuff, //(short *)&points,
 				v->fill.interior == FIS_USER ? &v->udpat : &v->pattern);
 
 	return;
@@ -147,11 +147,11 @@ v_ellarc( VDIPB *pb, VIRTUAL *v)
 void
 v_ellpie( VDIPB *pb, VIRTUAL *v)
 {
-	short points[MAX_ARC_CT * 3];
+	//short points[MAX_ARC_CT * 3];
 
 	draw_ellipsepie( v,	pb->ptsin[0], pb->ptsin[1], pb->ptsin[2], pb->ptsin[3],
 				pb->intin[0], pb->intin[1],
-				(short *)&points,
+				(short *)&v->ptsbuff, //(short *)&points,
 				v->fill.interior == FIS_USER ? &v->udpat : &v->pattern);
 
 	return;

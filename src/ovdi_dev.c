@@ -23,7 +23,7 @@ OVDI_DEVICE ovdidev =
 	(long)"0.01",
 	ovdidev_name,
 	ovdidev_open,
-	0,
+	ovdidev_close,
 	ovdidev_setpscreen,
 	ovdidev_setlscreen,
 	ovdidev_setcolor,
@@ -429,7 +429,6 @@ Load_Resolution(short res_index, RESOLUTION *res )
 OVDI_DEVICE *
 device_init(OVDI_LIB *l)
 {
-	log("device_init: lib %lx, %lx\n", l, l->getcookie);
 
 	if (!(*l->getcookie)((long)0x4e4f5641 /*"NOVA"*/, (long *)&xcb))
 	{
@@ -450,75 +449,47 @@ ovdidev_open(OVDI_DEVICE *dev, short dev_id)
 	XCB *x = xcb;
 	OVDIDRV_FUNCTAB *f;
 	OVDI_DRIVER *drv = &driver;
-#ifndef PRG_TEST
 	RESOLUTION res;
-#endif
 	long tmp;
 	short fmt, res_index;
 
-	log("ovdidev_open: ");
-
 	res_index = (unsigned char)x->resolution;
 
-#ifndef PRG_TEST
 	if ( !(Load_Resolution(res_index, &res)) )
 	{
 		log("No resolution??\n");
 		return 0;
 	}
-#endif
 
 	tmp =	(long)x->scr_base;
 	tmp -=	(long)x->base;
 
-#ifndef PRG_TEST
 	do_p_chres((long)x->p_chres, &res, tmp);
-#endif
 
-	//fmt = x->format;
 
-//	drv->planes		= x->planes;
 	drv->r.planes		= x->planes;
-
-//	drv->bypl		= x->bypl;
 	drv->r.bypl		= x->bypl;
-
 	drv->palette		= x->colors;
-
-//	drv->width		= x->max_x + 1;
 	drv->r.w		= x->max_x + 1;
-
-//	drv->height		= x->max_y + 1;
 	drv->r.h		= x->max_y + 1;
-
-//	drv->max_x		= x->max_x;
-//	drv->max_y		= x->max_y;
-
 	drv->v_top		= x->v_top;
 	drv->v_bottom		= x->v_bottom;
 	drv->v_left		= x->v_left;
 	drv->v_right		= x->v_right;
-
 	drv->vram_start		= x->base;
 	drv->vram_size		= x->mem_size;
-
 	drv->scr_size		= x->scrn_siz;
-//	drv->scr_base		= x->scr_base;
 	drv->r.base		= x->scr_base;
-
 	drv->dev		= dev;
-
 	drv->r.flags		= R_IS_SCREEN | R_IN_VRAM;
-	//display("Planes = %d, bypl = %d, scrbase = %lx\n", drv->planes, drv->bypl, drv->scr_base);
+
 	bzero(&drv->f, sizeof(OVDIDRV_FUNCTAB));
 
 	f = (OVDIDRV_FUNCTAB *)&drv->f;
 
 	if (drv->r.planes == 1)
 	{
-//		drv->format		= PF_ATARI;
 		drv->r.format		= PF_ATARI;
-//		drv->clut		= 1;
 		drv->r.clut		= 1;
 
 		f->pixelfuncts		= 0;
@@ -527,24 +498,18 @@ ovdidev_open(OVDI_DEVICE *dev, short dev_id)
 	}
 	else if (drv->r.planes == 4)
 	{
-//		drv->format		= PF_ATARI;
 		drv->r.format		= PF_ATARI;
-//		drv->clut		= 1;
 		drv->r.clut		= 1;
 
 		f->pixelfuncts		= (draw_pixel *)&dpf_4b;
 
-	//	*f = *(OVDIDRV_FUNCTAB *)&functions_4b;
 	}
 	else if (drv->r.planes == 8)
 	{
-//		drv->format		= PF_PACKED;
 		drv->r.format		= PF_PACKED;
 
-//		drv->pixelformat	= pf_nova; /* pf_et6k is correct, but emulator expects data as described in pf_nova */
 		drv->r.pixelformat	= pf_nova;
 
-//		drv->clut		= 1;
 		drv->r.clut		= 1;
 
 		f->pixelfuncts		= (draw_pixel *)&dpf_8b;
@@ -554,14 +519,10 @@ ovdidev_open(OVDI_DEVICE *dev, short dev_id)
 	}
 	else if (drv->r.planes == 15)
 	{
-		display("15-bit \n");
-//		drv->format		= PF_PACKED;
 		drv->r.format		= PF_PACKED;
 
-//		drv->pixelformat	= pf_15bI;
 		drv->r.pixelformat	= pf_15bI;
 
-//		drv->clut		= 0;
 		drv->r.clut		= 0;
 
 		f->pixelfuncts		= (draw_pixel *)&dpf_16b;
@@ -570,14 +531,10 @@ ovdidev_open(OVDI_DEVICE *dev, short dev_id)
 	}
 	else if (drv->r.planes == 16)
 	{
-		display("16-bit \n");
-//		drv->format		= PF_PACKED;
 		drv->r.format		= PF_PACKED;
 
-//		drv->pixelformat	= pf_16bI;
 		drv->r.pixelformat	= pf_16bI;
 
-//		drv->clut		= 0;
 		drv->r.clut		= 0;
 
 		f->pixelfuncts		= (draw_pixel *)&dpf_16b;
@@ -586,14 +543,11 @@ ovdidev_open(OVDI_DEVICE *dev, short dev_id)
 	}
 	else if (drv->r.planes == 24)
 	{
-//		drv->clut 	= 0;
 		drv->r.clut	= 0;
 
 		if (!fmt & 1)
 		{
-//			drv->format		= PF_PACKED | PF_BE;
 			drv->r.format		= PF_PACKED | PF_BE;
-//			drv->pixelformat	= pf_24bM;
 			drv->r.pixelformat	= pf_24bM;
 
 			f->pixelfuncts		= 0;
@@ -602,9 +556,7 @@ ovdidev_open(OVDI_DEVICE *dev, short dev_id)
 		}
 		else
 		{
-//			drv->format		= PF_PACKED;
 			drv->r.format		= PF_PACKED;
-//			drv->pixelformat	= pf_24bI;
 			drv->r.pixelformat	= pf_24bI;
 
 			f->pixelfuncts		= 0;
@@ -616,14 +568,11 @@ ovdidev_open(OVDI_DEVICE *dev, short dev_id)
 	{
 		short format = ((fmt >> 1) & 3);
 
-//		drv->clut		= 0;
 		drv->r.clut		= 0;
 
 		if (!format)
 		{
-//			drv->format		= PF_PACKED;
 			drv->r.format		= PF_PACKED;
-//			drv->pixelformat	= pf_32bI;
 			drv->r.pixelformat	= pf_32bI;
 
 			f->pixelfuncts		= 0;
@@ -632,9 +581,7 @@ ovdidev_open(OVDI_DEVICE *dev, short dev_id)
 		}
 		else if (fmt == 1)
 		{
-//			drv->format		= PF_PACKED | PF_BE;
 			drv->r.format		= PF_PACKED | PF_BE;
-//			drv->pixelformat	= pf_32bM;
 			drv->r.pixelformat	= pf_32bM;
 
 			f->pixelfuncts		= 0;
@@ -643,9 +590,7 @@ ovdidev_open(OVDI_DEVICE *dev, short dev_id)
 		}
 		else
 		{
-//			drv->format		= PF_PACKED | PF_BS;
 			drv->r.format		= PF_PACKED | PF_BS;
-//			drv->pixelformat	= pf_32bIbs;
 			drv->r.pixelformat	= pf_32bIbs;
 
 			f->pixelfuncts		= 0;
@@ -658,8 +603,6 @@ ovdidev_open(OVDI_DEVICE *dev, short dev_id)
 		log(" planes = %d\n", drv->r.planes);
 		return 0;
 	}
-
-	log(" return %lx", drv);
 
 	return drv;
 }

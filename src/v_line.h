@@ -19,5 +19,6 @@ void lvsl_type		( VIRTUAL *v, short index );
 void lvsl_udsty		( VIRTUAL *v, short pattern );
 void lvsl_width		( VIRTUAL *v, short width );
 
+void lvsl_wrmode	( VIRTUAL *v, short wrmode );
 
 #endif	/* _V_LINE_H */

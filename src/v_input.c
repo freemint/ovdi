@@ -117,7 +117,9 @@ lvsin_mode( VIRTUAL *v, short dev, short mode)
 void
 vxx_locator( VDIPB *pb, VIRTUAL *v)
 {
-	unsigned long bs, key;
+	short key, asci, scan;
+	long kbs;
+	unsigned long bs;
 
 	bs = key = 0;
 
@@ -133,8 +135,8 @@ vxx_locator( VDIPB *pb, VIRTUAL *v)
 
 		if (key)
 		{
-			key = (*v->kbdapi->getkey)();
-			pb->intout[0] = (unsigned short)key & 0xff;
+			(void)(*v->kbdapi->getkey)(&asci, &scan, &kbs);
+			pb->intout[0] = asci;
 			pb->contrl[N_INTOUT] = 1;
 		}
 
@@ -168,11 +170,10 @@ vxx_locator( VDIPB *pb, VIRTUAL *v)
 			pb->ptsout[1] = xy[1];
 			pb->contrl[N_PTSOUT] = 1;
 		}
-
 		if (key)
 		{
-			key = (*v->kbdapi->getkey)();
-			pb->intout[0] = (unsigned short)key & 0xff;
+			(void)(*v->kbdapi->getkey)(&asci, &scan, &kbs);
+			pb->intout[0] = asci;
 			pb->contrl[N_INTOUT] = 1;
 		}	
 
@@ -208,13 +209,15 @@ vxx_valuator( VDIPB *pb, VIRTUAL *v)
 void
 vxx_choice( VDIPB *pb, VIRTUAL *v)
 {
-	unsigned long key;
-	short scan;
+	short asci, scan;
+	long kbs;
 
 	if (v->valuator & REQ_MODE)
 	{
-		key = (*v->kbdapi->waitkey)();
-		scan = (short)((key >> 8) & 0xff);
+		/* Should this wait until the key is a function key?	*/
+		/* Now it exists on anykey, only returning a valid	*/
+		/* value if anykey == somefunckey			*/
+		(*v->kbdapi->waitkey)(&asci, &scan, &kbs);
 		if (scan >= SCAN_F1 && scan <= SCAN_F10)
 		{
 			pb->intout[0] = scan - SCAN_F1 + 1;
@@ -226,8 +229,7 @@ vxx_choice( VDIPB *pb, VIRTUAL *v)
 	{
 		if ( (*v->kbdapi->keywaiting)() )
 		{
-			key = (*v->kbdapi->getkey)();
-			scan = (short)((key >> 8) & 0xff);
+			(void)(*v->kbdapi->getkey)(&asci, &scan, &kbs);
 			if (scan >= SCAN_F1 && scan <= SCAN_F10)
 			{
 				pb->intout[0]  = scan - SCAN_F1 + 1;
@@ -242,39 +244,39 @@ vxx_choice( VDIPB *pb, VIRTUAL *v)
 void
 vxx_string( VDIPB *pb, VIRTUAL *v)
 {
-	short maxlen, keep, i;
-	unsigned long key;
+	short maxlen, keep, i, asci, scan;
+	long kbs;
 
 	maxlen = pb->intin[0];
 
 	if (maxlen < 0)
 	{
-		keep = 0xffff;
+		keep = 1;
 		maxlen = -maxlen;
 	}
 	else
-		keep = 0xff;
+		keep = 0;
 
 	if (v->string & REQ_MODE)
 	{
 		for (i = 0; i < maxlen; i++)
 		{
-			key = (*v->kbdapi->waitkey)();
+			(*v->kbdapi->waitkey)(&asci, &scan, &kbs);
 
-			if ( (key & 0xff) == 13)
+			if ( (asci & 0xff) == 13)
 				break;
 
-			pb->intout[i] = (unsigned short)key & keep;
+			pb->intout[i] = keep ? asci | (scan << 8) : asci;
 		}
 		pb->contrl[N_INTOUT] = i;
 	}
 	else /* sample mode */
 	{
 		i = 0;
-		while ( (i < maxlen) && (key = (*v->kbdapi->keywaiting)()) )
+		while ( (i < maxlen) && ((*v->kbdapi->keywaiting)()) )
 		{
-			key = (*v->kbdapi->getkey)();
-			pb->intout[i] = (unsigned short)key & keep;
+			(void)(*v->kbdapi->getkey)(&asci, &scan, &kbs);
+			pb->intout[i] = keep ? asci | (scan << 8) : asci & 0xff;
 			i++;
 		}
 		pb->contrl[N_INTOUT] = i;
@@ -285,10 +287,10 @@ vxx_string( VDIPB *pb, VIRTUAL *v)
 void
 vq_key_s( VDIPB *pb, VIRTUAL *v)
 {
-	unsigned long ks;
+	//unsigned long ks;
 
-	ks = (*v->kbdapi->getks)();
-	pb->intout[0] = (short)((*v->kbdapi->getks)() & 0xffffUL);
+	//ks = (*v->kbdapi->getks)();
+	pb->intout[0] = (short)(((*v->kbdapi->getks)()) & 0xf);
 	pb->contrl[N_INTOUT] = 1;
 	return;
 }

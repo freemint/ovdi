@@ -1,3 +1,4 @@
+#include <osbind.h>
 #include <mint/mintbind.h>
 #include <mint/basepage.h>
 #include <mint/dcntl.h>
@@ -97,8 +98,20 @@ OVDI_UTILS utils =
 void
 ovdi_init(void)
 {
+	long lavt, lafr, laft;
+
 	scrnlog("OVDI start adr %lx\n", _base->p_tbase);
-	log("OVDI start adr %lx\n", _base->p_tbase);
+	//log("OVDI start adr %lx\n", _base->p_tbase);
+
+	bzero(&wks1, sizeof(VIRTUAL));
+	bzero(&la_vt, sizeof(LINEA_VARTAB));
+
+	get_linea_addresses(&lavt, &lafr, &laft);
+	lavt -= 910;
+	linea_vars = (LINEA_VARTAB *)lavt;
+
+	scrnlog("Linea vartab %lx, font ring %lx, func tab %lx", linea_vars, lafr, laft);
+
 	devinit = &device_init;
 	bootdev = Dgetdrv() + 'a';
 
@@ -106,11 +119,12 @@ ovdi_init(void)
 	return;
 }
 
+short logit = 0;
+
 long
 oVDI( VDIPB *pb )
 {
-	short func, i, logit;
-	short *s, *d;
+	short func;
 	VDI_function *f;
 	VIRTUAL *v;
 
@@ -121,12 +135,14 @@ oVDI( VDIPB *pb )
 
 	if (func > MAX_VDI_FUNCTIONS)
 	{
+#if 0
 		v = v_vtab[pb->contrl[HANDLE]].v;
 		if (v)
 			log("Calling old trap 2, func %d: pid %d %s\n", func, v->pid, v->procname);
 		else
 			log("Calling old trap 2, func %d - ILLEGAL HANDLE\n", func);
 		
+#endif
 		return -1L;
 	}
 
@@ -139,7 +155,8 @@ oVDI( VDIPB *pb )
 
 		if (device)
 		{
-			linea_vars = &la_vt;
+			//linea_vars = &la_vt;
+
 			//(*f)(pb, &wks1, &la_wks, device);
 			v_opnwk(pb, &wks1, &la_wks, device);
 			return 0L;
@@ -165,36 +182,58 @@ oVDI( VDIPB *pb )
 
 	if (!v)
 	{
-		short pid = Pgetpid();
-		log("oVDI Invalid handle %d, func %d, pid %d\n", pb->contrl[HANDLE], func, pid);
 		return 0L;
 	}
 
 	v->func = func;
 
 #if 0
-	if (!(strcmp("PROFILE2", v->procname)))
+//	if ( !(strcmp("PROFILE2", v->procname)) )
+	if ( (Kbshift(-1) & 0x1) )
 		logit = 1;
 	else
 		logit = 0;
-#else
-	logit = 0;
-#endif
 
 	if (logit)
 	{
-		log("func %d subfuc %d, %d, %d, %d, %d ..", func, pb->contrl[SUBFUNCTION],
-			pb->intin[0], pb->intin[1], pb->intin[2], pb->intin[3]);
+		//log("func %d..", func);
+
+		//log("func %d subfuc %d, %d, %d, %d, %d ..", func, pb->contrl[SUBFUNCTION],
+		//	pb->intin[0], pb->intin[1], pb->intin[2], pb->intin[3]);
+
+		log("%s (%d) - func %d, subfuc %d, ni %d, np %d\n",
+			v->procname, v->pid, func, pb->contrl[SUBFUNCTION], pb->contrl[N_INTIN], pb->contrl[N_PTSIN]);
+		log("  in %d, %d, %d, %d %d, %d, %d, %d - %d, %d, %d, %d\n",
+			pb->intin[0], pb->intin[1], pb->intin[2], pb->intin[3],
+			pb->ptsin[0], pb->ptsin[1], pb->ptsin[2], pb->ptsin[3],
+			pb->ptsin[4], pb->ptsin[5], pb->ptsin[6], pb->ptsin[7]);
+
+		log("     %d, %d, %d, %d, %d, %d, %d, %d - %d, %d, %d, %d\n",
+			pb->intout[0], pb->intout[1], pb->intout[2], pb->intout[3],
+			pb->intout[4], pb->intout[5], pb->intout[6], pb->intout[7],
+			pb->ptsout[0], pb->ptsout[1], pb->ptsout[2], pb->ptsout[3]);
 	}
-	if (logit && func == 114)
-		return 0L;
 
 	(*f)(pb, v);
 
 	if (logit)
-		log("leave\n");
+	{
+		log(" out %d, %d, %d, %d %d, %d, %d, %d - %d, %d, %d, %d\n",
+			pb->intin[0], pb->intin[1], pb->intin[2], pb->intin[3],
+			pb->ptsin[0], pb->ptsin[1], pb->ptsin[2], pb->ptsin[3],
+			pb->ptsin[4], pb->ptsin[5], pb->ptsin[6], pb->ptsin[7]);
 
+		log("     %d, %d, %d, %d, %d, %d, %d, %d - %d, %d, %d, %d\n",
+			pb->intout[0], pb->intout[1], pb->intout[2], pb->intout[3],
+			pb->intout[4], pb->intout[5], pb->intout[6], pb->intout[7],
+			pb->ptsout[0], pb->ptsout[1], pb->ptsout[2], pb->ptsout[3]);
 
+		log(" nio %d, npo %d - leave\n\n", pb->contrl[N_INTOUT], pb->contrl[N_PTSOUT]);
+	//	log("leave\n\n");
+	}
+#else
+	(*f)(pb, v);
+#endif
 	return 0L;
 }
 
@@ -204,15 +243,10 @@ get_cookie(long tag, long *ret)
 	COOKIE *jar;
 	int r = 0;
 
-	log("get_cookie: ");
-
 	jar = *CJAR;
 
 	if (!jar)
-	{
-		log("no jar found\n");
 		return r;
-	}
 
 	while(jar->tag)
 	{
@@ -225,7 +259,6 @@ get_cookie(long tag, long *ret)
 		}
 		jar++;
 	}
-	log("return %d\n", r);
 	return r;
 }
 

@@ -15,15 +15,21 @@
 
 extern unsigned long old_timeint;
 extern void time_interruptw(void);
-void donothing(void);
+static void donothing(void);
 
 void time_interrupt(void);
 
-short get_tics_per_sec(void);
-short add_time_interrupt(unsigned long function, unsigned long tics);
-void remove_time_interrupt(unsigned long func);
-unsigned long set_user_tim(unsigned long func);
-unsigned long set_next_tim(unsigned long func);
+static short get_tics_per_sec(void);
+static short add_time_interrupt(unsigned long function, unsigned long tics);
+static void delete_time_interrupt(unsigned long func);
+static unsigned long set_user_tim(unsigned long func);
+static unsigned long set_next_tim(unsigned long func);
+
+static void enable_tint(void);
+static void disable_tint(void);
+static void reset_time(void);
+static void reset_user_tim(void);
+static void reset_next_tim(void);
 
 struct timedrv tdrv;
 struct timeapi tapi;
@@ -50,44 +56,82 @@ unsigned long timeints[] =
 struct timeapi *
 init_time(VIRTUAL *v, LINEA_VARTAB *la)
 {
-	int i;
-#ifndef PRG_TEST
 	short sr;
-#endif
 	struct timedrv *td = &tdrv;
 	struct timeapi *ta = &tapi;
+
+	if (old_timeint != 0)
+	{
+		reset_time();
+		return ta;
+	}
+
+	td->flags = 0;
+	td->la = la;
+	
+	reset_time();
+
+ /* Setup the API interface for VDI to use */
+	ta->get_tps		= get_tics_per_sec;
+	ta->add_timeint		= add_time_interrupt;
+	ta->del_timeint		= delete_time_interrupt;
+	ta->set_user_tim	= set_user_tim;
+	ta->set_next_tim	= set_next_tim;
+	ta->reset_user_tim	= reset_user_tim;
+	ta->reset_next_tim	= reset_next_tim;
+
+	ta->reset		= reset_time;
+	ta->enable		= enable_tint;
+	ta->disable		= disable_tint;
+
+	sr = spl7();
+	old_timeint = *(long *)etv_timer;
+	*(long *)etv_timer = (unsigned long)&time_interruptw;
+	spl(sr);
+	return ta;
+}
+
+static void
+enable_tint(void)
+{
+	struct timedrv *td = &tdrv;
+
+	if (old_timeint)
+		td->flags |= TIME_ACTIVE;
+	return;
+}
+static void
+disable_tint(void)
+{
+	struct timedrv *td = &tdrv;
+
+	td->flags &= ~TIME_ACTIVE;
+	return;
+}
+
+static void
+reset_time(void)
+{
+	short	i;
+	short	sr;
 	unsigned long *tints = timeints;
 
-	td->la = la;
-
+	sr = spl7();
+	disable_tint();
 	for (i = 0; i < MAX_TINTS; i++)
 	{
 		tints[0] = tints[1] = tints[2] = 0;
 		tints += 3;
 	}
-
-	set_user_tim((unsigned long)&donothing);
-	set_next_tim((unsigned long)&donothing);
-
- /* Setup the API interface for VDI to use */
-	ta->get_tps = get_tics_per_sec;
-	ta->add_timeint = add_time_interrupt;
-	ta->set_user_tim = set_user_tim;
-	ta->set_next_tim = set_next_tim;
-
-#ifndef PRG_TEST
-	sr = spl7();
-	old_timeint = *(long *)etv_timer;
-	*(long *)etv_timer = (unsigned long)&time_interruptw;
 	spl(sr);
-#else
-	display("Install etv_timer\n");
-#endif
 
-	return ta;
+	reset_user_tim();
+	reset_next_tim();
+
+	return;
 }
 
-short
+static short
 get_tics_per_sec(void)
 {
 	return (1000/TPS);
@@ -100,6 +144,9 @@ time_interrupt(void)
 	register unsigned long *tints = (unsigned long *)&timeints;
 	register void (*func)(void);
 	register struct timedrv *td = &tdrv;
+
+	if (!(td->flags & TIME_ACTIVE))
+		return;
 
 	while (tints[2])
 	{
@@ -136,7 +183,7 @@ time_interrupt(void)
 /* Installs a function that is called each timer tick	*/
 /* Returns the 'handle' of the function or a negative	*/
 /* number on error.					*/
-short
+static short
 add_time_interrupt(unsigned long function, unsigned long tics)
 {
 	short i;
@@ -146,17 +193,13 @@ add_time_interrupt(unsigned long function, unsigned long tics)
 	{
 		if (!tints[2])
 		{
-#ifndef PRG_TEST
 			short sr;
 
 			sr = spl7();
-#endif
 			tints[0] = 0;
 			tints[1] = tics;
 			tints[2] = function;
-#ifndef PRG_TEST
 			spl(sr);
-#endif
 			return i;
 		}
 		tints += 3;
@@ -164,12 +207,10 @@ add_time_interrupt(unsigned long function, unsigned long tics)
 	return -1;
 }
 
-void
-remove_time_interrupt(unsigned long function)
+static void
+delete_time_interrupt(unsigned long function)
 {
-#ifndef PRG_TEST
 	short sr;
-#endif
 	short i;
 	register unsigned long *tints = (unsigned long *)&timeints;
 
@@ -177,9 +218,7 @@ remove_time_interrupt(unsigned long function)
 	{
 		if (tints[2] == function)
 		{
-#ifndef PRG_TEST
 			sr = spl7();
-#endif
 			while (i < MAX_TINTS)
 			{
 				tints[0] = tints[0+3];
@@ -189,58 +228,58 @@ remove_time_interrupt(unsigned long function)
 				i++;
 			}
 				
-#ifndef PRG_TEST
 			spl(sr);
-#endif
-			return;
+			break;
 		}
+		tints += 3;
 	}
 	return;
 }
 
-unsigned long
+static void
+reset_user_tim(void)
+{
+	(void)set_user_tim((unsigned long)&donothing);
+	return;
+}
+static void
+reset_next_tim(void)
+{
+	(void)set_next_tim((unsigned long)&donothing);
+	return;
+}
+
+static unsigned long
 set_user_tim(unsigned long function)
 {
-#ifndef PRG_TEST
 	short sr;
-#endif
 	register struct timedrv *td = &tdrv;
 	unsigned long old;
 
-#ifndef PRG_TEST
 	sr = spl7();
-#endif
 	old = (unsigned long)td->user_tim;
 	(unsigned long)td->user_tim = function;
 	(unsigned long)td->la->user_tim = function;
-#ifndef PRG_TEST
 	spl(sr);
-#endif
 	return old;
 }
 
-unsigned long
+static unsigned long
 set_next_tim(unsigned long function)
 {
-#ifndef PRG_TEST
 	short sr;
-#endif
 	register struct timedrv *td = &tdrv;
 	unsigned long old;
 
-#ifndef PRG_TEST
 	sr = spl7();
-#endif
 	old = (unsigned long)td->next_tim;
 	(unsigned long)td->next_tim = function;
 	(unsigned long)td->la->next_tim = function;
-#ifndef PRG_TEST
 	spl(sr);
-#endif
 	return old;
 }
 
-void
+static void
 donothing()
 {
 	return;

@@ -1,4 +1,4 @@
-//#include <mintbind.h>
+#include <mintbind.h>
 
 #include "display.h"
 #include "console.h"
@@ -11,7 +11,7 @@
 #include "../../sys/mint/arch/asm_spl.h"
 
 #define	vec_trap14	0xb8
-
+extern short logit;
 extern void	new_xbioswr(void);
 extern unsigned long old_trap14;
 
@@ -90,7 +90,7 @@ new_xbios(short *p)
 {
 	long ret;
 	short oc;
-//	short pid;
+	short pid;
 	long (*f)(VIRTUAL *, short *);
 
 	ret = 0xfacedaceL;
@@ -117,12 +117,13 @@ new_xbios(short *p)
 		ret = (*f)(V, p);
 	}
 
-#if 0
-//	if (ret != 0xfacedaceL)
-//	{
-	p--;
-	log("- fc %x, p1 %x, p2 %x, p3 %x, p4 %x .. return %lx\n", p[0], p[1], p[2], p[3], p[4], ret);
-//	}
+#if 1
+	if (ret != 0xfacedaceL && logit)
+	{
+		pid = Pgetpid();
+		p--;
+		log("XBIOS: (%d) - fc %x, p1 %x, p2 %x, p3 %x, p4 %x .. return %lx\n", pid, p[0], p[1], p[2], p[3], p[4], ret);
+	}
 #endif
 		
 	return ret;
@@ -220,7 +221,6 @@ oSetscreen(VIRTUAL *v, short *p)
 
 		v->driver->r.base = (*d->setpscr)(v->driver, (unsigned char *)phys);
 	}
-
 	return 0;
 }
 
@@ -281,6 +281,7 @@ oSetcolor(VIRTUAL *v, short *p)
 	lvs_color(v, idx, &relative);
 
 	return (long)old;
+	return 0L;
 }
 
 long

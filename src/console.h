@@ -29,11 +29,12 @@ struct	console
 	void (*exit_console)(struct console *c);
 	void (*draw_text_cursor)(struct console *c);
 	void (*undraw_text_cursor)(struct console *c);
-	void (*textcursor_blink)(struct console *c);
+	void (*textcursor_blink)(void);
 	void (*scroll_lines)(struct console *c, short y, short nlines, short direction);
 	void (*erase_lines)(struct console *c, short x1, short y1, short x2, short y2);
-	void (*output_character)(struct console *c, short character);
+	void (*draw_character)(struct console *c, short character);
 
+	void (*csout_char)(short character);
 };
 typedef struct console CONSOLE;
 
@@ -78,6 +79,9 @@ void Esc_p		(CONSOLE *c);
 void Esc_q		(CONSOLE *c);
 void Esc_v		(CONSOLE *c);
 void Esc_w		(CONSOLE *c);
+
+void bell		(CONSOLE *c);
+void tab		(CONSOLE *c);
 void LineFeed		(CONSOLE *c);
 void CarrigeReturn	(CONSOLE *c);
 
@@ -95,8 +99,10 @@ void textcursor_blink	(CONSOLE *c);
 
 void erase_lines	(CONSOLE *c, short x1, short y1, short x2, short y2);
 void scroll_lines	(CONSOLE *c, short y, short nlines, short direction);
-void output_character	(CONSOLE *c, short character);
+void draw_character	(CONSOLE *c, short character);
 
+/* asm wrappers */
+void	cs_output_character(short character);
 void	do_con_state(void);
 void	do_xconout_console(void);
 void	do_xconout_raw(void);

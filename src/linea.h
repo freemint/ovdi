@@ -193,6 +193,6 @@ typedef struct bitblt BITBLT;
 
 void init_linea_vartab(VIRTUAL *v, LINEA_VARTAB *la);
 void set_linea_vector(void);
-
+void get_linea_addresses(long *vt, long *fr, long *ft);
 
 #endif	/* _OVDILINEA_H */

@@ -379,7 +379,7 @@ expand( long *pixelvalues,
 }
 
 short
-fix_raster_coords(MFDB *src, MFDB *dst, short *spts, short *dpts, short *c, short sflag, short dflag)
+fix_raster_coords(short *spts, short *dpts, short *c)
 {
 	short *p;
 	short sx1, sy1, sx2, sy2;
@@ -425,52 +425,10 @@ fix_raster_coords(MFDB *src, MFDB *dst, short *spts, short *dpts, short *c, shor
 		dy2 = max_x;
 	}
 
-	max_x = src->fd_w - 1;
-	max_y = src->fd_h - 1;
+	min_x = *c++, min_y = *c++;
+	max_x = *c++, max_y = *c;
 
-	if (sx1 < 0)
-	{
-		dx1 += -sx1;
-		sx1 = 0;
-	}
-	else if (sx1 > max_x)
-	{
-		//log("ret 0\n");
-		goto frc_fail;
-	}
-
-	if (sx2 > max_x)
-		sx2 = max_x;
-
-	if (sy1 < 0)
-	{
-		dy1 += -sy1;
-		sy1 = 0;
-	}
-	else if (sy1 > max_y)
-	{
-		//log("ret 1\n");
-		goto frc_fail;
-	}
-
-	if (sy2 > max_y)
-		sy2 = max_y;
-	
-	dx2 = dx1 + (sx2 - sx1);
-	dy2 = dy1 + (sy2 - sy1);
-
-	if (dflag)
-	{
-		min_x = *c++, min_y = *c++;
-		max_x = *c++, max_y = *c;
-	}
-	else
-	{
-		min_x = min_y = 0;
-		max_x = dst->fd_w - 1;
-		max_y = dst->fd_h - 1;
-	}
-
+ /* Width */
 	if (dx1 < min_x)
 	{
 		sx1 += (min_x - dx1);
@@ -478,21 +436,19 @@ fix_raster_coords(MFDB *src, MFDB *dst, short *spts, short *dpts, short *c, shor
 	}
 	else if (dx1 > max_x)
 	{
-		//log("ret 2\n");
 		goto frc_fail;
 	}
-
+	dx2 = dx1 + (sx2 - sx1);
 	if (dx2 > max_x)
 	{
 		sx2 -= (dx2 - max_x);
-		if (sx2 < 0)
+		if (sx2 < 0 || sx1 > sx2)
 		{
-			//log("ret 3\n");
 			goto frc_fail;
 		}
 		dx2 = max_x;
 	}
-
+/* height */
 	if (dy1 < min_y)
 	{
 		sy1 += (min_y - dy1);
@@ -500,25 +456,18 @@ fix_raster_coords(MFDB *src, MFDB *dst, short *spts, short *dpts, short *c, shor
 	}
 	else if (dy1 > max_y)
 	{
-		//log("ret 4\n");
 		goto frc_fail;
 	}
-
+	dy2 = dy1 + (sy2 - sy1);
 	if (dy2 > max_y)
 	{
 		sy2 -= (dy2 - max_y);
-		if (sy2 < 0)
+		if (sy2 < 0 || sy1 > sy2)
 		{
-			//log("ret 5\n");
 			goto frc_fail;
 		}
 		dy2 = max_y;
 	}
-
-	if ((sx2 - sx1) > (dx2 - dx1))
-		sx2 = (sx1 + (dx2 - dx1));
-	if ((sy2 - sy1) > (dy2 - dy1))
-		sy2 = (sy1 + (dy2 - dy1));
 
 	p = dpts;
 
@@ -535,12 +484,6 @@ fix_raster_coords(MFDB *src, MFDB *dst, short *spts, short *dpts, short *c, shor
 	return 1;
 
 frc_fail:
-#if 0
-	log("frc sx1 %d, sy1 %d, sx2 %d, sy2 %d - dx1 %d, dy1 %d, dx2 %d, dy2 %d\n",
-		spts[0], spts[1], spts[2], spts[3],
-		spts[4], spts[5], spts[6], spts[7]);
-	log("frc x1 %d, y1 %d, x2 %d, y2 %d\n", min_x, min_y, max_x, max_y);
-#endif
 	return 0;
 }
 
@@ -549,7 +492,7 @@ void
 rt_cpyfm(VIRTUAL *v, MFDB *src, MFDB *dst, short *pnts, short fgcol, short bgcol, short wrmode)
 {
 	int i, j, k;
-	short dst_x1, dst_y1, planes, bypl, width, height, startbit, headbits, groups, tailbits;
+	short dst_w, dst_h, dst_x1, dst_y1, planes, bypl, width, height, startbit, headbits, groups, tailbits;
 	short xinc;
 	short d_is_screen;
 	unsigned char *addr, *adr;
@@ -558,16 +501,8 @@ rt_cpyfm(VIRTUAL *v, MFDB *src, MFDB *dst, short *pnts, short fgcol, short bgcol
 	short *pts;
 	RASTER *r;
 	draw_pixel dpf_fg, dpf_bg;
+	VDIRECT clip;
 	short points[8];
-
-#if 0
-	if (!strcmp("NETHACK", v->procname))
-	{
-		log("srcadr %lx, stand %d, planes %d, w %d, h %d, wdw %d - dstadr %lx, stand %d, planes %d, w %d, h %d, wdw %d\n",
-			src->fd_addr, src->fd_stand, src->fd_nplanes, src->fd_w, src->fd_h, src->fd_wdwidth,
-			dst->fd_addr, dst->fd_stand, dst->fd_nplanes, dst->fd_w, dst->fd_h, dst->fd_wdwidth);
-	}
-#endif
 
 	if (wrmode > 3 || src->fd_nplanes != 1)
 		return;
@@ -578,35 +513,62 @@ rt_cpyfm(VIRTUAL *v, MFDB *src, MFDB *dst, short *pnts, short fgcol, short bgcol
 	if (	 dst->fd_addr == 0)
 	{	/* destination screen! */
 
-		dpf_fg = v->driver->f.pixelfuncts[wrmode];
-		dpf_bg = v->driver->f.pixelfuncts[wrmode + 1];
+		dpf_fg		= v->driver->f.pixelfuncts[wrmode];
+		dpf_bg		= v->driver->f.pixelfuncts[wrmode + 1];
 
-		planes = r->planes;
-		bypl = r->bypl;
-		addr = r->base;
+		planes		= r->planes;
+		bypl		= r->bypl;
+		addr		= r->base;
+		dst_w		= r->w;
+		dst_h		= r->h;
+		//log("sw %d, sh %d, sp %d\n", src->fd_w, src->fd_h, src->fd_nplanes);
+		//log("dw %d, dh %d, dp %d\n", dst->fd_w, dst->fd_h, dst->fd_nplanes);
 		d_is_screen = 1;
 	}
 	else
 	{
-		dpf_fg = v->driver->f.pixelfuncts[wrmode];
-		dpf_bg = v->driver->f.pixelfuncts[wrmode + 1];
-		planes = dst->fd_nplanes;
+		//log("da %lx sa %lx, fdw %d, fdh %d, fdnp %d\n", dst->fd_addr, src->fd_addr, dst->fd_w, dst->fd_h, dst->fd_nplanes);
+
+		dpf_fg		= v->driver->f.pixelfuncts[wrmode];
+		dpf_bg		= v->driver->f.pixelfuncts[wrmode + 1];
+		planes		= dst->fd_nplanes;
 
 		if (planes < 8)
 			return;
 		else
 			bypl = (dst->fd_wdwidth << 1) * planes;
 
-		addr = dst->fd_addr;
-		d_is_screen = 0;
+		addr		= dst->fd_addr;
+		dst_w		= dst->fd_w;
+		dst_h		= dst->fd_h;
+		d_is_screen	= 0;
 	}
 
+	if (v->clip_flag && d_is_screen)
+	{
+		clip = v->clip;
+		//log("clip %d, %d - %d, %d\n", clip.x1, clip.y1, clip.x2, clip.y2);
+	}
+	else
+	{
+		clip.x1 = clip.y1 = 0;
+		clip.x2 = dst_w - 1;
+		clip.y2 = dst_h - 1;
+	}
 
 	pts = (short *)&points;
-	if ( !fix_raster_coords(src, dst, pnts, pts, (short *)&v->clip, 0, d_is_screen) )
+	if ( !fix_raster_coords(pnts, pts, (short *)&clip) )
 	{
+		//log("clipped away\n");
+
 		return;
 	}
+
+	//log("org src %d %d %d %d\n",points[0], points[1], points[2], points[3]);
+	//log("org dst %d %d %d %d\n",points[4], points[5], points[6], points[7]);
+
+	//log("clp src  %d %d %d %d\n",pts[0], pts[1], pts[2], pts[3]);
+	//log("clp dst  %d %d %d %d\n",pts[4], pts[5], pts[6], pts[7]);
 
 	dst_x1 = pts[4];
 	dst_y1 = pts[5];
@@ -726,6 +688,8 @@ rt_cpyfm(VIRTUAL *v, MFDB *src, MFDB *dst, short *pnts, short fgcol, short bgcol
 			addr += bypl;
 		}
 	}
+	//log("\n");
+	return;
 }
 
 void
@@ -733,31 +697,24 @@ ro_cpyfm(VIRTUAL *v, MFDB *src, MFDB *dst, short *pts, short wrmode)
 {
 	short xinc, srcplanes, srcbypl, dstplanes, dstbypl, dir;
 	short dst_is_screen, src_is_screen;
+	short dst_w, dst_h;
 	short sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2;
 	short *p;
 	unsigned char *dstptr, *srcptr;
 	raster_op rop;
 	RASTER *r;
+	VDIRECT clip;
 	short points[8];
 
-#if 0
-	if (!strcmp("NETHACK", v->procname))
-	{
-		log("srcadr %lx, stand %d, planes %d, w %d, h %d, wdw %d - dstadr %lx, stand %d, planes %d, w %d, h %d, wdw %d\n",
-			src->fd_addr, src->fd_stand, src->fd_nplanes, src->fd_w, src->fd_h, src->fd_wdwidth,
-			dst->fd_addr, dst->fd_stand, dst->fd_nplanes, dst->fd_w, dst->fd_h, dst->fd_wdwidth);
-		log(" sx1 %d, sy1 %d, sx2 %d, sy2 %d, dx1 %d, dy1 %d, dx2 %d, dy2 %d\n", pts[0], pts[1], pts[2], pts[3], pts[4], pts[5], pts[6], pts[7]);
-	}
-#endif
 	r = v->raster;
 
 	if (	 dst->fd_addr == 0)
 	{	/* destination screen! */
-		dstplanes = r->planes;
-		dstbypl = r->bypl;
-		dstptr = r->base;
-		dst->fd_w = r->w;
-		dst->fd_h = r->h;
+		dstplanes	= r->planes;
+		dstbypl		= r->bypl;
+		dstptr		= r->base;
+		dst_w		= r->w; //dst->fd_w = r->w;
+		dst_h		= r->h; //dst->fd_h = r->h;
 		dst_is_screen = 1;
 	}
 	else
@@ -765,17 +722,19 @@ ro_cpyfm(VIRTUAL *v, MFDB *src, MFDB *dst, short *pts, short wrmode)
 		dstplanes	= dst->fd_nplanes;
 		dstbypl		= (dst->fd_wdwidth << 1) * dst->fd_nplanes;
 		dstptr		= dst->fd_addr;
+		dst_w		= dst->fd_w;
+		dst_h		= dst->fd_h;
 		dst_is_screen	= 0;
 	}
 
 	if (	 src->fd_addr == 0)
 	{
-		srcplanes = r->planes;
-		srcbypl = r->bypl;
-		srcptr = r->base;
-		src->fd_w = r->w;
-		src->fd_h = r->h;
-		src_is_screen = 1;
+		srcplanes	= r->planes;
+		srcbypl		= r->bypl;
+		srcptr		= r->base;
+		//src->fd_w	= r->w;
+		//src->fd_h	= r->h;
+		src_is_screen	= 1;
 	}
 	else
 	{
@@ -792,7 +751,7 @@ ro_cpyfm(VIRTUAL *v, MFDB *src, MFDB *dst, short *pts, short wrmode)
 	if (wrmode == 0 || wrmode == 15)
 	{
 		RASTER rst;
-		VDIRECT clip;
+		//VDIRECT clip;
 
 		clip = v->clip;
 		v->raster = &rst;
@@ -800,8 +759,8 @@ ro_cpyfm(VIRTUAL *v, MFDB *src, MFDB *dst, short *pts, short wrmode)
 		rst.base	= dstptr;
 		rst.flags	= 0;
 		rst.format	= r->format;
-		rst.w		= dst->fd_w;
-		rst.h		= dst->fd_h;
+		rst.w		= dst_w; //dst->fd_w;
+		rst.h		= dst_h; //dst->fd_h;
 		rst.clut	= r->clut;
 		rst.planes	= r->planes;
 		rst.bypl	= dstbypl;
@@ -814,19 +773,30 @@ ro_cpyfm(VIRTUAL *v, MFDB *src, MFDB *dst, short *pts, short wrmode)
 		v->clip.x2 = rst.w - 1;
 		v->clip.y2 = rst.h - 1;
 
-		log("ro_cpyfm: %s - wrmode %d, using Nrectfill\n", v->procname, wrmode);
+		points[0] = pts[4];
+		points[1] = pts[5];
+		points[2] = pts[4] + (pts[2] - pts[0]);
+		points[3] = pts[5] + (pts[3] - pts[1]);
 
-		rectfill(v, (VDIRECT *)&pts[4], wrmode == 0 ? &WhiteRect : &BlackRect);
+		rectfill(v, (VDIRECT *)&points[0], wrmode == 0 ? &WhiteRect : &BlackRect);
 
 		v->clip = clip;
 		v->raster = r;
 
-		//Nrectfill(v, &rst, &clip, (VDIRECT *)&pts[4], wrmode == 0 ? &WhiteRect : &BlackRect);
 		return;
 	}
 
+	if (v->clip_flag && dst_is_screen)
+		clip = v->clip;
+	else
+	{
+		clip.x1 = clip.y1 = 0;
+		clip.x2 = dst_w - 1;
+		clip.y2 = dst_h - 1;
+	}
+	
 	p = (short *)&points;
-	if ( !fix_raster_coords(src, dst, pts, p, (short *)&v->clip, src_is_screen, dst_is_screen) )
+	if ( !fix_raster_coords(pts, p, (short *)&clip) )
 	{
 		return;
 	}
@@ -835,7 +805,7 @@ ro_cpyfm(VIRTUAL *v, MFDB *src, MFDB *dst, short *pts, short wrmode)
 
 	sx1 = *p++, sy1 = *p++, sx2 = *p++, sy2 = *p++;
 	dx1 = *p++, dy1 = *p++, dx2 = *p++, dy2 = *p;
-	
+
 	rop = v->driver->f.raster_operations[wrmode];
 	if (!rop)
 		return;
@@ -861,7 +831,7 @@ ro_cpyfm(VIRTUAL *v, MFDB *src, MFDB *dst, short *pts, short wrmode)
 		}
 		else
 			dir = 0;
-		
+
 		(*rop)(s, srcbypl, d, dstbypl, (sx2 - sx1) + 1, (sy2 - sy1) + 1, dir);
 	}
 }
@@ -1124,12 +1094,18 @@ trnfm(VIRTUAL *v, MFDB *src, MFDB *dst)
 		{
 			conv_dev2vdi(source, dest, plen, plen, src->fd_nplanes);
 			dst->fd_stand = 1;
+			
 		}
 		else				/* VDI to DEV_SPEC */
 		{
 			conv_vdi2dev(source, dest, plen, plen, src->fd_nplanes);
 			dst->fd_stand = 0;
 		}
+
+		dst->fd_w	= src->fd_w;
+		dst->fd_h	= src->fd_h;
+		dst->fd_wdwidth	= src->fd_wdwidth;
+		dst->fd_nplanes	= src->fd_nplanes;
 
 		if (src->fd_addr == dst->fd_addr)
 		{

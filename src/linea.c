@@ -3,6 +3,7 @@
 #include "display.h"
 #include "draw.h"
 #include "line.h"
+#include "libkern.h"
 #include "mouse.h"
 #include "mousedrv.h"
 #include "ovdi_defs.h"
@@ -14,6 +15,8 @@
 #include "../../sys/mint/arch/asm_spl.h"
 
 #define	VEC_LINEA	0x28
+
+extern short logit;
 
 unsigned long	old_la_vect = 0;
 
@@ -86,33 +89,26 @@ init_linea_vartab(VIRTUAL *v, LINEA_VARTAB *la)
 {
 
 	register short i;
-	register short *src, *dst;
+	register short *dst;
 
 	la->cur_font = v->fring;
 
-	src = (short *)&INQ_TAB_rom;
-	dst = (short *)&la->inq;
-	for (i = 0; i < sizeof(INQ_TAB); i++)
-		*dst++ = *src++;
+	memcpy(&la->inq, &INQ_TAB_rom, sizeof(INQ_TAB));
+	memcpy(&la->dev, &DEV_TAB_rom, sizeof(DEV_TAB));
 
-	src = (short *)&DEV_TAB_rom;
-	dst = (short *)&la->dev;
-	for (i = 0; i < sizeof(DEV_TAB); i++)
-		*dst++ = *src++;
-
-	src = (short *)v->request_rgb;
 	dst = (short *)&la->req_col;
-	for (i = 0; i < (16 * 3); i++)
-		*dst++ = *src++;
+	for (i = 0; i < 16; i++)
+	{
+		*dst++ = v->request_rgb[i].red;
+		*dst++ = v->request_rgb[i].green;
+		*dst++ = v->request_rgb[i].blue;
+	}
 
-	src = (short *)&SIZ_TAB_rom;
-	dst = (short *)&la->siz;
-	for (i = 0; i < sizeof(SIZ_TAB); i++)
-		*dst++ = *src++;
+	memcpy(&la->siz, &SIZ_TAB_rom, sizeof(SIZ_TAB));
 
 	la->cur_work = v;
 
-	la->def_font = sysfnt10p;
+	la->def_font = la->cur_font = sysfnt10p;
 	la->font_ring[0] = sysfnt08p;
 	la->font_ring[1] = 0;
 	la->font_ring[2] = 0;
@@ -123,7 +119,7 @@ init_linea_vartab(VIRTUAL *v, LINEA_VARTAB *la)
 	la->v_rez_vt = v->raster->h;
 	la->bytes_lin = v->raster->bypl;
 	la->planes = v->raster->planes;
-
+	la->width = v->raster->bypl;
 	return;
 }
 
@@ -147,10 +143,9 @@ set_linea_vector(void)
 void
 linea_handler(short func)
 {
-	short pid;
-
-	pid = Pgetpid();
-	log("pid %d, calls LineA %d", func);
+	short pid = Pgetpid();
+	if (logit)
+		log("(%d), calls liena func %d\n\n", pid, func);
 	return;
 }
 		

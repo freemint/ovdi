@@ -3,9 +3,12 @@
 #include "fonts.h"
 #include "vdi_defs.h"
 
-char fonts_buffer[1024*1024UL];
+char fonts_buffer[];
 char *nextfont = (char *)&fonts_buffer;
+long total_fsize = 0;
+char fonts_buffer[1024UL*1024UL];
 
+/* This stupid use of a fixed buffer is only temporary! */
 long
 load_font( char *fn, long *size, long *loc)
 {
@@ -13,6 +16,12 @@ load_font( char *fn, long *size, long *loc)
 	char *b = nextfont;
 
 	fs = get_file_size(fn);
+
+	if (total_fsize + fs > sizeof(fonts_buffer))
+	{
+		log("fontbuffer exhausted!\n");
+		return -1;
+	}
 
 	if (fs < 0)
 		return fs;
@@ -24,6 +33,8 @@ load_font( char *fn, long *size, long *loc)
 
 	nextfont += lbytes+3;
 	(long)nextfont &= (long)0xfffffffcUL;
+
+	total_fsize += lbytes;
 
 	if (size)
 		*size = lbytes;

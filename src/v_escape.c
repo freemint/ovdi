@@ -31,7 +31,7 @@ v_curtext( VDIPB *pb, VIRTUAL *v)
 
 	while(count)
 	{
-		(*c->output_character)(c, *string++);
+		(*c->csout_char)(*string++);
 
 		if (c->la->v_cur_x < c->la->v_cel_mx)
 			c->la->v_cur_x++;
@@ -58,7 +58,7 @@ v_offset( VDIPB *pb, VIRTUAL *v)
 void
 vs_curaddress( VDIPB *pb, VIRTUAL *v)
 {
-	move_text_cursor(v->con, pb->intin[0], pb->intin[1]);
+	move_text_cursor(v->con, pb->intin[1], pb->intin[0]);
 	return;
 }
 
@@ -138,8 +138,8 @@ void
 vq_chcells( VDIPB *pb, VIRTUAL *v)
 {
 
-	pb->intout[0] = v->con->la->v_cel_mx + 1;
-	pb->intout[1] = v->con->la->v_cel_my + 1;
+	pb->intout[1] = v->con->la->v_cel_mx + 1;
+	pb->intout[0] = v->con->la->v_cel_my + 1;
 
 	pb->contrl[N_INTOUT] = 2;
 	return;
@@ -148,7 +148,7 @@ vq_chcells( VDIPB *pb, VIRTUAL *v)
 void
 vq_curaddress( VDIPB *pb, VIRTUAL *v)
 {
-	pb->intout[0] = v->con->la->v_cur_x;
+	pb->intout[1] = v->con->la->v_cur_x;
 	pb->intout[0] = v->con->la->v_cur_y;
 
 	pb->contrl[N_INTOUT] = 2;

@@ -4,10 +4,10 @@
 
 struct kbdapi
 {
-	short		(*keywaiting)(void);
-	unsigned long	(*getkey)(void);
-	unsigned long 	(*waitkey)(void);
-	unsigned long	(*getks)(void);
+	short		(*keywaiting)	(void);
+	short		(*getkey)	(short *ret_asci, short *ret_scan, long *ret_state);
+	void		(*waitkey)	(short *ret_asci, short *ret_scan, long *ret_state);
+	long		(*getks)	(void);
 };
 typedef struct kbdapi KBDAPI;
 

@@ -1,3 +1,4 @@
+#include "display.h"
 #include "line.h"
 #include "ovdi_defs.h"
 #include "vdi_defs.h"
@@ -64,7 +65,7 @@ vsm_type( VDIPB *pb, VIRTUAL *v)
 }
 
 void
-lvsm_color( VIRTUAL *v, register short color)
+lvsm_color( VIRTUAL *v, short color)
 {
 	register short maxcolor;
 
@@ -78,7 +79,7 @@ lvsm_color( VIRTUAL *v, register short color)
 
 
 void
-lvsm_height( VIRTUAL *v, register short height)
+lvsm_height( VIRTUAL *v, short height)
 {
 	v->pmarker.height = height;
 	v->pmarker.width = height;
@@ -86,7 +87,7 @@ lvsm_height( VIRTUAL *v, register short height)
 }
 
 void
-lvsm_type( VIRTUAL *v, register short type)
+lvsm_type( VIRTUAL *v, short type)
 {
 
 	if (type < MIN_PMARKERTYPE)
@@ -105,7 +106,9 @@ v_pmarker( VDIPB *pb, VIRTUAL *v)
 	POINT *inpts;
 	POINT pts;
 
-	if ((count = pb->contrl[N_PTSIN]) < 1)
+	count = pb->contrl[N_PTSIN] - 1;
+
+	if (count < 0)
 		return;
 	
 	inpts = (POINT *)&pb->ptsin[0];
@@ -113,7 +116,7 @@ v_pmarker( VDIPB *pb, VIRTUAL *v)
 	height = v->pmarker.height;
 	type = v->pmarker.type;
 
-	while (count)
+	while (count >= 0)
 	{
 		pts = *inpts++;
 		pmarker( v, &pts, type, 0, width, height, &v->pmrkdat);
@@ -125,7 +128,7 @@ v_pmarker( VDIPB *pb, VIRTUAL *v)
 void
 vqm_attributes( VDIPB *pb, VIRTUAL *v)
 {
-	pb->intout[0] = v->pmarker.type;
+	pb->intout[0] = v->pmarker.type + 1;
 	pb->intout[1] = v->color_hw2vdi[v->pmarker.color];
 	pb->intout[2] = v->wrmode +1;
 

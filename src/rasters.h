@@ -4,7 +4,7 @@
 #include "ovdi_defs.h"
 #include "vdi_defs.h"
 
-short	fix_raster_coords	(MFDB *, MFDB *, short *, short *, short *, short, short);
+short	fix_raster_coords	(short *, short *, short *);
 void	expand		(long *pixelvalues, short splanes, unsigned short *src, short dplanes, unsigned short *dst, short pwidth, short pheight );
 
 void	rt_cpyfm	( VIRTUAL *v, MFDB *src, MFDB *dst, short *coords, short fgcol, short bgcol, short wrmode);

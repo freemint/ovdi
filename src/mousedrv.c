@@ -28,14 +28,17 @@ used to render the mouse cursor/graphics onscreen.
 #include "ovdi_types.h"
 #include "../../sys/mint/arch/asm_spl.h"
 
-void set_xmf_res(VIRTUAL *v);
-void set_new_mform(VIRTUAL *v, MFORM *mf);
+static void set_xmf_res(VIRTUAL *v);
+static void set_new_mform(VIRTUAL *v, MFORM *mf);
 
 /* ASM wrappers - just because I cannot get gcc to save d0-d7/a0-a6 instead of d2-d7/a2-a6 */
 extern void m_abs_move(short x, short y);
 extern void m_rel_move(short x, short y);
 extern void m_but_chg(unsigned short bs);
 extern void m_int(void);
+
+static void enable_mouse(void);
+static void disable_mouse(void);
 
 void mouse_relative_move(register short x, register short y) __attribute__ (());
 void mouse_absolute_move(register short x, register short y);
@@ -44,29 +47,29 @@ void mouse_buttons_change(register unsigned short bs);
 static void scale_mouse(MOUSEDRV *, short, short);
 static void check_coords(MOUSEDRV *);
 
-void reset_mouse_curs(void);
-void show_mouse_curs(short);
-void hide_mouse_curs(void);
-void enable_mouse_curs(void);
-void disable_mouse_curs(void);
+static void reset_mouse_curs(void);
+static void show_mouse_curs(short);
+static void hide_mouse_curs(void);
+static void enable_mouse_curs(void);
+static void disable_mouse_curs(void);
 void mouse_interrupt(void);
 
-unsigned long get_button_status(void);
-void get_mouse_coordinates(short *xy);
-unsigned long set_mouse_vector(short vecnum, unsigned long vector);
-void mdonothing(void);
+static unsigned long get_button_status(void);
+static void get_mouse_coordinates(short *xy);
+static unsigned long set_mouse_vector(short vecnum, unsigned long vector);
+static void mdonothing(void);
 
-MOUSEAPI	mapi;
-MOUSEDRV	md;
+static MOUSEAPI	mapi;
+static MOUSEDRV	md;
 
 //XMFORM		*current_xmf;
-XMFORM		std_xmf;
-XMSAVE		std_xms;
-unsigned char	mfdata[16*16*32];
-unsigned short	mfmask[16];
-unsigned char	msbuff[16*16*32];
+static XMFORM		std_xmf;
+static XMSAVE		std_xms;
+static unsigned char	mfdata[16*16*32];
+static unsigned short	mfmask[16];
+static unsigned char	msbuff[16*16*32];
 
-short arrow_cdb[] = 
+static short arrow_cdb[] = 
 {
 	1,0,1,0,1,
 
@@ -123,34 +126,49 @@ init_mouse(VIRTUAL *v, LINEA_VARTAB *la)
 	MOUSEDRV *m = &md;
 	MOUSEAPI *ma = &mapi;
 
- /* Set up the api interface - this is what the VDI uses */
-	ma->setxmfres = set_xmf_res;
-	ma->setnewmform = set_new_mform;
-	ma->resetmcurs = reset_mouse_curs;
-	ma->enablemcurs = enable_mouse_curs;
-	ma->disablemcurs = disable_mouse_curs;
-	ma->showmcurs = show_mouse_curs;
-	ma->hidemcurs = hide_mouse_curs;
-	ma->relmovmcurs = m_rel_move;		//mouse_relative_move;
-	ma->absmovmcurs = m_abs_move;		//mouse_absolute_move;
-	ma->butchg = m_but_chg;			//mouse_buttons_change;
-	ma->getbutstat = get_button_status;
-	ma->getmcoords = get_mouse_coordinates;
-	ma->setvector = set_mouse_vector;
-	ma->housekeep = m_int;			//mouse_interrupt;
+/* Set up the api interface - this is what the VDI uses to communicate
+ * with the mouse driver (layer 1)
+*/
+	ma->enable		= enable_mouse;
+	ma->disable		= disable_mouse;
+	ma->setxmfres		= set_xmf_res;
+	ma->setnewmform		= set_new_mform;
+	ma->resetmcurs		= reset_mouse_curs;
+	ma->enablemcurs		= enable_mouse_curs;
+	ma->disablemcurs	= disable_mouse_curs;
+	ma->showmcurs		= show_mouse_curs;
+	ma->hidemcurs		= hide_mouse_curs;
+	ma->relmovmcurs		= m_rel_move;		//mouse_relative_move;
+	ma->absmovmcurs		= m_abs_move;		//mouse_absolute_move;
+	ma->butchg		= m_but_chg;			//mouse_buttons_change;
+	ma->getbutstat		= get_button_status;
+	ma->getmcoords		= get_mouse_coordinates;
+	ma->setvector		= set_mouse_vector;
+	ma->housekeep		= m_int;			//mouse_interrupt;
 
+ /* Setup the structures containing mouse graphics */
 	xmf = &std_xmf;
 	xms = &std_xms;
 
- /* Setup the structures containing mouse graphics */
-	xmf->save = &std_xms;
+	xmf->save = xms; //&std_xms;
 	xmf->mask = mfmask;
 	xmf->data = mfdata;
 	xms->save = msbuff;
 
-	m->current_xmf = xmf;
-	m->current_xms = xms;
+/* Setup the mousedrv structure - this structure is shared by the main mouse driver (layer 1),
+ * the pointing device driver (layer 2), and the 'mouse rendering' driver (layer 3).
+*/
+	m->flags	= 0;
+	m->interrupt	= 1;
+	m->current_xmf	= xmf;
+	m->current_xms	= xms;
+	m->relmovmcurs	= m_rel_move;		//mouse_relative_move;
+	m->absmovmcurs	= m_abs_move;		//mouse_absolute_move;
+	m->butchg	= m_but_chg;			//mouse_buttons_change;
 
+/* Gather necessary info about the graphics, and install the 'mouse rendering' (layer 3)
+ * part of the threesome.
+*/
 	set_xmf_res(v);
 	set_new_mform(v, (MFORM *)&arrow_cdb);
 
@@ -178,25 +196,52 @@ init_mouse(VIRTUAL *v, LINEA_VARTAB *la)
 	m->changed_bs = 0;
 	m->last_bs = 0;
 
-	reset_mouse_curs();
+	//reset_mouse_curs();
 
-	/* At this point we should look for Layer 2 and 3 drivers	*/
-	/* For now we use ikbd_mouse.c for layer 2 and the		*/
-	/* draw_mousecurs_Xb()/restore_msave_Xb in the Xb_driver.c	*/
-	/* files, where X is 8 for 8bps, 16 for 16bps, etc. We find the */
-	/* address of these functions in ovdi's	driver structure	*/
+/* The pointing device driver (layer 2) fills in 'buttons', 'wheels',
+ * and puts the address of its start/stop functions in the 'start' and 'stop'
+ * elements of the mousedrv structure. Then it saves the address of it and
+ * uses the 'relmovmcurs', 'absmovmcurs' and 'butchg' functions to report
+ * to layer 1 any movements/button changes
+*/
+	init_mouse_device(m);	/* Let the pointing device driver (layer 2) initialize */
 
-	init_mouse_device(ma);
+	ma->buttons	= m->buttons;
+	ma->wheels	= m->wheels;
+	m->bs_mask	= ~(0xffff << ma->buttons);
 
-	m->bs_mask = ~(0xffff << ma->buttons);
-
-	log("bs_mask = %x\n", m->bs_mask);
-	
+/* Now the mouse driver is ready for action. The VDI now have to intall the mouse
+ * drivers 'housekeep' function into a VBI interrupt or something, as this is the
+ * function that actually undraws/draws the cursor when it moves. Then the VDI has to
+ * call 'enable' to turn the driver on.
+*/
 	return ma;
 }
 
-/* Let the mouse driver know about resolution changes */
-void
+static void
+enable_mouse(void)
+{
+	MOUSEDRV *m = &md;
+
+	(*m->start)();			/* start the mouse device driver */
+	m->flags |= MDRV_ENABLED;	/* Indicate mouse is enabled */
+	return;
+}
+static void
+disable_mouse(void)
+{
+	MOUSEDRV *m = &md;
+
+	(*m->stop)();			/* stop the mouse device driver */
+	m->flags &= ~MDRV_ENABLED;	/* Indicate mouse is disabled */
+	return;
+}
+
+/* Let the mouse driver know about resolution changes, and fetch
+ * the address of the mouse-rendering and virtual res check functions
+ * from the main driver structure.
+ */
+static void
 set_xmf_res(VIRTUAL *v)
 {
 	register MOUSEDRV *m = &md;
@@ -217,7 +262,7 @@ set_xmf_res(VIRTUAL *v)
 
 /* Grab data from a standard mform structure, as used by */
 /* current versions of the different VDI/AES's		 */
-void
+static void
 set_new_mform(VIRTUAL *v, MFORM *mf)
 {
 	int i;
@@ -225,7 +270,10 @@ set_new_mform(VIRTUAL *v, MFORM *mf)
 	register MOUSEDRV *m = &md;
 	register XMFORM *xmf = m->current_xmf;
 
-	m->flags	&= ~MC_ENABLED;
+	m->interrupt++;
+	hide_mouse_curs();
+	
+	//m->flags	&= ~MC_ENABLED;
 
 	xmf->xhot	= mf->xhot;
 	xmf->yhot	= mf->yhot;
@@ -248,7 +296,9 @@ set_new_mform(VIRTUAL *v, MFORM *mf)
 		*dest++ = data[i];
 	}
 
-	m->flags	|= MC_ENABLED;
+	//m->flags	|= MC_ENABLED;
+	show_mouse_curs(0);
+	m->interrupt--;
 	return;
 }
 
@@ -272,8 +322,10 @@ mouse_relative_move(register short x, register short y)
 	/* Call user_mot function */
 	__asm__ volatile
 	("
+		movem.l	d2-d7/a0-a6,-(sp)
 		move.l	%2,a0
 		jsr	(a0)
+		movem.l (sp)+,d2-d7/a0-a6
 	"	:
 		: "d"(nx),"d"(ny),"a"(la->user_mot)
 		: "a0"
@@ -287,8 +339,10 @@ mouse_relative_move(register short x, register short y)
 
 	__asm__ volatile
 	("
+		movem.l	d2-d7/a0-a6,-(sp)
 		move.l	%2,a0
 		jsr	(a0)
+		movem.l (sp)+,d2-d7/a0-a6
 	"	:
 		: "d"(nx),"d"(ny),"a"(la->user_cur)
 		: "a0"
@@ -315,8 +369,10 @@ mouse_absolute_move(register short x, register short y)
 	/* Call user_mot function */
 	__asm__ volatile
 	("
+		movem.l	d2-d7/a0-a6,-(sp)
 		move.l	%2,a0
 		jsr	(a0)
+		movem.l (sp)+,d2-d7/a0-a6
 	"	:
 		: "d"(nx),"d"(ny),"a"(la->user_mot)
 		: "a0"
@@ -330,8 +386,10 @@ mouse_absolute_move(register short x, register short y)
 
 	__asm__ volatile
 	("
+		movem.l	d2-d7/a0-a6,-(sp)
 		move.l	%2,a0
 		jsr	(a0)
+		movem.l	(sp)+,d2-d7/a0-a6
 	"	:
 		: "d"(x),"d"(y),"a"(la->user_cur)
 		: "a0"
@@ -355,8 +413,10 @@ mouse_buttons_change(register unsigned short bs)
 
 	__asm__ volatile
 	("
+		movem.l	d1-d7/a0-a6,-(sp)
 		move.l	%1,a0
 		jsr	(a0)
+		movem.l	(sp)+,d1-d7/a0-a6
 	"	:
 		: "d"(nbs),"a"(m->la->user_but)
 		: "d0","d1","a0"
@@ -428,11 +488,14 @@ void
 mouse_interrupt()
 {
 	register MOUSEDRV *m = &md;
-	register long flags = m->flags;
 
-	if (flags & MC_ENABLED)
+	if (!(m->flags & MDRV_ENABLED) || m->interrupt)
+		return;
+
+	if (m->flags & MC_ENABLED)
 	{
-		if (flags & MC_MOVED)
+
+		if (m->flags & MC_MOVED)
 		{
 			if (!m->hide_ct)
 			{
@@ -443,81 +506,90 @@ mouse_interrupt()
 			if (m->vreschk)
 				(*m->vreschk)(m->current_x, m->current_y);
 
-			flags &= ~MC_MOVED;
+			m->flags &= ~MC_MOVED;
 		}
-		m->flags = flags;
 	}
 	return;
 }
 
-void
+static void
 reset_mouse_curs()
 {
 	enable_mouse_curs();
 	return;
 }
 
-void
+static void
 enable_mouse_curs()
 {
 	register MOUSEDRV *m = &md;
 
 	m->flags |= MC_ENABLED;
+	m->interrupt = 0;
 	show_mouse_curs(1);
 	return;
 }
 
-void
+static void
 disable_mouse_curs(void)
 {
 	register MOUSEDRV *m = &md;
 
 	hide_mouse_curs();
 	m->flags &= ~MC_ENABLED;
+	m->interrupt = 1;
 	return;
 }
 	
-void
+static void
 show_mouse_curs(short reset)
 {
 	register MOUSEDRV *m = &md;
-	register long flags = m->flags;
 
-	if (flags & MC_ENABLED)
+	m->interrupt++;
+	if (m->flags & MC_ENABLED)
 	{
-		m->flags &= ~MC_ENABLED;
-		if (reset)
-			m->hide_ct = 1;
 
-		if (m->hide_ct == 1)
+		if (reset)
+		{
+			/* If a reset, check if cursor was shown and undraw if it was.
+			 * Else we end up drawing the new cursor over the already shown one.
+			*/
+			if (!m->hide_ct)
+				(*m->undraw_mcurs)(m->current_xms);
+			m->hide_ct = 1;
+		}
+
+		m->hide_ct--;
+
+		if (!m->hide_ct)
 		{
 			(*m->draw_mcurs)(m->current_xmf, m->current_x, m->current_y);
+			m->flags &= ~MC_MOVED;
 		}
-		m->hide_ct -= 1;
-		m->flags = flags;
 	}
+	m->interrupt--;
 	return;
 }
 
-void
+static void
 hide_mouse_curs(void)
 {
 	register MOUSEDRV *m = &md;
-	register long flags = m->flags;
 
-	if (flags & MC_ENABLED)
+	m->interrupt++;
+	if (m->flags & MC_ENABLED)
 	{
-		m->flags &= ~MC_ENABLED;
 		if (!m->hide_ct)
 			(*m->undraw_mcurs)(m->current_xms);
 
 		m->hide_ct++;
-		m->flags = flags;
 	}
+	m->interrupt--;
 	return;
 }
 
-unsigned long
+static unsigned long
 get_button_status(void)
 {
 	MOUSEDRV *m = &md;
@@ -530,7 +602,7 @@ get_button_status(void)
 }
 
 
-void
+static void
 get_mouse_coordinates(short *xy)
 {
 	MOUSEDRV *m = &md;
@@ -541,7 +613,7 @@ get_mouse_coordinates(short *xy)
 	return;
 }
 
-unsigned long
+static unsigned long
 set_mouse_vector(short vecnum, unsigned long vector)
 {
 	register MOUSEDRV *m = &md;
@@ -573,7 +645,7 @@ set_mouse_vector(short vecnum, unsigned long vector)
 
 			
 
-void
+static void
 mdonothing()
 {
 	return;

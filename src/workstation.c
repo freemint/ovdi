@@ -42,30 +42,43 @@ static void setup_fonts(VIRTUAL *, SIZ_TAB *, DEV_TAB *);
 void
 v_opnwk(VDIPB *pb, VIRTUAL *wk, VIRTUAL *lawk, struct ovdi_device *dev)
 {
-	int i;
+	short i, vdidev_id;
 	OVDI_DRIVER *drv;
+	register struct opnwk_input *wkin;
 
+	wkin = (struct opnwk_input *)&pb->intin[0];
 
-	MiNT = get_cookie((long)0x4d694e54/*"MiNT"*/, 0);
-	log("MiNT %d\n", MiNT);
+	vdidev_id = wkin->id;
 
-	bzero(wk, sizeof(VIRTUAL));
-
-	if (lawk)
+	/* Cannot open anything but screen for now */
+	if (vdidev_id < 1 || vdidev_id > 10)
 	{
-		bzero(lawk, sizeof(VIRTUAL));
+		log("Only support for screen drivers!\n");
+		if (v_vtab[1].v)
+			prepare_stdreturn(pb, wk);
+		goto error;
 	}
+	
+	MiNT = get_cookie((long)0x4d694e54/*"MiNT"*/, 0);
 
-
+	if (v_vtab[1].v)
+	{
+		scrnlog("This should absolutely NOT happen, I think\n");
+		log("This should absolutely NOT happen, I think\n");
+		prepare_stdreturn(pb, wk);
+		goto error;
+	}
+#if 0
 	for ( i = 0 ; i < MAX_VIRTUALS ; i++ )
 	{
 		v_vtab[i].v	= 0;
 		v_vtab[i].pid	= -1;
 	}
+#endif
 
-	drv = (*dev->open)(dev, pb->intin[0]);
-
-	log(" drv %lx\n", drv);
+	
+	
+	drv = (*dev->open)(dev, vdidev_id);
 
 	if (drv)
 	{
@@ -77,6 +90,7 @@ v_opnwk(VDIPB *pb, VIRTUAL *wk, VIRTUAL *lawk, struct ovdi_device *dev)
 		RASTER *r;
 		PatAttr *ptrn;
 
+		
 		r = (RASTER *)&drv->r;
 		wk->driver = drv;
 		wk->physical = drv;
@@ -85,12 +99,12 @@ v_opnwk(VDIPB *pb, VIRTUAL *wk, VIRTUAL *lawk, struct ovdi_device *dev)
 		if (scrsizmm_x)
 			r->wpixel = (scrsizmm_x * 1000) / r->w;
 		else
-			r->wpixel = 372;
+			r->wpixel = 278;
 
 		if (scrsizmm_y)
 			r->hpixel = (scrsizmm_y * 1000) / r->h;
 		else
-			r->hpixel = 372;
+			r->hpixel = 278;
 
 	/* Check for necessary functions which the current graphics card driver */
 	/* didnt have 								*/
@@ -100,7 +114,7 @@ v_opnwk(VDIPB *pb, VIRTUAL *wk, VIRTUAL *lawk, struct ovdi_device *dev)
 			{
 				if (!drv->f.raster_operations)
 				{
-					log("Using std_driver 8b raster ops!\n");
+					//log("Using std_driver 8b raster ops!\n");
 					drv->f.raster_operations = rops_8b;
 				}
 				if (!drv->f.draw_mc)
@@ -155,12 +169,15 @@ v_opnwk(VDIPB *pb, VIRTUAL *wk, VIRTUAL *lawk, struct ovdi_device *dev)
 		}
 
 	/* Check for available color indipendant driver services */
-		if (!drv->f.add_vbifunc)
+		if (!drv->f.add_vbifunc) /* Check if driver has VBI api, if not, use generic built in stuff */
 		{
 			init_vbi();
 			drv->f.get_vbitics = get_vbitics;
 			drv->f.add_vbifunc = add_vbi_function;
 			drv->f.remove_vbifunc = remove_vbi_function;
+			drv->f.reset_vbi = reset_vbi;
+			drv->f.enable_vbi = enable_vbi;
+			drv->f.disable_vbi = disable_vbi;
 		}
 
 	/* setup color tables */
@@ -242,35 +259,42 @@ v_opnwk(VDIPB *pb, VIRTUAL *wk, VIRTUAL *lawk, struct ovdi_device *dev)
 	/* install the time/interrupt specific thigns */
 		wk->timeapi = init_time(wk, linea_vars);
 
-		setup_fonts(wk, &SIZ_TAB_rom, &DEV_TAB_rom);
+		if (!wk->handle)
+			setup_fonts(wk, &SIZ_TAB_rom, &DEV_TAB_rom);
+
 		update_devtab(&DEV_TAB_rom, wk);
 		update_inqtab(&INQ_TAB_rom, wk);
 		update_siztab(&SIZ_TAB_rom, wk);
 
 	/* Setup the rest of the virtual structure */
 		setup_virtual(pb, wk, 0);
+
+		if (!wk->handle)
+		{
+		/* Init the console driver (VT-52) */
+			init_console(wk, linea_vars);		/* !! This depends on systemfonts being fixedup, done in setup_virtual() */
+
+
+		/* Install some vectors */
+			set_linea_vector();
+			install_console_handlers(wk->con);
+			install_xbios(wk);
+		}
+
 	/* Setup more LineA stuff */
 		init_linea_vartab(wk, linea_vars);
-	/* Init the console driver (VT-52) */
-		init_console(wk, linea_vars);		/* !! This depends on systemfonts being fixedup, done in setup_virtual() */
-
-#if 0
-	/* Add the mousecursor rendering function to VBI */
-		(*drv->f.add_vbifunc)((unsigned long)wk->mouseapi->housekeep, 0);
-#endif
-
-	/* Install some vectors */
-		set_linea_vector();
-		install_console_handlers(wk->con);
-		install_xbios(wk);
-
 	/* Add the mousecursor rendering function to VBI */
 		(*drv->f.add_vbifunc)((unsigned long)wk->mouseapi->housekeep, 0);
 	/* Add consoles textcursor blinker to VBI */
-		(*drv->f.add_vbifunc)((unsigned long)wk->con->textcursor_blink, 0);
+		(*drv->f.add_vbifunc)((unsigned long)wk->con->textcursor_blink, 25);
+
+	/* Enable things ... */
+		(*wk->timeapi->enable)();
+		(*drv->f.enable_vbi)();
+		(*wk->mouseapi->enable)();
 
 		get_MiNT_info(wk);
-		log("pid %d, name '%s' opened physical\n", wk->pid, (char *)&wk->procname);
+		//log("pid %d, name '%s' opened physical\n", wk->pid, (char *)&wk->procname);
 		wk->handle = 1;
 		v_vtab[1].pid = wk->pid;
 		v_vtab[1].v = wk;
@@ -280,6 +304,8 @@ v_opnwk(VDIPB *pb, VIRTUAL *wk, VIRTUAL *lawk, struct ovdi_device *dev)
 		lv_clrwk(wk);
 	/* Prepare return information */
 		prepare_stdreturn(pb, wk);
+
+		(*wk->mouseapi->enablemcurs)();
 	}
 	else
 error:	{
@@ -446,7 +472,7 @@ v_opnvwk(VDIPB *pb, VIRTUAL *v)
 			lvst_load_fonts(new);
 			prepare_stdreturn(pb, new);
 
-			log("vwk: pid %d, name '%s'\n", new->pid, (char *)&new->procname);
+			//log("vwk: pid %d, name '%s'\n", new->pid, (char *)&new->procname);
 		}
 		else
 		{
@@ -462,23 +488,59 @@ v_opnvwk(VDIPB *pb, VIRTUAL *v)
 
 
 void
-v_clswk( VDIPB *pb, VIRTUAL *virtual)
+v_clswk( VDIPB *pb, VIRTUAL *root)
 {
-	VIRTUAL *v;
-	OVDI_VTAB *entry;
 	short i;
 
-	entry = v_vtab;
-
-	for (i = 2; i < MAX_VIRTUALS; i++)
+/* DO NOT CLEAR 'handle' !! It indicates to the v_opnwk() that basic things are already initialized */
+	if (root->root)
 	{
-		if (entry[i].v)
-			v_clsvwk(pb, entry[i].v);
+		scrnlog("Cannot close physical with virtual handle!!!!\n");
+		return;
 	}
 
-	v = virtual->root ? virtual->root : virtual;
-	(*v->driver->dev->close)(v->driver);
+	lvs_clip(root, 0, 0);
 
+	/* Make sure that all virtual workstations are closed */
+	for (i = 2; i < MAX_VIRTUALS; i++)
+	{
+		if (v_vtab[i].v)
+		{			
+			if (MiNT)
+			{
+				if ( (Pkill(v_vtab[i].pid, 0) >= 0) && (v_vtab[i].pid != -1) )
+					v_clsvwk(pb, v_vtab[i].v);
+				else
+				{
+					v_vtab[i].v = 0;
+					v_vtab[i].pid = -1;
+				}
+			}
+			else
+				v_clsvwk(pb, v_vtab[i].v);
+		}
+	}
+
+	/* Disable mouse driver */
+		(*root->mouseapi->disablemcurs)();
+		(*root->mouseapi->disable)();
+	/* remove user/next tim user functions */
+		(*root->timeapi->disable)();
+		(*root->timeapi->reset_user_tim)();
+		(*root->timeapi->reset_next_tim)();
+	/* remove consoles textcursor blinker from VBI */
+	//	(*root->driver->f.remove_vbifunc)((unsigned long)root->con->textcursor_blink);
+	/* remove the mousecursor rendering function from VBI */
+		(*root->driver->f.remove_vbifunc)((unsigned long)root->mouseapi->housekeep);
+
+	(*root->driver->dev->close)(root->driver);
+
+	if (root->scratchp)
+		Mfree(root->scratchp);
+
+	v_vtab[1].v = 0;
+	v_vtab[1].pid = -1;
+	
 	return;
 }
 
@@ -697,11 +759,16 @@ prepare_extreturn( VDIPB *pb, VIRTUAL *v)
 
 	pb->intout[19] = v->clip_flag;
 
+	//bzero(&pb->intout[20], (45-20) << 1);
+	//pb->intout[20] = 0;
+
 	pb->ptsout[0] = v->clip.x1;
 	pb->ptsout[1] = v->clip.y1;
 	pb->ptsout[2] = v->clip.x2;
 	pb->ptsout[3] = v->clip.y2;
 
+	bzero(&pb->ptsout[4], sizeof(SIZ_TAB) - 8);
+#if 0
 	pb->ptsout[4] = 0;
 	pb->ptsout[5] = 0;
 	pb->ptsout[6] = 0;
@@ -710,9 +777,8 @@ prepare_extreturn( VDIPB *pb, VIRTUAL *v)
 	pb->ptsout[9] = 0;
 	pb->ptsout[10] = 0;
 	pb->ptsout[11] = 0;
+#endif
 
-
-	pb->intout[20] = 0;
 
 	pb->contrl[N_INTOUT] = 45;
 	pb->contrl[N_PTSOUT] = 6;
@@ -829,6 +895,7 @@ setup_virtual(VDIPB *pb, VIRTUAL *v, VIRTUAL *root)
 	v->scratchp	= 0;
 	v->scratchs	= SCRATCH_BUFFER_SIZE;
 
+	v->ptsbuffsiz	= PTSBUFF_SIZ;
 /* **** wrmode */
 	lvswr_mode( v, 1);
 
@@ -840,7 +907,7 @@ setup_virtual(VDIPB *pb, VIRTUAL *v, VIRTUAL *root)
 	lvsl_color( v, wkin->linecolor);
 	lvsl_width( v, 1);
 	lvsl_ends( v, 0, 0);
-	lvsl_udsty( v, 0);
+	lvsl_udsty( v, 0xffff);
 
 /* **** Marker settings */
 	lvsm_linetype( v, 0);
@@ -983,22 +1050,22 @@ setup_fonts(VIRTUAL *v, SIZ_TAB *st, DEV_TAB *dt)
 						v->font.lcount++;
 					}
 
-					log("Loaded font id %d, name: '%s'\n", f1->id, f1->name);
+					//log("Loaded font id %d, name: '%s'\n", f1->id, f1->name);
 				}
 				else
-					log("Cound not load font '%s' !!\n", &fname[0]);
+					//log("Cound not load font '%s' !!\n", &fname[0]);
 
 				if (!(*fnptrs))
 					break;
 			}
 		}
-		log("Loaded %d fontfaces\n", v->font.lcount);
+		//log("Loaded %d fontfaces\n", v->font.lcount);
 
-		log("*** Font-ring (sysfonts): ***\n");
+		//log("*** Font-ring (sysfonts): ***\n");
 		f1 = sysfnt08p;
 		while(f1)
 		{
-			log("  id %d, point %d, height %d, name %s\n", f1->id, f1->point, f1->top, f1->name);
+			//log("  id %d, point %d, height %d, name %s\n", f1->id, f1->point, f1->top, f1->name);
 
 			if (f1->max_char_width < st->minwchar)
 				st->minwchar = f1->max_char_width;
@@ -1012,30 +1079,17 @@ setup_fonts(VIRTUAL *v, SIZ_TAB *st, DEV_TAB *dt)
 
 			f1 = f1->next;
 		}
-		log("*** Loaded fonts: ***\n");
+		//log("*** Loaded fonts: ***\n");
 		f1 = v->font.loaded;
 		while(f1)
 		{
-			log("  id %d, point %d, height %d, name %s\n", f1->id, f1->point, f1->top, f1->name);
-
-#if 0
-			if (f1->max_char_width < st->minwchar)
-				st->minwchar = f1->max_char_width;
-			if (f1->max_char_width > st->maxwchar)
-				st->maxwchar = f1->max_char_width;
-
-			if (f1->top < st->minhchar)
-				st->minhchar = f1->top;
-			if (f1->top > st->maxhchar)
-				st->maxhchar = f1->top;
-#endif
-
+			//log("  id %d, point %d, height %d, name %s\n", f1->id, f1->point, f1->top, f1->name);
 			f1 = f1->next;
 		}
 
 		dt->faces = v->font.num;
 
-		log("\n");
+		//log("\n");
 	}
 	return;
 }

@@ -13,6 +13,11 @@ void	vqf_attributes	( VDIPB *pb, VIRTUAL *v );
 void	lvsf_color	( VIRTUAL *v, short color );
 void	lvsf_perimeter	( VIRTUAL *v, short flag );
 void	lvsprm_color	( VIRTUAL *v, short color );
+
+void	lvsf_wrmode	( VIRTUAL *v, short wrmode );
+void	lvsprm_wrmode	( VIRTUAL *v, short wrmode );
+void	lvsudf_wrmode	( VIRTUAL *v, short wrmode );
+
 void	set_fill_params	( short interior, short style, PatAttr *ptrn, short *iout, short *sout );
 void	set_udfill	( VIRTUAL *v, short planes, short *ud, short width, short height );
 

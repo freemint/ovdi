@@ -1,6 +1,7 @@
 		.globl	_New_Trap2
 		.globl	_old_trap2_vec
 		.globl	_oVDI
+		.globl	_logit
 		
 		.text
 
@@ -10,9 +11,11 @@ _old_trap2_vec:	dc.l	0
 _New_Trap2:	movem.l	d1-d7/a0-a6,-(sp)
 		cmp.w	#0x73,d0
 		bne.s	.not_vdi
+		|clr.w	_logit
 		move.l	d1,-(sp)			| vdi pb
 		jsr	_oVDI
 		addq.w	#4,sp
+
 		tst.l	d0
 		bmi.s	.return				| .call_old
 		bra.s	.return
@@ -20,7 +23,7 @@ _New_Trap2:	movem.l	d1-d7/a0-a6,-(sp)
 		beq.s	.ret_gdos
 		cmp.w	#-1,d0
 		bne.s	.call_old
-		move.l	#_oVDI,d0
+		move.l	#handler,d0
 		bra.s	.return
 .call_old:	movem.l	(sp)+,d1-d7/a0-a6
 		move.l	_old_trap2_vec,-(sp)
@@ -30,3 +33,10 @@ _New_Trap2:	movem.l	d1-d7/a0-a6,-(sp)
 .fine:		movem.l	(sp)+,d1-d7/a0-a6
 		rte
 
+handler:	movem.l	d1-d7/a0-a6,-(sp)
+		|move.w	#1,_logit
+		move.l	d1,-(sp)
+		jsr	_oVDI
+		addq.w	#4,sp
+		movem.l	(sp)+,d1-d7/a0-a6
+		rts

@@ -1,3 +1,4 @@
+		.globl	_cs_output_character
 		.globl	_do_con_state
 		.globl	_do_xconout_console
 		.globl	_do_xconout_raw
@@ -10,6 +11,19 @@
 
 		.globl	_textcursor_blink
 
+	| This function is installed in 'csout_char' of the console structure
+	| and is the function 'outsiders' use to output characters to the
+	| console.
+_cs_output_character:
+		movem.l	d0-d1/a0-a1,-(sp)
+		move.w	(2+2*4)+4(sp),-(sp)	| char
+		move.l	currconsole,-(sp)
+		move.l	currconstate,a0
+		jsr	(a0)
+		addq.w	#6,sp
+		movem.l	(sp)+,d0-d1/a0-a1
+		rts
+		
 	| This is installed at the con_state vector (0x4a8), and
 	| calls the function 'currconstate', with argument
 	| 'currconsole'.
@@ -32,7 +46,7 @@ _do_xconout_console:
 	| and calls the function pointed to by 'currxconraw'.
 _do_xconout_raw:
 		movem.l	d0-a6,-(sp)
-		move.w	((8+7+1)*4)(sp),-(sp)
+		move.w	((8+7+1)*4)+2(sp),-(sp)
 		move.l	currconsole,-(sp)
 		move.l	currxconraw,a0
 		jsr	(a0)
@@ -52,11 +66,11 @@ _set_constate:	move.l	4(sp),currconsole
 		rts
 
 _do_txtcurs_blnk:
-		movem.l	d0-d1/a0-a1,-(sp)
+		movem.l	d0-d2/a0-a2,-(sp)
 		move.l	currconsole,-(sp)
 		jsr	_textcursor_blink
 		addq.w	#4,sp
-		movem.l	(sp)+,d0-d1/a0-a1
+		movem.l	(sp)+,d0-d2/a0-a2
 		rts
 _set_xconout_raw:
 		move.l	4(sp),currconsole

@@ -9,6 +9,8 @@ void vsc_form	(VDIPB *pb, VIRTUAL *v);
 void v_hide_c	(VDIPB *pb, VIRTUAL *v);
 void v_show_c	(VDIPB *pb, VIRTUAL *v);
 void vq_mouse	(VDIPB *pb, VIRTUAL *v);
+void v_dspcur	(VDIPB *pb, VIRTUAL *v);
+void v_rmcur	(VDIPB *pb, VIRTUAL *v);
 
 void vex_butv	(VDIPB *pb, VIRTUAL *v);
 void vex_curv	(VDIPB *pb, VIRTUAL *v);

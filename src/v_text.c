@@ -5,6 +5,7 @@
 #include "vdi_globals.h"
 #include "fonts.h"
 #include "v_text.h"
+#include "v_attribs.h"
 
 void
 vst_load_fonts( VDIPB *pb, VIRTUAL *v)
@@ -45,15 +46,20 @@ vst_unload_fonts( VDIPB *pb, VIRTUAL *v)
 }
 
 void
+lvst_wrmode( VIRTUAL *v, short wrmode)
+{
+	set_writingmode( wrmode, &v->font.wrmode);
+	return;
+}
+
+void
 vst_alignment( VDIPB *pb, VIRTUAL *v)
 {
-	//log("vst_alignment: ");
 	lvst_alignment( v, pb->intin[0], pb->intin[1]);
 
 	pb->intout[0] = v->font.halign;
 	pb->intout[1] = v->font.valign;
 
-	//log("return h %d, v %d\n", v->font.halign, v->font.valign);
 	pb->contrl[N_INTOUT] = 2;
 	return;
 }
@@ -111,14 +117,12 @@ void
 vst_font( VDIPB *pb, VIRTUAL *v)
 {
 
-	//log("vst_font: set %d", pb->intin[0]);
 
 	if ( (lvst_font( v, pb->intin[0])) )
 		pb->intout[0] = v->font.header->id;
 	else
 		pb->intout[0] = 0;
 
-	//log(" return %d\n", pb->intout[0]);
 	pb->contrl[N_INTOUT] = 1;
 	return;
 }
@@ -386,9 +390,6 @@ v_gtext( VDIPB *pb, VIRTUAL *v)
 	if (!(slen = pb->contrl[N_INTIN]))
 		return;
 
-	if (!strcmp("ATARICQ", v->procname))
-		log("v_gtext: len %d\n", pb->contrl[N_INTIN]);
-
 	output_gdftext( v, (POINT *)&pb->ptsin[0], (short *)&pb->intin[0], slen,
 			0, 0, 0);
 
@@ -497,7 +498,6 @@ vqt_extent( VDIPB *pb, VIRTUAL *v)
 			break;
 		}
 	}
-	//log(" return\n");
 	pb->contrl[N_PTSOUT] = 4;
 	return;
 }
@@ -547,11 +547,8 @@ vqt_name( VDIPB *pb, VIRTUAL *v)
 	FONT_HEAD *f;
 
 
-	index = pb->intin[0];
+	index = find_fontbyindex( v->fring, pb->intin[0], (long *)&f);
 
-	//log("vqt_name: index %d, %d, %d, %d\n", index, pb->intin[1], pb->ptsin[0], pb->ptsin[1]);
-
-	index = find_fontbyindex( v->fring, index, (long *)&f);
 	if (index)
 	{
 		if (v->font.loaded)
@@ -573,7 +570,6 @@ vqt_name( VDIPB *pb, VIRTUAL *v)
 		i++;
 	}
 	
-	//log("vqt_name: return fid %d, fntname %s\n\n", f->id, f->name);
 	pb->intout[0] = f->id;
 
 	pb->contrl[N_INTOUT] = 33;

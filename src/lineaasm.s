@@ -1,4 +1,5 @@
 | Things needed by the wrappers
+	.globl _get_linea_addresses
 	.globl _linea_fonts
 	.globl _linea_functab
 	.globl _linea_vars
@@ -47,7 +48,7 @@
 _LineA_Handler:
 	movea.l	2(sp),a1
 	move.w	(a1)+,d2
-	and.w	#0xffff,d2
+	and.w	#0xfff,d2
 	move.l	a1,2(sp)
 	cmp.w	#15,d2
 	bhi.s	.exit
@@ -65,7 +66,18 @@ _LineA_Handler:
 
 .exit:	rte	
 	
-
+|	void get_linea_addresses(*ret_lavtadr, *ret_lafonts, *ret_functs)
+_get_linea_addresses:
+	movem.l	d0-d1/a0-a3,-(sp)
+	dc.w	0xa000
+	move.l	(2+4+1)*4(sp),a3
+	move.l	d0,(a3)
+	move.l	((2+4+1)*4)+4(sp),a3
+	move.l	a1,(a3)
+	move.l	((2+4+1)*4)+8(sp),a3
+	move.l	a2,(a3)
+	movem.l	(sp)+,d0-d1/a0-a3
+	rts
 
 _LineA_Initialize:
 	move.l	_linea_vars,d0

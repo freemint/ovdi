@@ -5,6 +5,9 @@
 #include "ovdi_defs.h"
 #include "vdi_globals.h"
 #include "v_attribs.h"
+#include "v_fill.h"
+#include "v_line.h"
+#include "v_text.h"
 
 #define MIN_WRMODE  1;
 
@@ -12,19 +15,33 @@ void
 vswr_mode( VDIPB *pb, VIRTUAL *v)
 {
 	lvswr_mode( v, pb->intin[0]);
+	lvsf_wrmode( v, pb->intin[0]);		/* Fill writing mode */
+	lvsudf_wrmode( v, pb->intin[0]);	/* User defined fill writing mode */
+	lvsl_wrmode( v, pb->intin[0]);		/* line writing mode */
+	lvsprm_wrmode( v, pb->intin[0]);	/* perimeter writing mode */
+	lvst_wrmode( v, pb->intin[0]);		/* Text writing mode */
 	pb->intout[0] = v->wrmode + 1;
 	return;
 }
 
 void
-lvswr_mode( VIRTUAL *v, short wrmode )
+lvswr_mode( VIRTUAL *v, short wrmode)
+{
+	set_writingmode( wrmode, &v->wrmode);
+	return;
+}
+
+void
+set_writingmode( short wrmode, short *ret)
 {
 	if (wrmode < MIN_MD_MODE)
-		v->wrmode = MIN_MD_MODE;
+		wrmode = MIN_MD_MODE;
 	else if (wrmode > MAX_MD_MODE)
-		v->wrmode = MAX_MD_MODE;
+		wrmode = MAX_MD_MODE;
 
-	v->wrmode = wrmode - 1;
+	if (ret)
+		*ret = wrmode - 1;
+
 	return;
 }
 
@@ -100,9 +117,6 @@ vs_color( VDIPB *pb, VIRTUAL *v)
 	color.alpha	= 0;
 	color.ovl	= 0;
 
-//	log("vs_color: pid %d - %s; pen %d, red %d %d, green %d %d, blue %d %d\n", v->pid, v->procname, pb->intin[0],
-//		pb->intin[1], color.red, pb->intin[2], color.green, pb->intin[3], color.blue);
-
 	lvs_color( v, pb->intin[0], &color);
 
 	/* should this not return anything? */
@@ -137,13 +151,11 @@ vq_color( VDIPB *pb, VIRTUAL *v)
 {
 	short vdipen, hwpen, flag;
 
-	//log("vq_color: pid %d - %s ",v->pid, v->procname);
-
 	vdipen = pb->intin[0];
 
 	if (vdipen >= (Planes2Pens[v->driver->r.planes]))
 	{
-exit:		//log(" out of range!\n");
+exit:
 		pb->intout[0] = - 1;
 		return;
 	}
@@ -156,7 +168,6 @@ exit:		//log(" out of range!\n");
 		pb->intout[1] = v->request_rgb[hwpen].red;
 		pb->intout[2] = v->request_rgb[hwpen].green;
 		pb->intout[3] = v->request_rgb[hwpen].blue;
-		//log(" req pen %d, red %d, green %d, blue %d\n", pb->intin[0], pb->intout[1], pb->intout[2], pb->intout[3]);
 	}
 	else if (flag == COLOR_ACTUAL)
 	{
@@ -166,7 +177,6 @@ exit:		//log(" out of range!\n");
 		pb->intout[1] = color.red;
 		pb->intout[2] = color.green;
 		pb->intout[3] = color.blue;
-		//log(" act pen %d, red %d, green %d, blue %d\n", pb->intin[0], pb->intout[1], pb->intout[2], pb->intout[3]);
 	}
 	else
 		goto exit;

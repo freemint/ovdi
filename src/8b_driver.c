@@ -123,13 +123,7 @@ D_ONLY_8b(unsigned char *addr, long data)
 void
 S_XOR_D_8b(unsigned char *addr, long data)
 {
-	__asm__ volatile
-	("
-		eor.b	%0,(%1)
-	"	:
-		: "d"(data),"a"(addr)
-	);
-//	*addr ^= (unsigned char)data;
+	*addr ^= (unsigned char)data;
 	return;
 }
 void
@@ -430,22 +424,6 @@ ro_8b_D_ONLY(	unsigned char *srcptr, register short srcbypl,
 		short width, short height, short dir)
 {
 	return;
-#if 0
-	register unsigned char *srcp, *dstp;
-
-	for (i = height; i > 0; i--)
-	{
-
-		srcp = (unsigned char *)srcptr;
-		dstp = (unsigned char *)dstptr;
-
-		for (j = width; j > 0; j--)
-			*dstp++ = *srcp++;
-
-		srcptr += srcbypl;
-		dstptr += dstbypl;
-	}
-#endif
 }
 void
 ro_8b_S_XOR_D(	unsigned char *srcptr, register short srcbypl,
@@ -620,7 +598,7 @@ ro_8b_NOT_D(	unsigned char *srcptr, register short srcbypl,
 			dstp = (unsigned char *)dstptr;
 
 			for (j = width; j > 0; j--)
-				*dstp = ~*dstp--;
+				*dstp-- = ~*dstp;
 
 //			srcptr -= srcbypl;
 			dstptr -= dstbypl;
@@ -635,7 +613,7 @@ ro_8b_NOT_D(	unsigned char *srcptr, register short srcbypl,
 			dstp = (unsigned char *)dstptr;
 
 			for (j = width; j > 0; j--)
-				*dstp = ~*dstp++;
+				*dstp++ = ~*dstp;
 
 //			srcptr += srcbypl;
 			dstptr += dstbypl;
@@ -737,10 +715,10 @@ ro_8b_NOTS_OR_D(unsigned char *srcptr, register short srcbypl,
 			dstp = (unsigned char *)dstptr;
 
 			for (j = width; j > 0; j--)
-				*dstp++ |= ~(*srcp++);
+				*dstp-- |= ~(*srcp--);
 
-			srcptr += srcbypl;
-			dstptr += dstbypl;
+			srcptr -= srcbypl;
+			dstptr -= dstbypl;
 		}
 	}
 	else

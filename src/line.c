@@ -185,10 +185,12 @@ abline (VIRTUAL *v, struct vdirect *pnts, PatAttr *ptrn)
 
 	linemask = x1 & 0xf ? (*ptrn->data << ((x1 & 0xf))) | ( *ptrn->data >> (16-(x1 & 0xf)) ) : *ptrn->data;
 
-	fgcol = ptrn->color[v->wrmode];
+	planes = ptrn->wrmode;
+	fgcol = ptrn->color[planes];
 	bgcol = ptrn->bgcol;
-	dlp_fg = v->driver->f.pixelfuncts[v->wrmode * 2];
-	dlp_bg = v->driver->f.pixelfuncts[(v->wrmode * 2) + 1];
+	planes <<= 1;
+	dlp_fg = v->driver->f.pixelfuncts[planes];
+	dlp_bg = v->driver->f.pixelfuncts[planes + 1];
 	planes = r->planes;
 
 	if (planes < 8)
@@ -363,10 +365,12 @@ habline (VIRTUAL *v, short x1, short x2, short y, PatAttr *ptrn)
 
 
 	r = v->raster;
+	planes	= ptrn->wrmode;
 	bgcol	= ptrn->bgcol;
-	fgcol	= ptrn->color[v->wrmode];
-	dpf_fg	= v->driver->f.pixelfuncts[v->wrmode * 2];
-	dpf_bg	= v->driver->f.pixelfuncts[(v->wrmode * 2) + 1];
+	fgcol	= ptrn->color[planes];
+	planes <<= 1;
+	dpf_fg	= v->driver->f.pixelfuncts[planes];
+	dpf_bg	= v->driver->f.pixelfuncts[planes + 1];
 	planes	= r->planes;
 	bypl	= r->bypl;
 	linemask = x1 & 0xf ? (*ptrn->data << ((x1 & 0xf))) | ( *ptrn->data >> (16-(x1 & 0xf)) ) : *ptrn->data;
@@ -1067,7 +1071,7 @@ draw_spans(VIRTUAL *v, short x1, short x2, short y, PatAttr *ptrn)
 
 	r = v->raster;
 
-	wrmode = v->wrmode;
+	wrmode = ptrn->wrmode;
 	fgcol = ptrn->color[wrmode];
 	bgcol	= ptrn->bgcol;
 
@@ -1082,8 +1086,6 @@ draw_spans(VIRTUAL *v, short x1, short x2, short y, PatAttr *ptrn)
 
 		xinc = planes << 1;
 		bit = 0x8000 >> (x1 & 0xf);
-
-		log("pid %d - %s. Should not be here\n", v->pid, v->procname);
 
 		addr = (unsigned char *)r->base + (((long)x >> 4) * Planes2xinc[planes]) + ((long)y * r->bypl);
 
@@ -1116,7 +1118,7 @@ draw_spans(VIRTUAL *v, short x1, short x2, short y, PatAttr *ptrn)
 
 		if (ptrn->expanded)
 		{
-			log("pattern expanded! %s\n", v->procname);
+			scrnlog("pattern expanded! %s\n", v->procname);
 			pw = ptrn->width; //v->pattern.width;
 			xind = x1 % pw;
 			patrn = (unsigned char *)ptrn->exp_data + ((y % ptrn->height) * (pw * xinc));

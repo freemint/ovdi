@@ -291,7 +291,7 @@ clc_arc(VIRTUAL *v, short gdp_code, short xc, short yc, short xrad, short yrad, 
 {
 	short i, j, start, angle;
 	register short *pts;
-	short spanbuff[100*5*2];
+	//short spanbuff[10*5*2];
 
 	pts = points;
 
@@ -327,13 +327,13 @@ clc_arc(VIRTUAL *v, short gdp_code, short xc, short yc, short xrad, short yrad, 
 	}
 
 	if ((gdp_code == 2) || (gdp_code == 6))	/* Open arc */
-		pline( v, points, n_steps + 1, (short *)&spanbuff, sizeof(spanbuff), ptrn);
+		pline( v, points, n_steps + 1, (short *)&v->spanbuff, v->spanbuffsiz, ptrn); //(short *)&spanbuff, sizeof(spanbuff), ptrn);
 	else
 	{
-		filled_poly( v, points, n_steps + 1, (short *)&spanbuff, sizeof(spanbuff), ptrn);
+		filled_poly( v, points, n_steps + 1, (short *)&v->spanbuff, v->spanbuffsiz, ptrn); //(short *)&spanbuff, sizeof(spanbuff), ptrn);
 
 		if (v->fill.perimeter)
-			pline( v, points, n_steps +1, (short *)&spanbuff, sizeof(spanbuff), &v->perimdata); //ptrn);
+			pline( v, points, n_steps +1, (short *)&v->spanbuff, v->spanbuffsiz, &v->perimdata); //p(short *)&spanbuff, sizeof(spanbuff), &v->perimdata);
 	}
 	return;
 }
@@ -349,7 +349,7 @@ draw_rbox(VIRTUAL *v, short gdp_code, VDIRECT *corners, PatAttr *ptrn)
 	short n_steps;
 	RASTER *r = v->raster;
 	short points[42];
-	short spanbuff[100*5*2];
+	//short spanbuff[10*5*2];
 
 	rdeltax = (corners->x2 - corners->x1) / 2;
 	rdeltay = (corners->y2 - corners->y1) / 2;
@@ -418,12 +418,12 @@ draw_rbox(VIRTUAL *v, short gdp_code, VDIRECT *corners, PatAttr *ptrn)
 
 	if (gdp_code == 8)
 	{
-		pline( v, (short *)&points, 21, (short *)&spanbuff, sizeof(spanbuff), ptrn);
+		pline( v, (short *)&points, 21, (short *)&v->spanbuff, v->spanbuffsiz, ptrn); //(short *)&spanbuff, sizeof(spanbuff), ptrn);
 	}
 	else
 	{
-		filled_poly( v, (short *)&points, 21, (short *)&spanbuff, sizeof(spanbuff), ptrn);
+		filled_poly( v, (short *)&points, 21, (short *)&v->spanbuff, v->spanbuffsiz, ptrn); //(short *)&spanbuff, sizeof(spanbuff), ptrn);
 		if (v->fill.perimeter)
-			pline(v, (short *)&points, 21, (short *)&spanbuff, sizeof(spanbuff), &v->perimdata); //ptrn);
+			pline(v, (short *)&points, 21, (short *)&v->spanbuff, v->spanbuffsiz, &v->perimdata); //(short *)&spanbuff, sizeof(spanbuff), &v->perimdata);
 	}
 }

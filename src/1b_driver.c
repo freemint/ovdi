@@ -351,6 +351,110 @@ ALL_BLACK(unsigned char *addr, long data)
 	return;
 }
 
+void
+draw_solid_rect_1b(RASTER *r, short *corners, short wrmode, short color)
+{
+	unsigned short *dst, *d;
+	short i, bypl, dx, dy, sb, hb, tb, g;
+	unsigned short pixel, sm, em;
+
+	bypl = r->bypl >> 1;
+	pixel = color & 1 ? 0xffff : 0x0; 
+	dx = corners[2] - corners[0] + 1;
+	dy = corners[3] - corners[1] + 1;
+
+	sb	= corners[0] & 0xf;
+	sm	= 0xffff >> sb;
+	em	= ~(0xffff >> ((corners[2] + 1) & 0xf));
+	hb	= (16 - sb) & 0xf;
+	dx	-= hb;
+
+	if (dx <= 0)
+	{
+		hb = dx + hb;
+		g = tb = 0;
+		if (dx != 0)
+			sm &= em;
+	}
+	else if (dx > 15)
+	{
+		tb = (corners[2] + 1) & 0xf;
+		g = (dx - tb) >> 4;
+	}
+	else
+	{
+		tb = dx;
+		g = 0;
+	}
+
+	dst = (unsigned short *)r->base + (long)(corners[0]>>4) + (long)((long)corners[1] * bypl);
+
+	switch (wrmode)
+	{
+		case 0: /* MD_REPLACE */
+		case 1: /* MD_TRANS */
+		{
+			for (; dy > 0; dy--)
+			{
+				d = dst;
+
+				if (hb)
+					*d++ = (*d & ~sm) | (pixel & sm);
+				if (g)
+				{
+					for ( i = g; i > 0; i--)
+						*d++ = pixel;
+				}
+				if (tb)
+					*d++ = (*d & ~em) | (pixel & em);
+				dst += bypl;
+			}
+			break;
+		}
+		case 2: /* MD_EOR */
+		{
+			for (; dy > 0; dy--)
+			{
+				d = dst;
+
+				if (hb)
+					*d++ = (*d & ~sm) | ((*d ^ pixel) & sm);
+				if (g)
+				{
+					for ( i = g; i > 0; i--)
+						*d++ ^= pixel;
+				}
+				if (tb)
+					*d++ = (*d & ~em) | ((*d ^ pixel) & em);
+
+				dst += bypl;
+			}
+			break;
+		}
+		case 3:
+		{
+			pixel = ~pixel;
+			for (; dy > 0; dy--)
+			{
+				d = dst;
+
+				if (hb)
+					*d++ = (*d & ~sm) | ((*d ^ pixel) & sm);
+				if (g)
+				{
+					for ( i = g; i > 0; i--)
+						*d++ ^= pixel;
+				}
+				if (tb)
+					*d++ = (*d & ~em) | ((*d ^ pixel) & em);
+
+				dst += bypl;
+			}
+			break;
+		}
+	}
+}
+
 /* *************** RASTER OPERATIONS **************** */
 //static void rb_ALL_WHITE	(ROP_PB *);
 //static void rb_S_AND_D		(ROP_PB *);
@@ -399,212 +503,406 @@ rb_S_ONLY(ROP_PB *rpb)
 	width	= rpb->sx2 - rpb->sx1 + 1;
 	height	= rpb->sy2 - rpb->sy1 + 1;
 
-	sbpl	= rpb->s_bypl;
-	dbpl	= rpb->d_bypl;
+	sbpl	= rpb->s_bypl >> 1;
+	dbpl	= rpb->d_bypl >> 1;
 
-	(long)src = (long)rpb->s_addr + (long)(rpb->sx1 >> 4) + (long)(rpb->sy1 * sbpl);
-	(long)dst = (long)rpb->d_addr + (long)(rpb->dx1 >> 4) + (long)(rpb->dy1 * dbpl);
+	src = (unsigned short *)rpb->s_addr + (long)(rpb->sx1 >> 4) + (long)((long)rpb->sy1 * sbpl);
+	dst = (unsigned short *)rpb->d_addr + (long)(rpb->dx1 >> 4) + (long)((long)rpb->dy1 * dbpl);
 
-	s_shift	= rpb->sx1 & 0xf;
-	d_shift	= rpb->dx1 & 0xf;
-
-	sbpl >>= 1; 
-	dbpl >>= 1;
-
-	if (!s_shift && !d_shift)
+	if (src < dst)
 	{
-	/* source & destination starts on whole word */
+		src = (unsigned short *)rpb->s_addr + (long)(rpb->sx2 >> 4) + (long)((long)rpb->sy2 * sbpl);
+		dst = (unsigned short *)rpb->d_addr + (long)(rpb->dx2 >> 4) + (long)((long)rpb->dy2 * dbpl);
 
-		endmask = ~(0xffff >> ((rpb->sx2 + 1) & 0xf));
+		s_shift	= 15 - (rpb->sx2 & 0xf);
+		d_shift	= 15 - (rpb->dx2 & 0xf);
 
-		for (; height > 0; height--)
+		if (!s_shift && !d_shift)
 		{
-			s = src;
-			d = dst;
-			for (i = width >> 4; i > 0; i--)
-				*d++ = *s++;
-			if (endmask != 0xffff)
-				*d++ = (*s++ & endmask) | (*d & ~endmask);
-			src += sbpl;
-			dst += dbpl;
-		}
-	}
-	else if (!(shift = d_shift - s_shift))
-	{
-	/* Same shift for both source and dest */
-		begmask	= 0xffff >> s_shift;
-		endmask = ~(0xffff >> ((rpb->sx2 + 1) & 0xf));
-		hbits	= (16 - s_shift) & 0xf;
-		width	-= hbits;
+		/* source & destination starts on whole word */
 
-		if (width <= 0)
-		{
-			hbits = width + hbits;
-			groups = ebits = 0;
-			begmask &= endmask;
-		}
-		else if (width > 15)
-		{
-			ebits = (rpb->sx2 + 1) & 0xf;
-			groups = (width - ebits) >> 4;
-		}
-		else
-		{
-			groups = 0;
-			ebits = width;
-		}
+			endmask = 0xffff >> (rpb->sx1 & 0xf);
 
-		for (; height > 0; height--)
-		{
-			s = src;
-			d = dst;
-			if (hbits)
-				*d++ = (*s++ & begmask) | (*d & ~begmask);
-			for (i = groups; i > 0; i--)
-				*d++ = *s++;
-			if (ebits)
-				*d++ = (*s++ & endmask) | (*d & ~endmask);
-
-			src += sbpl;
-			dst += dbpl;
-		}			
-	}
-	else if (shift > 0)
-	{
-	/* shift source right */
-		begmask = 0xffff >> d_shift;
-		endmask = ~(0xffff >> ((rpb->dx2 + 1) & 0xf));
-		hbits	= (16 - d_shift) & 0xf;
-		width	-= hbits;
-
-		if (width <= 0)
-		{
-			hbits = width + hbits;
-			groups = ebits = 0;
-			begmask &= endmask;
-		}
-		else if (width > 15)
-		{
-			ebits = (rpb->dx2 + 1) & 0xf;
-			groups = (width - ebits) >> 4;
-		}
-		else
-		{
-			groups = 0;
-			ebits = width;
-		}
-
-		spans = (s_shift + width) - 16;
-
-		if (spans < 0)
-			spans = 0;
-
-		for (; height > 0; height--)
-		{
-			s = src;
-			d = dst;
-			if (hbits)
+			for (; height > 0; height--)
 			{
-				data = *s++;
-				*d++ = ((data >> shift) & begmask) | (*d & ~begmask);
+				s = src;
+				d = dst;
+				for (i = width >> 4; i > 0; i--)
+					*d-- = *s--;
+				if (endmask != 0xffff)
+					*d-- = (*s-- & endmask) | (*d & ~endmask);
+				src -= sbpl;
+				dst -= dbpl;
+			}
+		}
+		else if (!(shift = s_shift - d_shift))
+		{
+		/* Same shift for both source and dest */
+			begmask	= 0xffff << s_shift;
+			endmask = 0xffff >> (rpb->sx1 & 0xf);
+			hbits	= (16 - s_shift) & 0xf;
+			width	-= hbits;
+
+			if (width <= 0)
+			{
+				hbits = width + hbits;
+				groups = ebits = 0;
+				begmask &= endmask;
+			}
+			else if (width > 15)
+			{
+				ebits = (16 - (rpb->sx1 & 0xf)) & 0xf;
+				groups = (width - ebits) >> 4;
 			}
 			else
-				data = 0;
-			if (groups)
 			{
+				groups = 0;
+				ebits = width;
+			}
+			for (; height > 0; height--)
+			{
+				s = src;
+				d = dst;
+				if (hbits)
+					*d-- = (*s-- & begmask) | (*d & ~begmask);
 				for (i = groups; i > 0; i--)
-				{
-					data <<= 16 - shift;
-					data |= (*s >> shift);
-					*d++ = data;
-					data = *s++;
-				}
+					*d-- = *s--;
+				if (ebits)
+					*d-- = (*s-- & endmask) | (*d & ~endmask);
+
+				src -= sbpl;
+				dst -= dbpl;
+			}			
+		}
+		else if (shift > 0)
+		{
+		/* shift source right */
+			begmask = 0xffff << d_shift;
+			endmask = 0xffff >> (rpb->dx1 & 0xf);
+			hbits	= (16 - d_shift) & 0xf;
+			width	-= hbits;
+
+			if (width <= 0)
+			{
+				hbits = width + hbits;
+				groups = ebits = 0;
+				begmask &= endmask;
+			}
+			else if (width > 15)
+			{
+				ebits = (16 - (rpb->dx1 & 0xf)) & 0xf;
+				groups = (width - ebits) >> 4;
+			}
+			else
+			{
+				groups = 0;
+				ebits = width;
 			}
 
-			if (ebits)
+			spans = s_shift + width; //(16 - s_shift) + width; //ebits - shift;
+
+			for (; height > 0; height--)
 			{
-				data <<= 16 - shift;
-				if (spans)
-					data |= *s++ >> (ebits - spans);
-				*d++ = (data & endmask) | (*d & ~endmask);
+				s = src;
+				d = dst;
+
+				if (hbits)
+				{
+					data = *s-- >> shift;
+					if (spans > 16)
+						data |= *s << (16 - shift);
+					*d-- = (data & begmask) | (*d & ~ begmask);
+
+				}
+
+				if (groups)
+				{
+					for (i = groups; i > 0; i--)
+					{
+						data = *s-- >> shift;
+						data |= *s << (16 - shift);
+						*d-- = data;
+					}
+				}
+
+				if (ebits)
+				{
+					data = *s-- >> shift;
+					if ((spans & 0xf) < ebits)
+						data |= *s << (16 - shift);
+					*d-- = (data & endmask) | (*d & ~endmask);
+				}
+				src -= sbpl;
+				dst -= dbpl;
+			}		
+		}
+		else
+		{
+			unsigned short data1;
+
+			/* shift source left */
+			shift	= -shift;
+			begmask = 0xffff << d_shift;
+			endmask = 0xffff >> (rpb->dx1 & 0xf);
+			hbits	= (16 - d_shift) & 0xf;
+			width	-= hbits;
+
+			if (width <= 0)
+			{
+				hbits = width + hbits;
+				groups = ebits = 0;
+				begmask &= endmask;
 			}
-			src += sbpl;
-			dst += dbpl;
-		}		
+			else if (width > 15)
+			{
+				ebits = (16 - (rpb->dx1 & 0xf)) & 0xf;
+				groups = (width - ebits) >> 4;
+			}
+			else
+			{
+				groups = 0;
+				ebits = width;
+			}
+
+			spans = ebits - shift;
+
+			if (spans < 0)
+				spans = 0;
+
+			for (; height > 0; height--)
+			{
+				s = src;
+				d = dst;
+
+				if (hbits)
+				{
+					data = *s--;
+					*d-- = ((data << shift) & begmask) | (*d & ~begmask);
+				}
+				else
+					data = 0;
+
+				if (groups)
+				{
+					for (i = groups; i > 0; i--)
+					{
+						data >>= 16 - shift;
+						data1 = *s--;
+						data |= data1 << shift; //(*s << shift);
+						*d-- = data;
+						data = data1;
+					}
+				}
+
+				if (ebits)
+				{
+					data >>= 16 - shift;
+					if (spans)
+						data |= *s-- << shift;
+					*d-- = (data & endmask) | (*d & ~endmask);
+				}
+				src -= sbpl;
+				dst -= dbpl;
+			}
+		}
 	}
 	else
 	{
-	/* shift source left */
-		shift	= -shift;
-		begmask = 0xffff >> s_shift;
-		endmask = ~(0xffff >> ((rpb->sx2 + 1) & 0xf));
-		hbits	= (16 - s_shift) & 0xf;
-		width	-= hbits;
+		unsigned short data1;
 
-		if (width <= 0)
+		s_shift	= rpb->sx1 & 0xf;
+		d_shift	= rpb->dx1 & 0xf;
+
+		if (!s_shift && !d_shift)
 		{
-			hbits = width + hbits;
-			groups = ebits = 0;
-			begmask &= endmask;
+		/* source & destination starts on whole word */
+
+			endmask = ~(0xffff >> ((rpb->sx2 + 1) & 0xf));
+
+			for (; height > 0; height--)
+			{
+				s = src;
+				d = dst;
+				for (i = width >> 4; i > 0; i--)
+					*d++ = *s++;
+				if (endmask != 0xffff)
+					*d++ = (*s++ & endmask) | (*d & ~endmask);
+				src += sbpl;
+				dst += dbpl;
+			}
 		}
-		else if (width > 15)
+		else if (!(shift = d_shift - s_shift))
 		{
-			ebits = (rpb->dx2 + 1) & 0xf;
-			groups = (width - ebits) >> 4;
+		/* Same shift for both source and dest */
+			begmask	= 0xffff >> s_shift;
+			endmask = ~(0xffff >> ((rpb->sx2 + 1) & 0xf));
+			hbits	= (16 - s_shift) & 0xf;
+			width	-= hbits;
+
+			if (width <= 0)
+			{
+				hbits = width + hbits;
+				groups = ebits = 0;
+				begmask &= endmask;
+			}
+			else if (width > 15)
+			{
+				ebits = (rpb->sx2 + 1) & 0xf;
+				groups = (width - ebits) >> 4;
+			}
+			else
+			{
+				groups = 0;
+				ebits = width;
+			}
+			for (; height > 0; height--)
+			{
+				s = src;
+				d = dst;
+				if (hbits)
+					*d++ = (*s++ & begmask) | (*d & ~begmask);
+				for (i = groups; i > 0; i--)
+					*d++ = *s++;
+				if (ebits)
+					*d++ = (*s++ & endmask) | (*d & ~endmask);
+
+				src += sbpl;
+				dst += dbpl;
+			}			
+		}
+		else if (shift > 0)
+		{
+		/* shift source right */
+			begmask = 0xffff >> d_shift;
+			endmask = ~(0xffff >> ((rpb->dx2 + 1) & 0xf));
+			hbits	= (16 - d_shift) & 0xf;
+			width	-= hbits;
+
+			if (width <= 0)
+			{
+				hbits = width + hbits;
+				groups = ebits = 0;
+				begmask &= endmask;
+			}
+			else if (width > 15)
+			{
+				ebits = (rpb->dx2 + 1) & 0xf;
+				groups = (width - ebits) >> 4;
+			}
+			else
+			{
+				groups = 0;
+				ebits = width;
+			}
+
+			spans = ebits - shift;
+
+			if (spans < 0)
+				spans = 0;
+
+			for (; height > 0; height--)
+			{
+				s = src;
+				d = dst;
+
+				if (hbits)
+				{
+					data = *s++;
+					*d++ = ((data >> shift) & begmask) | (*d & ~begmask);
+				}
+				else
+					data = 0;
+
+				if (groups)
+				{
+					for (i = groups; i > 0; i--)
+					{
+						data <<= 16 - shift;
+						data1 = *s++;
+						data |= data1 >> shift;
+						*d++ = data;
+						data = data1;
+					}
+				}
+
+				if (ebits)
+				{
+					data <<= 16 - shift;
+					if (spans)
+						data |= *s++ >> shift;
+					*d++ = (data & endmask) | (*d & ~endmask);
+				}
+				src += sbpl;
+				dst += dbpl;
+			}		
 		}
 		else
 		{
-			groups = 0;
-			ebits = width;
-		}
+			/* shift source left */
+			shift	= -shift;
+			begmask = 0xffff >> d_shift;
+			endmask = ~(0xffff >> ((rpb->dx2 + 1) & 0xf));
+			hbits	= (16 - d_shift) & 0xf;
+			width	-= hbits;
 
-		spans = (d_shift + width) - 16;
-
-		if (spans < 0)
-			spans = 0;
-
-		for (; height > 0; height--)
-		{
-			s = src;
-			d = dst;
-
-			if (hbits)
+			if (width <= 0)
 			{
-				data = (*s++ << shift) & begmask;
+				hbits = width + hbits;
+				groups = ebits = 0;
+				begmask &= endmask;
+			}
+			else if (width > 15)
+			{
+				ebits = (rpb->dx2 + 1) & 0xf;
+				groups = (width - ebits) >> 4;
 			}
 			else
-				data = 0;
-			if (groups)
 			{
-				data |= *s >> (d_shift + hbits);
-				*d++ = data | (*d & ~begmask);
+				groups = 0;
+				ebits = width;
+			}
 
-				for (i = groups; i > 0; i--)
+			spans = s_shift + width;
+
+			for (; height > 0; height--)
+			{
+				s = src;
+				d = dst;
+
+				if (hbits)
 				{
-					*d++ = (*s++ << shift) | (*s >> (16 - shift));
 					data = *s++ << shift;
-				}
-			}
 
-			if (ebits)
-			{
-				
-				data |= *s >> (d_shift + hbits);
-				if (spans)
+					if (spans > 16)
+						data |= *s >> (16 - shift); //spans;
+
+					*d++ = (data & begmask) | (*d & ~begmask);
+				}
+				if (groups)
 				{
-					*d++ = data;
-					data = *s++;
+					for (i = groups; i > 0; i--)
+					{
+						data = *s++ << shift;
+						data |= *s >> (16 - shift);
+						*d++ = data;
+					}
 				}
-				else
-					s++;
-				*d++ = (data & endmask) | (*d & ~endmask);
-			}
-			else
-				*d++ = data | (*d & ~begmask);
+				if (ebits)
+				{
+					data = *s++ << shift;
 
-			src += sbpl;
-			dst += dbpl;
-		}		
+					if ((spans & 0xf) < ebits)
+						data |= *s >> (16 - shift);
+
+					*d++ = (data & endmask) | (*d & ~endmask);
+
+					//*d++ = ((*s++ << shift) & endmask) | (*d & ~endmask);
+				}
+
+				src += sbpl;
+				dst += dbpl;
+			}		
+		}
 	}
 }
 
@@ -618,212 +916,404 @@ rb_S_XOR_D(ROP_PB *rpb)
 	width	= rpb->sx2 - rpb->sx1 + 1;
 	height	= rpb->sy2 - rpb->sy1 + 1;
 
-	sbpl	= rpb->s_bypl;
-	dbpl	= rpb->d_bypl;
+	sbpl	= rpb->s_bypl >> 1;
+	dbpl	= rpb->d_bypl >> 1;
 
-	(long)src = (long)rpb->s_addr + (long)(rpb->sx1 >> 4) + (long)(rpb->sy1 * sbpl);
-	(long)dst = (long)rpb->d_addr + (long)(rpb->dx1 >> 4) + (long)(rpb->dy1 * dbpl);
+	src = (unsigned short *)rpb->s_addr + (long)(rpb->sx1 >> 4) + (long)((long)rpb->sy1 * sbpl);
+	dst = (unsigned short *)rpb->d_addr + (long)(rpb->dx1 >> 4) + (long)((long)rpb->dy1 * dbpl);
 
-	s_shift	= rpb->sx1 & 0xf;
-	d_shift	= rpb->dx1 & 0xf;
-
-	sbpl >>= 1; 
-	dbpl >>= 1;
-
-	if (!s_shift && !d_shift)
+	if (src < dst)
 	{
-	/* source & destination starts on whole word */
+		src = (unsigned short *)rpb->s_addr + (long)(rpb->sx2 >> 4) + (long)((long)rpb->sy2 * sbpl);
+		dst = (unsigned short *)rpb->d_addr + (long)(rpb->dx2 >> 4) + (long)((long)rpb->dy2 * dbpl);
 
-		endmask = ~(0xffff >> ((rpb->sx2 + 1) & 0xf));
+		s_shift	= 15 - (rpb->sx2 & 0xf);
+		d_shift	= 15 - (rpb->dx2 & 0xf);
 
-		for (; height > 0; height--)
+		if (!s_shift && !d_shift)
 		{
-			s = src;
-			d = dst;
-			for (i = width >> 4; i > 0; i--)
-				*d++ ^= *s++;
-			if (endmask != 0xffff)
-				*d++ = ((*s++ ^ *d) & endmask) | (*d & ~endmask);
+		/* source & destination starts on whole word */
 
-			src += sbpl;
-			dst += dbpl;
-		}
-	}
-	else if (!(shift = d_shift - s_shift))
-	{
-	/* Same shift for both source and dest */
-		begmask	= 0xffff >> s_shift;
-		endmask = ~(0xffff >> ((rpb->sx2 + 1) & 0xf));
-		hbits	= (16 - s_shift) & 0xf;
-		width	-= hbits;
+			endmask = 0xffff >> (rpb->sx1 & 0xf);
 
-		if (width <= 0)
-		{
-			hbits = width + hbits;
-			groups = ebits = 0;
-			begmask &= endmask;
-		}
-		else if (width > 15)
-		{
-			ebits = (rpb->sx2 + 1) & 0xf;
-			groups = (width - ebits) >> 4;
-		}
-		else
-		{
-			groups = 0;
-			ebits = width;
-		}
-
-		for (; height > 0; height--)
-		{
-			s = src;
-			d = dst;
-			if (hbits)
-				*d++ = ((*s++ ^ *d) & begmask) | (*d & ~begmask);
-			for (i = groups; i > 0; i--)
-				*d++ ^= *s++;
-			if (ebits)
-				*d++ = ((*s++ ^ *d) & endmask) | (*d & ~endmask);
-
-			src += sbpl;
-			dst += dbpl;
-		}			
-	}
-	else if (shift > 0)
-	{
-	/* shift source right */
-		begmask = 0xffff >> d_shift;
-		endmask = ~(0xffff >> ((rpb->dx2 + 1) & 0xf));
-		hbits	= (16 - d_shift) & 0xf;
-		width	-= hbits;
-
-		if (width <= 0)
-		{
-			hbits = width + hbits;
-			groups = ebits = 0;
-			begmask &= endmask;
-		}
-		else if (width > 15)
-		{
-			ebits = (rpb->dx2 + 1) & 0xf;
-			groups = (width - ebits) >> 4;
-		}
-		else
-		{
-			groups = 0;
-			ebits = width;
-		}
-
-		spans = (s_shift + width) - 16;
-
-		if (spans < 0)
-			spans = 0;
-
-		for (; height > 0; height--)
-		{
-			s = src;
-			d = dst;
-			if (hbits)
+			for (; height > 0; height--)
 			{
-				data = *s++;
-				*d++ = (((data >> shift) ^ *d) & begmask) | (*d & ~begmask);
+				s = src;
+				d = dst;
+				for (i = width >> 4; i > 0; i--)
+					*d-- ^= *s--;
+				if (endmask != 0xffff)
+					*d-- = ((*d ^ *s--) & endmask) | (*d & ~endmask);
+				src -= sbpl;
+				dst -= dbpl;
+			}
+		}
+		else if (!(shift = s_shift - d_shift))
+		{
+		/* Same shift for both source and dest */
+			begmask	= 0xffff << s_shift;
+			endmask = 0xffff >> (rpb->sx1 & 0xf);
+			hbits	= (16 - s_shift) & 0xf;
+			width	-= hbits;
+
+			if (width <= 0)
+			{
+				hbits = width + hbits;
+				groups = ebits = 0;
+				begmask &= endmask;
+			}
+			else if (width > 15)
+			{
+				ebits = (16 - (rpb->sx1 & 0xf)) & 0xf;
+				groups = (width - ebits) >> 4;
 			}
 			else
-				data = 0;
-			if (groups)
 			{
+				groups = 0;
+				ebits = width;
+			}
+			for (; height > 0; height--)
+			{
+				s = src;
+				d = dst;
+				if (hbits)
+					*d-- = ((*d ^ *s--) & begmask) | (*d & ~begmask);
 				for (i = groups; i > 0; i--)
-				{
-					data <<= 16 - shift;
-					data |= (*s >> shift);
-					*d++ ^= data;
-					data = *s++;
-				}
+					*d-- ^= *s--;
+				if (ebits)
+					*d-- = ((*d ^ *s--) & endmask) | (*d & ~endmask);
+
+				src -= sbpl;
+				dst -= dbpl;
+			}			
+		}
+		else if (shift > 0)
+		{
+		/* shift source right */
+			begmask = 0xffff << d_shift;
+			endmask = 0xffff >> (rpb->dx1 & 0xf);
+			hbits	= (16 - d_shift) & 0xf;
+			width	-= hbits;
+
+			if (width <= 0)
+			{
+				hbits = width + hbits;
+				groups = ebits = 0;
+				begmask &= endmask;
+			}
+			else if (width > 15)
+			{
+				ebits = (16 - (rpb->dx1 & 0xf)) & 0xf;
+				groups = (width - ebits) >> 4;
+			}
+			else
+			{
+				groups = 0;
+				ebits = width;
 			}
 
-			if (ebits)
+			spans = s_shift + width; //(16 - s_shift) + width; //ebits - shift;
+
+			for (; height > 0; height--)
 			{
-				data <<= 16 - shift;
-				if (spans)
-					data |= *s++ >> (ebits - spans);
-				*d++ = ((data ^ *d) & endmask) | (*d & ~endmask);
+				s = src;
+				d = dst;
+
+				if (hbits)
+				{
+					data = *s-- >> shift;
+					if (spans > 16)
+						data |= *s << (16 - shift);
+					*d-- = ((*d ^ data) & begmask) | (*d & ~ begmask);
+
+				}
+
+				if (groups)
+				{
+					for (i = groups; i > 0; i--)
+					{
+						data = *s-- >> shift;
+						data |= *s << (16 - shift);
+						*d-- ^= data;
+					}
+				}
+
+				if (ebits)
+				{
+					data = *s-- >> shift;
+					if ((spans & 0xf) < ebits)
+						data |= *s << (16 - shift);
+					*d-- = ((*d ^ data) & endmask) | (*d & ~endmask);
+				}
+				src -= sbpl;
+				dst -= dbpl;
+			}		
+		}
+		else
+		{
+			unsigned short data1;
+
+			/* shift source left */
+			shift	= -shift;
+			begmask = 0xffff << d_shift;
+			endmask = 0xffff >> (rpb->dx1 & 0xf);
+			hbits	= (16 - d_shift) & 0xf;
+			width	-= hbits;
+
+			if (width <= 0)
+			{
+				hbits = width + hbits;
+				groups = ebits = 0;
+				begmask &= endmask;
 			}
-			src += sbpl;
-			dst += dbpl;
-		}		
+			else if (width > 15)
+			{
+				ebits = (16 - (rpb->dx1 & 0xf)) & 0xf;
+				groups = (width - ebits) >> 4;
+			}
+			else
+			{
+				groups = 0;
+				ebits = width;
+			}
+
+			spans = ebits - shift;
+
+			if (spans < 0)
+				spans = 0;
+
+			for (; height > 0; height--)
+			{
+				s = src;
+				d = dst;
+
+				if (hbits)
+				{
+					data = *s--;
+					*d-- = ((*d ^ (data << shift)) & begmask) | (*d & ~begmask);
+				}
+				else
+					data = 0;
+
+				if (groups)
+				{
+					for (i = groups; i > 0; i--)
+					{
+						data >>= 16 - shift;
+						data1 = *s--;
+						data |= data1 << shift;
+						*d-- ^= data;
+						data = data1;
+					}
+				}
+
+				if (ebits)
+				{
+					data >>= 16 - shift;
+					if (spans)
+						data |= *s-- << shift;
+					*d-- = ((*d ^ data) & endmask) | (*d & ~endmask);
+				}
+				src -= sbpl;
+				dst -= dbpl;
+			}
+		}
 	}
 	else
 	{
-	/* shift source left */
-		shift	= -shift;
-		begmask = 0xffff >> s_shift;
-		endmask = ~(0xffff >> ((rpb->sx2 + 1) & 0xf));
-		hbits	= (16 - s_shift) & 0xf;
-		width	-= hbits;
+		unsigned short data1;
 
-		if (width <= 0)
+		s_shift	= rpb->sx1 & 0xf;
+		d_shift	= rpb->dx1 & 0xf;
+
+		if (!s_shift && !d_shift)
 		{
-			hbits = width + hbits;
-			groups = ebits = 0;
-			begmask &= endmask;
+		/* source & destination starts on whole word */
+
+			endmask = ~(0xffff >> ((rpb->sx2 + 1) & 0xf));
+
+			for (; height > 0; height--)
+			{
+				s = src;
+				d = dst;
+				for (i = width >> 4; i > 0; i--)
+					*d++ ^= *s++;
+				if (endmask != 0xffff)
+					*d++ = ((*d ^ *s++) & endmask) | (*d & ~endmask);
+				src += sbpl;
+				dst += dbpl;
+			}
 		}
-		else if (width > 15)
+		else if (!(shift = d_shift - s_shift))
 		{
-			ebits = (rpb->dx2 + 1) & 0xf;
-			groups = (width - ebits) >> 4;
+		/* Same shift for both source and dest */
+			begmask	= 0xffff >> s_shift;
+			endmask = ~(0xffff >> ((rpb->sx2 + 1) & 0xf));
+			hbits	= (16 - s_shift) & 0xf;
+			width	-= hbits;
+
+			if (width <= 0)
+			{
+				hbits = width + hbits;
+				groups = ebits = 0;
+				begmask &= endmask;
+			}
+			else if (width > 15)
+			{
+				ebits = (rpb->sx2 + 1) & 0xf;
+				groups = (width - ebits) >> 4;
+			}
+			else
+			{
+				groups = 0;
+				ebits = width;
+			}
+			for (; height > 0; height--)
+			{
+				s = src;
+				d = dst;
+				if (hbits)
+					*d++ = ((*d ^ *s++) & begmask) | (*d & ~begmask);
+				for (i = groups; i > 0; i--)
+					*d++ ^= *s++;
+				if (ebits)
+					*d++ = ((*d ^ *s++) & endmask) | (*d & ~endmask);
+
+				src += sbpl;
+				dst += dbpl;
+			}			
+		}
+		else if (shift > 0)
+		{
+		/* shift source right */
+			begmask = 0xffff >> d_shift;
+			endmask = ~(0xffff >> ((rpb->dx2 + 1) & 0xf));
+			hbits	= (16 - d_shift) & 0xf;
+			width	-= hbits;
+
+			if (width <= 0)
+			{
+				hbits = width + hbits;
+				groups = ebits = 0;
+				begmask &= endmask;
+			}
+			else if (width > 15)
+			{
+				ebits = (rpb->dx2 + 1) & 0xf;
+				groups = (width - ebits) >> 4;
+			}
+			else
+			{
+				groups = 0;
+				ebits = width;
+			}
+
+			spans = ebits - shift;
+
+			if (spans < 0)
+				spans = 0;
+
+			for (; height > 0; height--)
+			{
+				s = src;
+				d = dst;
+
+				if (hbits)
+				{
+					data = *s++;
+					*d++ = ((*d ^ (data >> shift)) & begmask) | (*d & ~begmask);
+				}
+				else
+					data = 0;
+
+				if (groups)
+				{
+					for (i = groups; i > 0; i--)
+					{
+						data <<= 16 - shift;
+						data1 = *s++;
+						data |= data1 >> shift;
+						*d++ ^= data;
+						data = data1;
+					}
+				}
+
+				if (ebits)
+				{
+					data <<= 16 - shift;
+					if (spans)
+						data |= *s++ >> shift;
+					*d++ = ((*d ^ data) & endmask) | (*d & ~endmask);
+				}
+				src += sbpl;
+				dst += dbpl;
+			}		
 		}
 		else
 		{
-			groups = 0;
-			ebits = width;
-		}
+			/* shift source left */
+			shift	= -shift;
+			begmask = 0xffff >> d_shift;
+			endmask = ~(0xffff >> ((rpb->dx2 + 1) & 0xf));
+			hbits	= (16 - d_shift) & 0xf;
+			width	-= hbits;
 
-		spans = (d_shift + width) - 16;
-
-		if (spans < 0)
-			spans = 0;
-
-		for (; height > 0; height--)
-		{
-			s = src;
-			d = dst;
-
-			if (hbits)
+			if (width <= 0)
 			{
-				data = (*s++ << shift) & begmask;
+				hbits = width + hbits;
+				groups = ebits = 0;
+				begmask &= endmask;
+			}
+			else if (width > 15)
+			{
+				ebits = (rpb->dx2 + 1) & 0xf;
+				groups = (width - ebits) >> 4;
 			}
 			else
-				data = 0;
-			if (groups)
 			{
-				data |= *s >> (d_shift + hbits);
-				*d++ ^= ((data ^ *d) & begmask) | (*d & ~begmask);
+				groups = 0;
+				ebits = width;
+			}
 
-				for (i = groups; i > 0; i--)
+			spans = s_shift + width;
+
+			for (; height > 0; height--)
+			{
+				s = src;
+				d = dst;
+
+				if (hbits)
 				{
-					*d++ ^= (*s++ << shift) | (*s >> (16 - shift));
 					data = *s++ << shift;
-				}
-			}
 
-			if (ebits)
-			{
-				data |= *s >> (d_shift + hbits);
-				if (spans)
+					if (spans > 16)
+						data |= *s >> (16 - shift); //spans;
+
+					*d++ = ((*d ^ data) & begmask) | (*d & ~begmask);
+				}
+				if (groups)
 				{
-					*d++ ^= data;
-					data = *s++;
+					for (i = groups; i > 0; i--)
+					{
+						data = *s++ << shift;
+						data |= *s >> (16 - shift);
+						*d++ ^= data;
+					}
 				}
-				else
-					s++;
-				*d++ = ((data ^ *d) & endmask) | (*d & ~endmask);
-			}
-			else
-				*d++ = data;
+				if (ebits)
+				{
+					data = *s++ << shift;
 
-			src += sbpl;
-			dst += dbpl;
-		}		
+					if ((spans & 0xf) < ebits)
+						data |= *s >> (16 - shift);
+
+					*d++ = ((*d ^ data) & endmask) | (*d & ~endmask);
+				}
+
+				src += sbpl;
+				dst += dbpl;
+			}		
+		}
 	}
 }
 
@@ -837,93 +1327,544 @@ rb_S_OR_D(ROP_PB *rpb)
 	width	= rpb->sx2 - rpb->sx1 + 1;
 	height	= rpb->sy2 - rpb->sy1 + 1;
 
-	sbpl	= rpb->s_bypl;
-	dbpl	= rpb->d_bypl;
+	sbpl	= rpb->s_bypl >> 1;
+	dbpl	= rpb->d_bypl >> 1;
 
-	(long)src = (long)rpb->s_addr + (long)(rpb->sx1 >> 4) + (long)(rpb->sy1 * sbpl);
-	(long)dst = (long)rpb->d_addr + (long)(rpb->dx1 >> 4) + (long)(rpb->dy1 * dbpl);
+	src = (unsigned short *)rpb->s_addr + (long)(rpb->sx1 >> 4) + (long)((long)rpb->sy1 * sbpl);
+	dst = (unsigned short *)rpb->d_addr + (long)(rpb->dx1 >> 4) + (long)((long)rpb->dy1 * dbpl);
 
-	s_shift	= rpb->sx1 & 0xf;
-	d_shift	= rpb->dx1 & 0xf;
-
-	sbpl >>= 1; 
-	dbpl >>= 1;
-
-	if (!s_shift && !d_shift)
+	if (src < dst)
 	{
-	/* source & destination starts on whole word */
+		src = (unsigned short *)rpb->s_addr + (long)(rpb->sx2 >> 4) + (long)((long)rpb->sy2 * sbpl);
+		dst = (unsigned short *)rpb->d_addr + (long)(rpb->dx2 >> 4) + (long)((long)rpb->dy2 * dbpl);
 
-		endmask = 0xffff >> ((rpb->sx2 + 1) & 0xf);
+		s_shift	= 15 - (rpb->sx2 & 0xf);
+		d_shift	= 15 - (rpb->dx2 & 0xf);
 
-		for (; height > 0; height--)
+		if (!s_shift && !d_shift)
 		{
-			s = src;
-			d = dst;
-			for (i = width >> 4; i > 0; i--)
-				*d++ |= *s++;
-			if (endmask != 0xffff)
-				*d++ |= (*s++ & ~endmask);
-			src += sbpl;
-			dst += dbpl;
+		/* source & destination starts on whole word */
+
+			endmask = 0xffff >> (rpb->sx1 & 0xf);
+
+			for (; height > 0; height--)
+			{
+				s = src;
+				d = dst;
+				for (i = width >> 4; i > 0; i--)
+					*d-- |= *s--;
+				if (endmask != 0xffff)
+					*d-- = ((*d | *s--) & endmask) | (*d & ~endmask);
+				src -= sbpl;
+				dst -= dbpl;
+			}
 		}
-	}
-	else if (!(shift = d_shift - s_shift))
-	{
-	/* Same shift for both source and dest */
-		begmask	= 0xffff >> s_shift;
-		endmask = 0xffff >> ((rpb->sx2 + 1) & 0xf);
-		hbits	= (16 - s_shift) & 0xf;
-		width	-= hbits;
+		else if (!(shift = s_shift - d_shift))
+		{
+		/* Same shift for both source and dest */
+			begmask	= 0xffff << s_shift;
+			endmask = 0xffff >> (rpb->sx1 & 0xf);
+			hbits	= (16 - s_shift) & 0xf;
+			width	-= hbits;
 
-		if (width <= 0)
-		{
-			hbits = width + hbits;
-			groups = ebits = 0;
-			begmask = ~endmask;
+			if (width <= 0)
+			{
+				hbits = width + hbits;
+				groups = ebits = 0;
+				begmask &= endmask;
+			}
+			else if (width > 15)
+			{
+				ebits = (16 - (rpb->sx1 & 0xf)) & 0xf;
+				groups = (width - ebits) >> 4;
+			}
+			else
+			{
+				groups = 0;
+				ebits = width;
+			}
+			for (; height > 0; height--)
+			{
+				s = src;
+				d = dst;
+				if (hbits)
+					*d-- = ((*d | *s--) & begmask) | (*d & ~begmask);
+				for (i = groups; i > 0; i--)
+					*d-- |= *s--;
+				if (ebits)
+					*d-- = ((*d | *s--) & endmask) | (*d & ~endmask);
+
+				src -= sbpl;
+				dst -= dbpl;
+			}			
 		}
-		else if (width > 15)
+		else if (shift > 0)
 		{
-			ebits = (rpb->sx2 + 1) & 0xf;
-			groups = (width - ebits) >> 4;
+		/* shift source right */
+			begmask = 0xffff << d_shift;
+			endmask = 0xffff >> (rpb->dx1 & 0xf);
+			hbits	= (16 - d_shift) & 0xf;
+			width	-= hbits;
+
+			if (width <= 0)
+			{
+				hbits = width + hbits;
+				groups = ebits = 0;
+				begmask &= endmask;
+			}
+			else if (width > 15)
+			{
+				ebits = (16 - (rpb->dx1 & 0xf)) & 0xf;
+				groups = (width - ebits) >> 4;
+			}
+			else
+			{
+				groups = 0;
+				ebits = width;
+			}
+
+			spans = s_shift + width; //(16 - s_shift) + width; //ebits - shift;
+
+			for (; height > 0; height--)
+			{
+				s = src;
+				d = dst;
+
+				if (hbits)
+				{
+					data = *s-- >> shift;
+					if (spans > 16)
+						data |= *s << (16 - shift);
+					*d-- = ((*d | data) & begmask) | (*d & ~ begmask);
+
+				}
+
+				if (groups)
+				{
+					for (i = groups; i > 0; i--)
+					{
+						data = *s-- >> shift;
+						data |= *s << (16 - shift);
+						*d-- |= data;
+					}
+				}
+
+				if (ebits)
+				{
+					data = *s-- >> shift;
+					if ((spans & 0xf) < ebits)
+						data |= *s << (16 - shift);
+					*d-- = ((*d | data) & endmask) | (*d & ~endmask);
+				}
+				src -= sbpl;
+				dst -= dbpl;
+			}		
 		}
 		else
 		{
-			groups = 0;
-			ebits = width;
+			unsigned short data1;
+
+			/* shift source left */
+			shift	= -shift;
+			begmask = 0xffff << d_shift;
+			endmask = 0xffff >> (rpb->dx1 & 0xf);
+			hbits	= (16 - d_shift) & 0xf;
+			width	-= hbits;
+
+			if (width <= 0)
+			{
+				hbits = width + hbits;
+				groups = ebits = 0;
+				begmask &= endmask;
+			}
+			else if (width > 15)
+			{
+				ebits = (16 - (rpb->dx1 & 0xf)) & 0xf;
+				groups = (width - ebits) >> 4;
+			}
+			else
+			{
+				groups = 0;
+				ebits = width;
+			}
+
+			spans = ebits - shift;
+
+			if (spans < 0)
+				spans = 0;
+
+			for (; height > 0; height--)
+			{
+				s = src;
+				d = dst;
+
+				if (hbits)
+				{
+					data = *s--;
+					*d-- = ((*d | (data << shift)) & begmask) | (*d & ~begmask);
+				}
+				else
+					data = 0;
+
+				if (groups)
+				{
+					for (i = groups; i > 0; i--)
+					{
+						data >>= 16 - shift;
+						data1 = *s--;
+						data |= data1 << shift;
+						*d-- |= data;
+						data = data1;
+					}
+				}
+
+				if (ebits)
+				{
+					data >>= 16 - shift;
+					if (spans)
+						data |= *s-- << shift;
+					*d-- = ((*d | data) & endmask) | (*d & ~endmask);
+				}
+				src -= sbpl;
+				dst -= dbpl;
+			}
 		}
-
-		for (; height > 0; height--)
-		{
-			s = src;
-			d = dst;
-			if (hbits)
-				*d++ |= (*s++ & ~begmask);
-			for (i = groups; i > 0; i--)
-				*d++ |= *s++;
-			if (ebits)
-				*d++ |= (*s++ & ~endmask);
-
-			src += sbpl;
-			dst += dbpl;
-		}			
 	}
-	else if (shift > 0)
+	else
 	{
+		unsigned short data1;
+
+		s_shift	= rpb->sx1 & 0xf;
+		d_shift	= rpb->dx1 & 0xf;
+
+		if (!s_shift && !d_shift)
+		{
+		/* source & destination starts on whole word */
+
+			endmask = ~(0xffff >> ((rpb->sx2 + 1) & 0xf));
+
+			for (; height > 0; height--)
+			{
+				s = src;
+				d = dst;
+				for (i = width >> 4; i > 0; i--)
+					*d++ |= *s++;
+				if (endmask != 0xffff)
+					*d++ = ((*d | *s++) & endmask) | (*d & ~endmask);
+				src += sbpl;
+				dst += dbpl;
+			}
+		}
+		else if (!(shift = d_shift - s_shift))
+		{
+		/* Same shift for both source and dest */
+			begmask	= 0xffff >> s_shift;
+			endmask = ~(0xffff >> ((rpb->sx2 + 1) & 0xf));
+			hbits	= (16 - s_shift) & 0xf;
+			width	-= hbits;
+
+			if (width <= 0)
+			{
+				hbits = width + hbits;
+				groups = ebits = 0;
+				begmask &= endmask;
+			}
+			else if (width > 15)
+			{
+				ebits = (rpb->sx2 + 1) & 0xf;
+				groups = (width - ebits) >> 4;
+			}
+			else
+			{
+				groups = 0;
+				ebits = width;
+			}
+			for (; height > 0; height--)
+			{
+				s = src;
+				d = dst;
+				if (hbits)
+					*d++ = ((*d | *s++) & begmask) | (*d & ~begmask);
+				for (i = groups; i > 0; i--)
+					*d++ |= *s++;
+				if (ebits)
+					*d++ = ((*d | *s++) & endmask) | (*d & ~endmask);
+
+				src += sbpl;
+				dst += dbpl;
+			}			
+		}
+		else if (shift > 0)
+		{
+		/* shift source right */
+			begmask = 0xffff >> d_shift;
+			endmask = ~(0xffff >> ((rpb->dx2 + 1) & 0xf));
+			hbits	= (16 - d_shift) & 0xf;
+			width	-= hbits;
+
+			if (width <= 0)
+			{
+				hbits = width + hbits;
+				groups = ebits = 0;
+				begmask &= endmask;
+			}
+			else if (width > 15)
+			{
+				ebits = (rpb->dx2 + 1) & 0xf;
+				groups = (width - ebits) >> 4;
+			}
+			else
+			{
+				groups = 0;
+				ebits = width;
+			}
+
+			spans = ebits - shift;
+
+			if (spans < 0)
+				spans = 0;
+
+			for (; height > 0; height--)
+			{
+				s = src;
+				d = dst;
+
+				if (hbits)
+				{
+					data = *s++;
+					*d++ = ((*d | (data >> shift)) & begmask) | (*d & ~begmask);
+				}
+				else
+					data = 0;
+
+				if (groups)
+				{
+					for (i = groups; i > 0; i--)
+					{
+						data <<= 16 - shift;
+						data1 = *s++;
+						data |= data1 >> shift;
+						*d++ |= data;
+						data = data1;
+					}
+				}
+
+				if (ebits)
+				{
+					data <<= 16 - shift;
+					if (spans)
+						data |= *s++ >> shift;
+					*d++ = ((*d | data) & endmask) | (*d & ~endmask);
+				}
+				src += sbpl;
+				dst += dbpl;
+			}		
+		}
+		else
+		{
+			/* shift source left */
+			shift	= -shift;
+			begmask = 0xffff >> d_shift;
+			endmask = ~(0xffff >> ((rpb->dx2 + 1) & 0xf));
+			hbits	= (16 - d_shift) & 0xf;
+			width	-= hbits;
+
+			if (width <= 0)
+			{
+				hbits = width + hbits;
+				groups = ebits = 0;
+				begmask &= endmask;
+			}
+			else if (width > 15)
+			{
+				ebits = (rpb->dx2 + 1) & 0xf;
+				groups = (width - ebits) >> 4;
+			}
+			else
+			{
+				groups = 0;
+				ebits = width;
+			}
+
+			spans = s_shift + width;
+
+			for (; height > 0; height--)
+			{
+				s = src;
+				d = dst;
+
+				if (hbits)
+				{
+					data = *s++ << shift;
+
+					if (spans > 16)
+						data |= *s >> (16 - shift); //spans;
+
+					*d++ = ((*d | data) & begmask) | (*d & ~begmask);
+				}
+				if (groups)
+				{
+					for (i = groups; i > 0; i--)
+					{
+						data = *s++ << shift;
+						data |= *s >> (16 - shift);
+						*d++ |= data;
+					}
+				}
+				if (ebits)
+				{
+					data = *s++ << shift;
+
+					if ((spans & 0xf) < ebits)
+						data |= *s >> (16 - shift);
+
+					*d++ = ((*d | data) & endmask) | (*d & ~endmask);
+				}
+
+				src += sbpl;
+				dst += dbpl;
+			}		
+		}
+	}
+}
+
+void
+draw_mousecurs_1b(register XMFORM *mf, register short x, register short y)
+{
+
+	register short width, height, xoff, yoff, bypl;
+	short	dbpl, w;
+	register XMSAVE *ms;
+
+	//display("x %d, y %d, mx %d, my %d\n", x, y, mx, my);
+
+	width = mf->width;
+	height = mf->height;
+	ms = mf->save;
+	bypl = mf->bypl;
+
+	xoff = yoff = 0;
+
+	if ((x -= mf->xhot) < 0)
+	{
+		if ( (width += x) < 0)
+		{
+			ms->valid = 0;
+			return;
+		}
+		xoff = -x;
+		x = 0;
+	}
+	else
+	{
+		register short x2 = x + width - 1;
+		register short mx = mf->mx;
+
+		if (x2 > mx)
+		{
+			if ( (width -= x2 - mx) < 0)
+			{
+				ms->valid = 0;
+				return;
+			}
+		}
+	}
+
+	if ((y -= mf->yhot) < 0)
+	{
+		if ((height += y) < 0)
+		{
+			ms->valid = 0;
+			return;
+		}
+		yoff = -y;
+		y = 0;
+	}
+	else
+	{
+		register short y2 = y + height - 1;
+		register short my = mf->my;
+
+		if (y2 > my)
+		{
+			if ((height -= (y2 - my)) < 0)
+			{
+				ms->valid = 0;
+				return;
+			}
+		}
+	}
+
+	xoff	&= 0xf;
+	bypl	>>= 1;
+	w	= ((x & 0xf) + width + 15) >> 4;
+	dbpl	= bypl - w;
+
+	{
+		register unsigned short *src, *dst;
+		register short i, j;
+
+
+		dst		= (unsigned short *)ms->save;
+		src		= (unsigned short *)mf->scr_base + (long)(((long)y * bypl) + (x >> 4));
+
+		ms->width	= w;
+		ms->height	= height;
+		ms->bypl	= bypl;
+		ms->valid	= 1;
+		ms->src		= (unsigned char *)src;
+
+		for (i = height; i > 0; i--)
+		{
+
+			for (j = w; j > 0; j--)
+				*dst++ = *src++;
+
+			src += dbpl;
+		}
+	}
+
+	if (mf->planes == 1)
+	{
+		register short i, hbits, ebits, groups, sbpl, spans;
+		register unsigned long fgc, bgc;
+		register unsigned short data, shift, begmask, endmask, mask;
+		register unsigned short *s;
+		register unsigned short *d;
+
+
+		d = (unsigned short *)mf->scr_base + (long)(((long)y * bypl) + (x >> 4));
+		s = (unsigned short *)mf->data + (long)(yoff * mf->mfbypl) + (long)((xoff >> 4) << 1);
+
+		sbpl = ((mf->width - (xoff + width)) >> 4) << 1;
+		fgc = mf->fg_pix;
+		bgc = mf->bg_pix;
+
 	/* shift source right */
-		begmask = 0xffff >> d_shift;
-		endmask = 0xffff >> ((rpb->dx2 + 1) & 0xf);
-		hbits	= (16 - d_shift) & 0xf;
+		if (xoff)
+		{
+			shift	= 16 - xoff;
+			hbits	= 0;
+		}
+		else
+		{
+			shift	= x & 0xf;
+			hbits	= (16 - shift) & 0xf;
+		}
+
+		begmask = 0xffff >> shift;
+		endmask = ~(0xffff >> ((x + width) & 0xf));
 		width	-= hbits;
 
 		if (width <= 0)
 		{
 			hbits = width + hbits;
 			groups = ebits = 0;
-			begmask &= ~endmask;
+			begmask &= endmask;
 		}
 		else if (width > 15)
 		{
-			ebits = (rpb->dx2 + 1) & 0xf;
+			ebits = (x + width) & 0xf;
 			groups = (width - ebits) >> 4;
 		}
 		else
@@ -932,116 +1873,88 @@ rb_S_OR_D(ROP_PB *rpb)
 			ebits = width;
 		}
 
-		spans = (s_shift + width) - 16;
+		spans = (ebits + hbits) - 16;
 
 		if (spans < 0)
 			spans = 0;
 
 		for (; height > 0; height--)
 		{
-			s = src;
-			d = dst;
+
+			//data = *s++;	/* mask */
+			//data &= *s++;	/* data */
+			
+
 			if (hbits)
 			{
+				mask = *s++;
 				data = *s++;
-				*d++ |= ((data >> shift) & ~begmask);
+				*d++ = (((data & mask) >> shift) & begmask) | (*d & ~(mask >> shift));
 			}
 			else
+			{
+				mask = 0;
 				data = 0;
+			}
+				
 			if (groups)
 			{
+				register unsigned short md, mm;
+
 				for (i = groups; i > 0; i--)
 				{
+					mask <<= 16 - shift;
 					data <<= 16 - shift;
-					data |= (*s >> shift);
-					*d++ |= data;
-					data = *s++;
+					mm = *s++;
+					md = *s++;
+					mask |= mm >> shift;
+					data |= md >> shift;
+					*d++ = (*d & ~mask) | data;
+					mask = mm;
+					data = md;
 				}
 			}
 
 			if (ebits)
 			{
 				data <<= 16 - shift;
+				mask <<= 16 - shift;
 				if (spans)
-					data |= *s++ >> (ebits - spans);
-				*d++ |= (data & ~endmask);
+				{
+					mask |= *s++ >> shift;
+					data |= *s++ >> shift;
+					//data |= (*s++ & *s++) >> (ebits - spans);
+				}
+				*d++ = (*d & ~mask) | (data & mask);
+				//*d++ = (data & endmask) | (*d & ~endmask);
 			}
-			src += sbpl;
-			dst += dbpl;
+			s += sbpl;
+			d += dbpl;
 		}		
 	}
-	else
+	return;
+}
+
+void
+restore_msave_1b(XMSAVE *ms)
+{
+	register short width, w, height, nl;
+	register unsigned short *src, *dst;
+
+	if (ms->valid)
 	{
-	/* shift source left */
-		shift	= -shift;
-		begmask = 0xffff >> s_shift;
-		endmask = 0xffff >> ((rpb->sx2 + 1) & 0xf);
-		hbits	= (16 - s_shift) & 0xf;
-		width	-= hbits;
+		src	= (unsigned short *)ms->save;
+		dst	= (unsigned short *)ms->src;
+		width	= ms->width;
+		nl	= ms->bypl - width;
 
-		if (width <= 0)
+		for (height = ms->height; height > 0; height--)
 		{
-			hbits = width + hbits;
-			groups = ebits = 0;
-			begmask &= ~endmask;
+			for (w = width; w > 0; w--)
+				*dst++ = *src++;
+			dst += nl;
 		}
-		else if (width > 15)
-		{
-			ebits = (rpb->dx2 + 1) & 0xf;
-			groups = (width - ebits) >> 4;
-		}
-		else
-		{
-			groups = 0;
-			ebits = width;
-		}
-
-		spans = (d_shift + width) - 16;
-
-		if (spans < 0)
-			spans = 0;
-
-		for (; height > 0; height--)
-		{
-			s = src;
-			d = dst;
-
-			if (hbits)
-			{
-				data = (*s++ << shift) & begmask;
-			}
-			else
-				data = 0;
-			if (groups)
-			{
-				data |= *s >> (d_shift + hbits);
-				*d++ |= data;
-
-				for (i = groups; i > 0; i--)
-				{
-					*d++ |= (*s++ << shift) | (*s >> (16 - shift));
-					data = *s++ << shift;
-				}
-			}
-
-			if (ebits)
-			{
-				
-				data |= *s >> (d_shift + hbits);
-				if (spans)
-				{
-					*d++ |= data;
-					data = *s++;
-				}
-				else
-					s++;
-				*d++ |= (data & ~endmask);
-			}
-			else
-				*d++ |= data;
-
-			src += sbpl;
-			dst += dbpl;
-		}		
+		ms->valid = 0;
 	}
+	return;
 }

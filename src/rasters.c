@@ -499,7 +499,7 @@ frc_fail:
 	return 0;
 }
 
-static short rt2ro[] = { 3, 7, 6, 8 };
+static short rt2ro[] = { 3, 0, 0, 0 };
 
 /* if wrmode has bit 15 set, wrmode is interpreted to be a vdi writing mode, not a blitblt */
 void
@@ -530,6 +530,13 @@ rt_cpyfm(VIRTUAL *v, MFDB *src, MFDB *dst, short *pnts, short fgcol, short bgcol
 
 	if ( dst->fd_addr == 0)
 	{	/* destination screen! */
+
+		if (r->planes == 1 && !wrmode) //rt2ro[wrmode] != 0)
+		{
+			ro_cpyfm(v, src, dst, pnts, rt2ro[wrmode]);
+			return;
+		}
+			
 		drawers = r->drawers;
 		planes		= r->planes;
 		bypl		= r->bypl;

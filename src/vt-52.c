@@ -116,8 +116,8 @@ init_console(VIRTUAL *v, LINEA_VARTAB *la)
 	c->v = v;
 	c->la = la;
 
-	c->col_vdi2hw = v->color_vdi2hw; //VDI2HW_colorindex;
-	c->col_hw2vdi = v->color_hw2vdi; //HW2VDI_colorindex;
+	c->col_vdi2hw = v->color_vdi2hw;
+	c->col_hw2vdi = v->color_hw2vdi;
 
 	c->pattern.expanded = 0;
 	c->pattern.color[0] = c->pattern.color[1] = c->col_vdi2hw[0];

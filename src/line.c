@@ -137,12 +137,11 @@ abline (VIRTUAL *v, struct vdirect *pnts, PatAttr *ptrn)
 	short xinc;			/* positive increase for each x step */
 	short yinc;			/* in/decrease for each y step */
 	short planes, fgcol, bgcol;
-	unsigned short msk;
+	//unsigned short msk;
 	unsigned short linemask;	/* linestyle bits */
 	register pixel_blit dlp_fg;
 	register pixel_blit dlp_bg;
 	short	eps, e1, e2, loopcnt;
-	unsigned short bit;
 	RASTER *r;
 
 
@@ -231,7 +230,9 @@ abline (VIRTUAL *v, struct vdirect *pnts, PatAttr *ptrn)
 				else if (dlp_bg)
 					(*dlp_bg)(addr, (long)(((long)shift<<16)|fgcol));
 
-				if (!(bitcount--))
+				bitcount--;
+
+				if (bitcount <= 0)
 				{
 					bitcount = 16;
 					addr += xinc;
@@ -260,19 +261,25 @@ abline (VIRTUAL *v, struct vdirect *pnts, PatAttr *ptrn)
 				if (linemask & 1)
 				{
 					if (dlp_fg)
-						(*dlp_fg)(addr, (long)(((long)bit<<16)|fgcol));
+						(*dlp_fg)(addr, (long)(((long)shift<<16)|fgcol));
 				}
 				else if (dlp_bg)
-					(*dlp_bg)(addr, (long)(((long)bit<<16)|fgcol));
+					(*dlp_bg)(addr, (long)(((long)shift<<16)|fgcol));
 				
 				addr += yinc;
 				eps += e1;
 				if ( eps >= 0 )
 				{
 					eps -= e2;
-					bit = bit >> 1 | bit << 15;
-					if (bit & 0x8000)
+					bitcount--;
+					if (bitcount <= 0)
+					{
+						bitcount = 16;
 						addr += xinc;
+						shift = 0;
+					}
+					else
+						shift++;
 				}
 			}
 		}
@@ -405,26 +412,33 @@ habline (VIRTUAL *v, short x1, short x2, short y, PatAttr *ptrn)
 
 	if (planes < 8)
 	{
+		short bitcount, shift;
 
 		xinc = planes << 1;
-		bit = 0x8000 >> (x1 & 0xf);
+		shift = x & 0xf;
+		bitcount = 16 - shift;
 
-		addr = (unsigned char *)r->base + (((long)x >> 4) * Planes2xinc[planes]) + ((long)y * r->bypl);
+		addr = (unsigned char *)r->base + (((long)x >> 4) * xinc) + ((long)y * r->bypl);
 
 		for (i = 0; i < dx; i++)
 		{
 			if (linemask & 0x8000)
 			{
 				if (dpf_fg)
-					(*dpf_fg)(addr, (long)fgcol);
+					(*dpf_fg)(addr, (long)shift << 16 | fgcol);
 			}
 			else if (dpf_bg)
-				(*dpf_bg)(addr, (long)bgcol);
+				(*dpf_bg)(addr, (long)shift << 16 | bgcol);
 
-			bit = bit >> 1 | bit << 15;
-
-			if (bit & 0x8000)
+			bitcount--;
+			if (bitcount <= 0)
+			{
+				bitcount = 16;
 				addr += xinc;
+				shift = 0;
+			}
+			else
+				shift++;
 
 			linemask = linemask >> 15 | linemask << 1;
 		}
@@ -512,8 +526,11 @@ vabline (VIRTUAL *v, short y1, short y2, short x, PatAttr *ptrn)
 
 	if (planes < 8)
 	{
+		short shift;
 
-		addr = (unsigned char *)r->base + (((long)x >> 4) * Planes2xinc[planes]) + ((long)y * r->bypl);
+		shift = x & 0xf;
+		xinc = planes << 1;
+		addr = (unsigned char *)r->base + (((long)x >> 4) * xinc) + ((long)y * r->bypl);
 
 		for (i = 0; i < dy; i++)
 		{
@@ -521,10 +538,10 @@ vabline (VIRTUAL *v, short y1, short y2, short x, PatAttr *ptrn)
 			if (linemask & 1)
 			{
 				if (dpf_fg)
-					(*dpf_fg)(addr, (long)fgcol);
+					(*dpf_fg)(addr, (long)shift << 16 | fgcol);
 			}
 			else if (dpf_bg)
-				(*dpf_bg)(addr, (long)bgcol);
+				(*dpf_bg)(addr, (long)shift << 16 | bgcol);
 
 			addr += bypl;
 		}
@@ -1181,7 +1198,6 @@ draw_spans(VIRTUAL *v, short x1, short x2, short y, PatAttr *ptrn)
 	short bgcol, fgcol;
 	short wrmode;
 	unsigned short pattern, bit;
-	unsigned char *addr;
 	int i, j;
 	register pixel_blit dpf_fg;
 	register pixel_blit dpf_bg;
@@ -1211,34 +1227,131 @@ draw_spans(VIRTUAL *v, short x1, short x2, short y, PatAttr *ptrn)
 
 	if (planes < 8)
 	{
+		unsigned char *addr;
+		unsigned char *patrn;
+		short left, right, groups, bitcount, shift;
 
-		xinc = planes << 1;
-		bit = 0x8000 >> (x1 & 0xf);
+		xinc	= planes << 1;
+		shift	= x1 & 0xf;
+		bitcount = 16 - shift;
 
-		addr = (unsigned char *)r->base + (((long)x >> 4) * Planes2xinc[planes]) + ((long)y * r->bypl);
+		addr = (unsigned char *)r->base + ((long)(x >> 4) * xinc) + ((long)y * r->bypl);
 
-		for (i = 0; i < dx; i++)
+		patrn = (unsigned char *)(long)ptrn->data + ((y % ptrn->height)/*(y % ptrn->height)*/ * (ptrn->wwidth << 1));
+
+		left = 16 - (x1 & 0xf);
+		dx -= left;
+
+		if ( dx <= 0 )
 		{
-			pattern = pattern << 1 | pattern >> 15;
-			if (pattern & 1)
-			{
-				if (dpf_fg)
-					(*dpf_fg)(addr, (long)fgcol);
-			}
-			else if (dpf_bg)
-				(*dpf_bg)(addr, (long)bgcol);
-
-			bit = bit >> 1 | bit << 15;
-
-			if (bit & 0x8000)
-				addr += xinc;
+			left = left + dx;
+			groups = 0;
+			right = 0;
 		}
-			
+		else if (dx > 15)
+		{
+			right = (x2 & 0xf) + 1;
+			groups = (dx - right) >> 4;
+		}
+		else
+		{
+			groups = 0;
+			right = dx;
+		}
 
+		if (left)
+		{
+			pattern = x1 & 0xf ? (*(unsigned short *)patrn << ((x1 & 0xf))) | ( *(unsigned short *)patrn >> (16 - (x1 & 0xf)) ) : *(unsigned short *)patrn;
+
+			for (i = 0; i < left; i++)
+			{
+				if (pattern & 0x8000)
+				{
+					if (dpf_fg)
+						(*dpf_fg)(addr, (long)shift << 16 | fgcol);
+				}
+				else if (dpf_bg)
+					(*dpf_bg)(addr, (long)shift << 16 | bgcol);
+
+				bitcount--;
+
+				if (bitcount <= 0)
+				{
+					bitcount = 16;
+					addr += xinc;
+					shift = 0;
+				}
+				else
+					shift++;
+
+				pattern <<= 1; //pattern >> 15 | pattern << 1;
+			}
+		}
+
+		if (groups)
+		{
+			bit = *(unsigned short *)patrn;
+
+			for (i = 0; i < groups; i++)
+			{
+				pattern = bit;
+				for (j = 0; j < 16; j++)
+				{
+					//pattern = pattern >> 15 | pattern <<1;
+					if (pattern & 0x8000)
+					{
+						if (dpf_fg)
+							(*dpf_fg)(addr, (long)shift << 16 | fgcol);
+					}
+					else if (dpf_bg)
+						(*dpf_bg)(addr, (long)shift << 16 | bgcol);
+
+					bitcount--;
+
+					if (bitcount <= 0)
+					{
+						bitcount = 16;
+						addr += xinc;
+						shift = 0;
+					}
+					else
+						shift++;
+
+					pattern <<= 1;
+				}
+			}
+		}
+		if (right)
+		{
+			pattern = *(unsigned short *)patrn;
+			for (i = 0; i < right; i++)
+			{
+				if (pattern & 0x8000)
+				{
+					if (dpf_fg)
+						(*dpf_fg)(addr, (long)shift << 16 | fgcol);
+				}
+				else if (dpf_bg)
+					(*dpf_bg)(addr, (long)shift << 16 | bgcol);
+
+				bitcount--;
+
+				if (bitcount <= 0)
+				{
+					bitcount = 16;
+					addr += xinc;
+					shift = 0;
+				}
+				else
+					shift++;
+
+				pattern <<= 1;
+			}
+		}	
 	}
 	else /* (planes >= 8) */
 	{
-		unsigned char *patrn;
+		unsigned char *addr, *patrn;
 		short xind, pw;
 
 		xinc = Planes2xinc[planes - 8];
@@ -1382,7 +1495,6 @@ draw_mspans(VIRTUAL *v, short x1, short x2, short y1, short y2, PatAttr *ptrn)
 	short bgcol, fgcol;
 	short wrmode;
 	unsigned short pattern, bit;
-	unsigned char *addr;
 	int i, j;
 	register pixel_blit dpf_fg;
 	register pixel_blit dpf_bg;
@@ -1413,34 +1525,137 @@ draw_mspans(VIRTUAL *v, short x1, short x2, short y1, short y2, PatAttr *ptrn)
 
 	if (planes < 8)
 	{
+		unsigned char *addr, *a;
+		unsigned char *patrn;
+		short left, right, groups, shft, bc, shift, bitcount;
 
 		xinc = planes << 1;
-		bit = 0x8000 >> (x1 & 0xf);
+		a = (unsigned char *)r->base + ((long)(x >> 4) * xinc) + ((long)y1 * r->bypl);
 
-		addr = (unsigned char *)r->base + (((long)x >> 4) * Planes2xinc[planes]) + ((long)y1 * r->bypl);
+		left = 16 - (x1 & 0xf);
+		dx -= left;
 
-		for (i = 0; i < dx; i++)
+		shft = x1 & 0xf;
+		bc = 16 - shft;
+
+		if ( dx <= 0 )
 		{
-			pattern = pattern << 1 | pattern >> 15;
-			if (pattern & 1)
-			{
-				if (dpf_fg)
-					(*dpf_fg)(addr, (long)fgcol);
-			}
-			else if (dpf_bg)
-				(*dpf_bg)(addr, (long)bgcol);
-
-			bit = bit >> 1 | bit << 15;
-
-			if (bit & 0x8000)
-				addr += xinc;
+			left = left + dx;
+			groups = 0;
+			right = 0;
 		}
-			
+		else if (dx > 15)
+		{
+			right = (x2 & 0xf) + 1;
+			groups = (dx - right) >> 4;
+		}
+		else
+		{
+			groups = 0;
+			right = dx;
+		}
 
+		for (; dy > 0; dy--)
+		{
+
+			patrn = (unsigned char *)(long)ptrn->data + ((y1 % ptrn->height) * (ptrn->wwidth << 1));
+			addr = a;
+			shift = shft;
+			bitcount = bc;
+
+			if (left)
+			{
+				pattern = x1 & 0xf ? (*(unsigned short *)patrn << ((x1 & 0xf))) | ( *(unsigned short *)patrn >> (16 - (x1 & 0xf)) ) : *(unsigned short *)patrn;
+
+				for (i = 0; i < left; i++)
+				{
+					if (pattern & 0x8000)
+					{
+						if (dpf_fg)
+							(*dpf_fg)(addr, (long)shift << 16 | fgcol);
+					}
+					else if (dpf_bg)
+						(*dpf_bg)(addr, (long)shift << 16 | bgcol);
+
+					bitcount--;
+
+					if (bitcount <= 0)
+					{
+						bitcount = 16;
+						addr += xinc;
+						shift = 0;
+					}
+					else
+						shift++;
+
+					pattern <<= 1;
+				}
+			}
+
+			if (groups)
+			{
+				bit = *(unsigned short *)patrn;
+				for (i = 0; i < groups; i++)
+				{
+					pattern = bit;
+					for (j = 0; j < 16; j++)
+					{
+						if (pattern & 0x8000)
+						{
+							if (dpf_fg)
+								(*dpf_fg)(addr, (long)shift << 16 | fgcol);
+						}
+						else if (dpf_bg)
+							(*dpf_bg)(addr, (long)shift << 16 | bgcol);
+					bitcount--;
+
+					if (bitcount <= 0)
+					{
+						bitcount = 16;
+						addr += xinc;
+						shift = 0;
+					}
+					else
+						shift++;
+
+						pattern <<= 1;
+					}
+				}
+			}
+			if (right)
+			{
+				pattern = *(unsigned short *)patrn;
+				for (i = 0; i < right; i++)
+				{
+					if (pattern & 0x8000)
+					{
+						if (dpf_fg)
+							(*dpf_fg)(addr, (long)shift << 16 | fgcol);
+					}
+					else if (dpf_bg)
+						(*dpf_bg)(addr, (long)shift << 16 | bgcol);
+
+					bitcount--;
+
+					if (bitcount <= 0)
+					{
+						bitcount = 16;
+						addr += xinc;
+						shift = 0;
+					}
+					else
+						shift++;
+
+					pattern <<= 1;
+				}
+			}
+			y1++;
+			a += bypl;
+		}
 	}
 	else /* (planes >= 8) */
 	{
-		unsigned char *patrn, *a;
+		unsigned char *addr, *patrn, *a;
 		short xind, pw;
 
 		xinc = Planes2xinc[planes - 8];

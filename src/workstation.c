@@ -403,12 +403,12 @@ setup_drawers_jumptable(OVDI_DRAWERS *src, OVDI_DRAWERS *dst, short planes)
 			if (src->draw_mcurs)
 				dst->draw_mcurs = src->draw_mcurs;
 			else
-				dst->draw_mcurs = 0; //draw_mousecurs_8b;
+				dst->draw_mcurs = draw_mousecurs_1b;
 
 			if (src->undraw_mcurs)
 				dst->undraw_mcurs = src->undraw_mcurs;
 			else
-				dst->undraw_mcurs = 0; //restore_msave_8b;
+				dst->undraw_mcurs = restore_msave_1b;
 
 			if (src->put_pixel)
 				dst->put_pixel = src->put_pixel;
@@ -423,7 +423,7 @@ setup_drawers_jumptable(OVDI_DRAWERS *src, OVDI_DRAWERS *dst, short planes)
 			if (src->draw_solid_rect)
 				dst->draw_solid_rect = src->draw_solid_rect;
 			else
-				dst->draw_solid_rect = 0; //draw_solid_rect_8b;
+				dst->draw_solid_rect = draw_solid_rect_1b;
 
 			break;
 		}

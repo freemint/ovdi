@@ -344,7 +344,7 @@ dev_get_res_info(OVDI_DRIVER *drv)
 			drv->vram_size	= (long)drv->r.h * drv->r.bypl;
 			drv->scr_size	= drv->vram_size;
 
-			drv->r.format		= PF_PACKED;
+			drv->r.format		= PF_ATARI;
 			drv->r.pixelformat	= pf_tt;
 			drv->r.clut		= 1;
 			drv->r.pixlen		= 1;
@@ -515,15 +515,15 @@ dev_setpscreen(OVDI_DRIVER *drv, unsigned char *scradr)
 {
 	if ((long)scradr > 0 && (long)scradr < (0x00e00000L - 156000) )
 	{
+		VB_HI = (char)((long)scradr >> 16);
+		VB_MI = (char)((long)scradr >> 8);
+		VB_LO = (char)((long)scradr);
 #if 0
 		if (hw & GOT_VB_LO)
 			*(volatile unsigned char *)VB_LO = (char)scradr;
 		else
 			(long)scradr &= 0xffff00L;
 #endif
-		VB_LO = (char)((long)scradr);
-		VB_MI = (char)((long)scradr >> 8);
-		VB_HI = (char)((long)scradr >> 16);
 	}
 	return	scradr;
 }

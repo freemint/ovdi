@@ -43,17 +43,10 @@ fill_16x_4b(RASTER *r, COLINF *c, short *corners, short interior, PatAttr *ptrn)
 		}
 		else
 			ptrn->expanded = r->planes;
-#if 0
-		if (interior == FIS_HOLLOW)
-		{
-			col[1] = ptrn->bgcol[wrmode] & 0xff; //0;
-			col[0] = col[1];
-		}
-		else
-		{
-			col[1] = ptrn->color[wrmode] & 0xff;
-			col[0] = ptrn->bgcol[wrmode] & 0xff;
-		}
+#if 1
+		col[1] = ptrn->color[wrmode] & 0xff;
+		col[0] = ptrn->bgcol[wrmode] & 0xff;
+
 		expand( ptrn->width, ptrn->height,
 			ptrn->planes, PF_ATARI, ptrn->data,
 			4, PF_ATARI, ptrn->exp_data, (short *)&col, ptrn->mask);

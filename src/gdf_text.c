@@ -204,7 +204,8 @@ output_gdftext( VIRTUAL *v, POINT *xy, short *text, short textlen, short jlen, s
 	tmp = dst.y1 + (f->form_height - 1);
 	src.y2 = tmp < clp.y2 ? f->form_height - 1 : ((f->form_height - 1) - (tmp - clp.y2));
 
-	screen.fd_addr	= 0;
+	screen.fd_addr	= NULL;
+
 	colors[0] = 1, colors[1] = 0;
 
 	coords[1] = src.y1, coords[3] = src.y2;
@@ -225,7 +226,7 @@ output_gdftext( VIRTUAL *v, POINT *xy, short *text, short textlen, short jlen, s
 		else
 		{
 			fmfdb		= &fontd;
-			fmfdb->fd_addr	= 0;
+			fmfdb->fd_addr	= NULL;
 		}
 		expand_gdf_font( f, fmfdb, chr);
 	}

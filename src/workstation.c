@@ -169,6 +169,9 @@ v_opnwk(VDIPB *pb, VIRTUAL *wk, VIRTUAL *lawk, OVDI_HWAPI *hwapi) //struct ovdi_
 
 		change_resolution(wk);
 
+		//log("vdidev_id=%d, base=%lx, length=%ld, bypl=%ld, planes=%d, clut=%d, format=%d, pixlen=%d\n",
+		//	vdidev_id, r->base, r->lenght, r->bypl, r->res.planes, r->res.clut, r->res.format, r->res.pixlen);
+
 		/*
 		 * If console is on another hardware driver (may be same device),
 		 * we dont touch it here!

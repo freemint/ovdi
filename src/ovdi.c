@@ -185,6 +185,7 @@ ovdi_init(void)
 #endif
 
 	install_eddi();
+
 	{
 		BASEPAGE *b;
 		int olddrive;
@@ -397,7 +398,7 @@ ovdi_init(void)
 		(*hw->vbi->install)();				/* Install VBI basics */
 		(*hw->keyboard->install)();			/* Install keyboard basics */
 		(*hw->time->install)(linea_vars);		/* Install timer basics */
-		hw->mouse	= init_mouse(hw, linea_vars);	/* Initialize mouse driver layer 1 */
+		hw->mouse = init_mouse(hw, linea_vars);	/* Initialize mouse driver layer 1 */
 
 		/*
 		 * setup the root colinf structure for this raster.

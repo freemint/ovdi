@@ -2,6 +2,7 @@
 #define _OVDI_DEFS_H
 
 #include "ovdi_types.h"
+
 typedef struct raster RASTER;
 typedef struct colinf COLINF;
 typedef struct virtual VIRTUAL;
@@ -294,7 +295,6 @@ struct rop_pb
 	short	sx1, sy1, sx2, sy2;
 	short	dx1, dy1, dx2, dy2;
 
-
 	void	*s_addr;
 	short	s_is_scrn;
 	short	s_bypl;
@@ -489,8 +489,8 @@ typedef struct vdiprimitives VDIPRIMITIVES;
 #define FILL_16X_PTR(a)		(a->drawers->fill_16x)
 #define SPANS_16X_PTR(a)	(a->drawers->spans_16x)
 
-#define FILL_16X(a,b,c,d)		({(*FILL_16X_PTR(a))(a,b,c,d);})
-#define SPANS_16X(a,b,c,d,e)		({(*SPANS_16X_PTR(a))(a,b,c,d,e);})
+#define FILL_16X(a,b,c,d)	({(*FILL_16X_PTR(a))(a,b,c,d);})
+#define SPANS_16X(a,b,c,d,e)	({(*SPANS_16X_PTR(a))(a,b,c,d,e);})
 
 struct ovdi_drawers
 {
@@ -509,7 +509,7 @@ struct ovdi_drawers
 	void		(*draw_pixel)		( unsigned char *adr, long data);
 	void		(*read_pixel)		( unsigned char *adr, long data);
 	void		(*put_pixel)		( unsigned char *base, short bypl, short x, short y, unsigned long data);
-	unsigned long		(*get_pixel)		( unsigned char *base, short bypl, short x, short y);
+	unsigned long	(*get_pixel)		( unsigned char *base, short bypl, short x, short y);
 
 	void		(*fill_16x)		( RASTER *r, COLINF *c, short *corners, PatAttr *ptrn);
 	void		(*spans_16x)		( RASTER *r, COLINF *c, short *spans, short n, PatAttr *ptrn);
@@ -586,7 +586,7 @@ struct ovdi_driver
 
 	RASTER		r;
 	
-	unsigned long		palette;
+	unsigned long	palette;
 	short		v_top, v_bottom, v_left, v_right;
 
 	void		*vram_start;
@@ -629,17 +629,17 @@ struct ovdi_device
 	char			*pathname;
 	char			*filename;
 
-	OVDI_DRIVER *	(*open)(struct ovdi_device *dev);
-	long		(*close)(OVDI_DRIVER *drv);
-	short		(*set_vdires)(OVDI_DRIVER *drv, short scrndev_id);
-	short		(*get_res_info)(OVDI_DRIVER *drv);
+	OVDI_DRIVER *		(*open)(struct ovdi_device *dev);
+	long			(*close)(OVDI_DRIVER *drv);
+	short			(*set_vdires)(OVDI_DRIVER *drv, short scrndev_id);
+	short			(*get_res_info)(OVDI_DRIVER *drv);
 	unsigned char *		(*setpscr)(OVDI_DRIVER *drv, unsigned char *scrnadr);
 	unsigned char *		(*setlscr)(OVDI_DRIVER *drv, unsigned char *logscr);
-	void		(*setcol)(OVDI_DRIVER *drv, short pen, RGB_LIST *colors);
-	void		(*vsync)(OVDI_DRIVER *drv);
+	void			(*setcol)(OVDI_DRIVER *drv, short pen, RGB_LIST *colors);
+	void			(*vsync)(OVDI_DRIVER *drv);
 
-	void		(*vreschk)(short x, short y);
-	short		(*msema)(void);
+	void			(*vreschk)(short x, short y);
+	short			(*msema)(void);
 };
 
 #endif	/* _OVDI_DEFS_H */

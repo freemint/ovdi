@@ -65,20 +65,20 @@ static OVDI_DRAWERS defdrawers =
 		rt_cpyfm,
 		ro_cpyfm,
 	},
-	0,	/* RESFMT * */
-	0,	/* draw_pixel */
-	0,	/* read_pixel */
-	0,	/* put_pixel */
-	0,	/* get_pixel */
-	0,	/* fill_16x */
-	0,	/* spans_16x */
-	{ 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 },	/* drp - draw raster points */
-	{ 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 },	/* dlp - draw line points */
-	{ 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 },	/* pixel_blits */
-	{ 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 },	/* raster_blits */
+	NULL,	/* RESFMT * */
+	NULL,	/* draw_pixel */
+	NULL,	/* read_pixel */
+	NULL,	/* put_pixel */
+	NULL,	/* get_pixel */
+	NULL,	/* fill_16x */
+	NULL,	/* spans_16x */
+	{ NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL },	/* drp - draw raster points */
+	{ NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL },	/* dlp - draw line points */
+	{ NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL },	/* pixel_blits */
+	{ NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL },	/* raster_blits */
 
-	0,	/* draw_mcurs */
-	0,	/* undraw_mcurs */
+	NULL,	/* draw_mcurs */
+	NULL,	/* undraw_mcurs */
 };
 
 static OVDI_UTILS defutils =
@@ -100,7 +100,7 @@ static OVDI_UTILS defutils =
 	conv_vdi2dev_16b,
 	conv_vdi2dev_24b,
 	conv_vdi2dev_32b,
-	{0,0,0,0},
+	{0, 0, 0, 0},
 
 	conv_dev2vdi_1b,
 	conv_dev2vdi_2b,
@@ -110,7 +110,7 @@ static OVDI_UTILS defutils =
 	conv_dev2vdi_16b,
 	conv_dev2vdi_24b,
 	conv_dev2vdi_32b,
-	{0,0,0,0}
+	{0, 0, 0, 0}
 };
 
 #if 0
@@ -234,7 +234,7 @@ init_device_jumptable(OVDI_HWAPI *hw, OVDI_DRIVER *drv, char *mem)
 	*hw->utils = defutils;
 
 	setup_drawers_jumptable(drv->drawers_1b,  hw->odrawers[1], 1);
-	setup_drawers_jumptable(drv->drawers_1b,  hw->odrawers[4], 4);
+	setup_drawers_jumptable(drv->drawers_4b,  hw->odrawers[4], 4);
 	setup_drawers_jumptable(drv->drawers_8b,  hw->odrawers[8], 8);
 	setup_drawers_jumptable(drv->drawers_15b, hw->odrawers[15], 15);
 	setup_drawers_jumptable(drv->drawers_16b, hw->odrawers[16], 16);
@@ -262,7 +262,7 @@ open_device(OVDI_HWAPI *hw)
 		else
 		{
 			free_mem(mem);
-			drv = 0;
+			drv = NULL;
 		}
 	}
 	return drv;
@@ -397,7 +397,7 @@ new_raster(OVDI_HWAPI *hw, char *base, short x2, short y2, RESFMT *res)
 		else
 		{
 			free_mem(r);
-			r = 0;
+			r = NULL;
 		}
 	}
 	return r;
@@ -451,22 +451,10 @@ reschange_devtab(DEV_TAB *dt, RASTER *r)
 	dt->wpixel	= r->wpixel;
 	dt->hpixel	= r->hpixel;
 
-	if (r->res.planes == 1)
-		dt->cancolor = 0;
-	else
-		dt->cancolor = 1;
-
-	if (r->res.planes < 8)
-		dt->colors = 1 << r->res.planes;
-	else
-		dt->colors = 256;
-
-	palettesize = (long)r->rgb_levels.red * (long)r->rgb_levels.green * (long)r->rgb_levels.blue;
-
-	if (palettesize > 32767UL)
-		dt->palette = 0;
-	else
-		dt->palette = (unsigned short)palettesize;
+	dt->cancolor	= r->res.planes == 1 ? 0 : 1;
+	dt->colors	= r->res.planes < 8 ? 1 << r->res.planes : 256;
+	palettesize	= (long)r->rgb_levels.red * (long)r->rgb_levels.green * (long)r->rgb_levels.blue;
+	dt->palette	= palettesize > 32767UL ? 0 : (short)palettesize;
 }
 
 void

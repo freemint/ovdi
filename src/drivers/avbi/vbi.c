@@ -1,4 +1,5 @@
 #include <osbind.h>
+#include <stddef.h>
 
 #include "vbiapi.h"
 
@@ -32,7 +33,7 @@ static char lname[] = "VBI driver for oVDI installing in the\nstandard '_vblqueu
 static char fpath[128] = { "0" };
 static char fname[64] = { "0" };
 
-static OVDI_LIB	*L = 0;
+static OVDI_LIB	*L = NULL;
 
 /*
  * VBIAPI - oVDI access us via this API

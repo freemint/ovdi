@@ -159,7 +159,7 @@ rt_cpyfm(RASTER *r, COLINF *c, MFDB *src, MFDB *dst, short *pnts, VDIRECT *clip,
 
 	wrmode <<= 1;
 
-	if ( dst->fd_addr == 0)
+	if ( dst->fd_addr == NULL)
 	{	/* destination screen! */
 		if (r->res.planes == 1 && !wrmode) //rt2ro[wrmode] != 0)
 		{
@@ -304,7 +304,7 @@ rt_cpyfm(RASTER *r, COLINF *c, MFDB *src, MFDB *dst, short *pnts, VDIRECT *clip,
 
 					for (k = 16; k > 0; k--)
 					{
-						if (data &0x8000)
+						if (data & 0x8000)
 						{
 							if (dpf_fg)
 								(*dpf_fg)(adr, (long)shift << 16 | fgcol);
@@ -332,7 +332,7 @@ rt_cpyfm(RASTER *r, COLINF *c, MFDB *src, MFDB *dst, short *pnts, VDIRECT *clip,
 				data = *srcptr;
 				for (j = tailbits; j > 0; j--)
 				{
-					if (data &0x8000)
+					if (data & 0x8000)
 					{
 						if (dpf_fg)
 							(*dpf_fg)(adr, (long)shift << 16 | fgcol);

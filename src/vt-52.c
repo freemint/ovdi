@@ -1200,7 +1200,7 @@ draw_character(CONSOLE *c, short chr)
 
 	cwidth		= f->max_cell_width;
 	cheight		= f->top + f->bottom + 1;
-	fontd.fd_addr	= 0;
+	fontd.fd_addr	= NULL;
 	expand_gdf_font( f, &fontd, chr);
 
 	coords[4] = c->la->v_cur_x * cwidth;
@@ -1212,7 +1212,7 @@ draw_character(CONSOLE *c, short chr)
 	coords[2] = fontd.fd_w - 1;
 	coords[3] = fontd.fd_h - 1;
 
-	dst.fd_addr = 0;
+	dst.fd_addr = NULL;
 
 	if (r->res.planes == 1)
 	{

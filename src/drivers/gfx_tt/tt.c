@@ -20,7 +20,7 @@ static void		dev_setcolor		(OVDI_DRIVER *drv, short pen, RGB_LIST *colors);
 static void		dev_vsync		(OVDI_DRIVER *drv);
 static void		dev_vreschk		(short x, short y);
 
-static void	do_set_res(OVDI_DRIVER *drv, short res_id);
+static void		do_set_res(OVDI_DRIVER *drv, short res_id);
 
 static short	boot_drive;
 static OVDI_LIB	*l;
@@ -69,11 +69,11 @@ static RESFMT resfmt_2b =
 };
 static RESFMT resfmt_4b =
 {
-	4,
-	1,
-	PF_ATARI,
-	-4,
-	pf_tt,
+	4,		/* planes	*/
+	1,		/* clut		*/
+	PF_ATARI,	/* format	*/
+	-4,		/* pixlen	*/
+	pf_tt,		/* pixelformat	*/
 };
 static RESFMT resfmt_8b =
 {
@@ -280,6 +280,8 @@ dev_close(OVDI_DRIVER *drv)
 static short
 dev_set_vdi_res(OVDI_DRIVER *drv, short res_id)
 {
+	//(*l->filelog)("set vdi res %d\n", res_id);
+
 	if (res_id <= 0)
 	{
 		dev_get_res_info(drv);
@@ -307,11 +309,11 @@ dev_get_res_info(OVDI_DRIVER *drv)
 {
 	short mode;
 
-	drv->r.sync		= 0; 	/* sync */
+	drv->r.sync		= NULL; 	/* sync */
 	drv->r.x1 = drv->r.y1	= 0;
 
 	mode = get_video_mode();
-	//(*l->scrnlog)("got mode %d\n", mode);
+	//(*l->filelog)("got mode %d\n", mode);
 	switch (mode)
 	{
 		case VMODE_LOW:		/* 320x200 4bpp */
@@ -417,6 +419,7 @@ dev_get_res_info(OVDI_DRIVER *drv)
 			drv->scr_size	= drv->vram_size;
 
 			drv->r.res	= *drv->drawers_4b->res;
+			
 			break;
 		}
 		case VMODE_TT_HI:	/* 1280x960 mono */

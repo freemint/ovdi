@@ -338,7 +338,7 @@ exp_to_8b(short pen, struct xpnd *xpnd)
 	if (pen)
 		*msk++ = 0xff;
 	else
-		msk++;
+		*msk++ = 0;
 
 	xpnd->dst = dst;
 	xpnd->mask = (short *)msk;

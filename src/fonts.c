@@ -11,7 +11,7 @@
 #include "vdi_globals.h"
 
 long
-load_font( char *fn, long *size, long *loc, struct gdf_membuff *m)
+load_font( char *fn, struct gdf_membuff *m, long *size, XGDF_HEAD **loc)
 {
 	long fs, lbytes, used;
 	int i;
@@ -21,11 +21,11 @@ load_font( char *fn, long *size, long *loc, struct gdf_membuff *m)
 	used = (long)m->free - (long)m->base;
 	fs = get_file_size(fn);
 
-	if ( (used + fs + sizeof(XGDF_HEAD)) > m->size)
-		return -1;
-
 	if (fs < 0)
 		return fs;
+	
+	if ( (used + fs + sizeof(XGDF_HEAD)) > m->size)
+		return -1;
 
 	xf = (XGDF_HEAD *)b;
 	bzero(xf, sizeof(XGDF_HEAD));
@@ -50,7 +50,7 @@ load_font( char *fn, long *size, long *loc, struct gdf_membuff *m)
 	if (size)
 		*size = lbytes;
 	if (loc)
-		*loc = (long)xf;
+		*loc = xf;
 
 	return 0;
 }
@@ -70,15 +70,15 @@ fixup_font( FONT_HEAD *font )
 
 		tmp2 = (unsigned short *)&font->first_ade;
 
-		for (i=0;i<24; i++)
+		for (i = 0;i < 24; i++)
 		{
 			tmp = *tmp2;
 			*tmp2++ = ((tmp << 8) | (tmp >> 8));
 		}
 
-		(long)font->hor_table = ( ((long)font->hor_table << 16) | ((long)font->hor_table>>16) );
-		(long)font->off_table = ( ((long)font->off_table << 16) | ((long)font->off_table>>16) );
-		(long)font->dat_table = ( ((long)font->dat_table << 16) | ((long)font->dat_table>>16) );
+		font->hor_table = (unsigned char  *)( ((long)font->hor_table << 16) | ((long)font->hor_table >> 16) );
+		font->off_table = (unsigned short *)( ((long)font->off_table << 16) | ((long)font->off_table >> 16) );
+		font->dat_table = (unsigned short *)( ((long)font->dat_table << 16) | ((long)font->dat_table >> 16) );
 	
 		flags = font->flags;
 
@@ -93,8 +93,7 @@ fixup_font( FONT_HEAD *font )
 				if (*tmp2 != tmp)
 					flags &= ~F_MONOSPACE;
 			}
-		}
-			
+		}	
 
 		if (flags & F_HORZ_OFF)
 		{
@@ -108,12 +107,12 @@ fixup_font( FONT_HEAD *font )
 	}
 
 	if (font->flags & F_HORZ_OFF)
-		(long)font->hor_table += (long)font;
+		font->hor_table = (char *)((long)font->hor_table + (long)font);
 	else
-		font->hor_table = 0;
+		font->hor_table = NULL;
 
-	(long)font->dat_table += (long)font;
-	(long)font->off_table += (long)font;
+	font->dat_table = (unsigned short *)((long)font->dat_table + (long)font);
+	font->off_table = (unsigned short *)((long)font->off_table + (long)font);
 
 	if (font->top + font->bottom > font->form_height - 1)
 		font->bottom = font->form_height - font->top - 1;
@@ -136,7 +135,7 @@ load_sysfont(char *path, char *file, struct gdf_membuff *m)
 	while (*file) *fname++ = *file++;
 	*fname = 0;
 
-	if ( !load_font((char *)fqpn, 0, (long *)&xf, m) )
+	if ( !load_font((char *)fqpn, m, 0, &xf) )
 	{
 		fixup_font(xf->font_head);
 	}
@@ -369,7 +368,7 @@ gdf_free_cache(void)
  * Returns -1 if font with same ID and size already existed in chain.
 */
 short
-add_font( XGDF_HEAD *start, XGDF_HEAD *new) //FONT_HEAD *start, FONT_HEAD *new)
+add_font( XGDF_HEAD *start, XGDF_HEAD *new)
 {
 	XGDF_HEAD *f, *closest, *prev;
 	unsigned short diff;

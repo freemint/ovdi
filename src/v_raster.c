@@ -21,8 +21,8 @@ vro_cpyfm( VDIPB *pb, VIRTUAL *v)
 	for (i = 0; i < 8; i++)
 		p[i] = pb->ptsin[i];
 
-	s = *(MFDB **)&(pb->contrl[7]); //(MFDB *)((((unsigned long)pb->contrl[7]) << 16) | (unsigned short)pb->contrl[8]);
-	d = *(MFDB **)&(pb->contrl[9]); //(MFDB *)((((unsigned long)pb->contrl[9]) << 16) | (unsigned short)pb->contrl[10]);
+	s = *(MFDB **)&(pb->contrl[7]);
+	d = *(MFDB **)&(pb->contrl[9]);
 	RO_CPYFM( r, s, d, (short *)&p, v->clip.flag ? (VDIRECT *)&v->clip.x1 : (VDIRECT *)&r->x1, pb->intin[0]);
 }
 
@@ -43,8 +43,8 @@ vrt_cpyfm( VDIPB *pb, VIRTUAL *v)
 	fgc = v->colinf->color_vdi2hw[pb->intin[1]];
 	bgc = v->colinf->color_vdi2hw[pb->intin[2]];
 
-	s = *(MFDB **)&(pb->contrl[7]); //(MFDB *)((((unsigned long)pb->contrl[7]) << 16) | (unsigned short)pb->contrl[8]);
-	d = *(MFDB **)&(pb->contrl[9]); //(MFDB *)((((unsigned long)pb->contrl[9]) << 16) | (unsigned short)pb->contrl[10]);
+	s = *(MFDB **)&(pb->contrl[7]);
+	d = *(MFDB **)&(pb->contrl[9]);
 	RT_CPYFM( r, v->colinf, s, d, (short *)&p, v->clip.flag ? (VDIRECT *)&v->clip.x1 : (VDIRECT *)&r->x1, fgc, bgc, wrmode);
 }
 
@@ -53,8 +53,8 @@ vr_trnfm( VDIPB *pb, VIRTUAL *v)
 {
 	MFDB *s, *d;
 
-	s = *(MFDB **)&(pb->contrl[7]); //(MFDB *)(unsigned long)(((unsigned long)pb->contrl[7] << 16) | (unsigned short)pb->contrl[8]);
-	d = *(MFDB **)&(pb->contrl[9]); //(MFDB *)(unsigned long)(((unsigned long)pb->contrl[9] << 16) | (unsigned short)pb->contrl[10]);
+	s = *(MFDB **)&(pb->contrl[7]);
+	d = *(MFDB **)&(pb->contrl[9]);
 	//trnfm( v, s, d);
 	if (!MiNT && !(v->flags & V_OSBM))
 		patch_gem(v->raster->res.planes, v->raster->w - 1);

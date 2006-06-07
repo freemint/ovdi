@@ -2,6 +2,7 @@
 #define _pf_32b_intelbs_h
 
 /* 32-bit byteswapped Intel pixelformat layout */
+/* 00000000.bbbbbbbb.gggggggg.rrrrrrrr */
 char pf_32bIbs[] =
 {
 	/* red bits */

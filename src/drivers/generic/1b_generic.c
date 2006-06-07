@@ -26,29 +26,45 @@ static void NOT_SANDD	(unsigned char *addr, long data);
 static void ALL_BLACK	(unsigned char *addr, long data);
 
 unsigned long
-get_pixel_1b(unsigned char *sb, short bpl, short x, short y)
+get_pixel_1b(unsigned char *_sb, short bpl, short x, short y)
 {
+	unsigned short *sb;
 
+	sb = (unsigned short *)((long)_sb + (long)((x >> 4) << 1) + (y * bpl));
+	return (*sb & (x & 0xf));
+#if 0
 	return ((*(unsigned short *)(sb + (long)(((x >> 4) <<1) + ((long)y * bpl)))) & (x & 0xf));
+#endif
 }
 
 void
-put_pixel_1b(unsigned char *sb, short bpl, short x, short y, unsigned long pixel)
+put_pixel_1b(unsigned char *sb, short bpl, short x, short y, unsigned long _pixel)
 {
-	unsigned short mask, shift;
+	union { void *sb; unsigned short *ptr; long adr;} s;
+	unsigned short mask, shift, pixel = (unsigned short)_pixel;
 
+	s.sb = sb;
+
+	s.adr	+= (long)((x >> 4) << 1) + (long)y * bpl;
+	shift	 = x & 0xf;
+	mask	 = 0x8000 >> shift;
+	pixel	 = (pixel >> (shift + 1)) | (pixel << (15 - shift));
+	*s.ptr	&= mask;
+	*s.ptr	|= pixel;
+#if 0	 
 	sb	+= (x >> 4) << 1;
 	sb	+= (long)y * bpl;
 
 	shift	= x & 0xf;
 	mask	= 0x8000 >> shift;
 
-	(unsigned short)pixel = ((unsigned short)pixel >> (shift + 1) | ((unsigned short)pixel << (15-(shift))) );
+	pixel = (pixel >> (shift + 1) | (pixel << (15-(shift))) );
 
-	*(unsigned short *)sb &= mask;
-	*(unsigned short *)sb |= (unsigned short)pixel;
-	
+	*sb &= mask;
+	*sb |= pixel;
+
 	return;
+#endif
 }
 
 pixel_blit dpf_1b[] = 
@@ -92,6 +108,20 @@ pixel_blit rt_ops_1b[] =
 static void
 ALL_WHITE(unsigned char *addr, long data)
 {
+	union { void *v; unsigned short *s;} a;
+	union { long  l; short s[2]; } d;
+	short shift;
+	unsigned short mask;
+
+	a.v = addr;
+	d.l = data;
+
+	shift = d.s[0];
+	mask = ~(0x8000 >> shift);
+	
+	d.s[1] = (d.s[1] >> (shift + 1)) | (d.s[1] << (15 - shift));
+	*a.s &= mask;
+#if 0
 	short shift = data >> 16;
 	unsigned short mask = ~(0x8000 >> shift);
 
@@ -99,10 +129,29 @@ ALL_WHITE(unsigned char *addr, long data)
 
 	*(unsigned short *)addr &= mask;
 	return;
+#endif
 }
 static void
 S_AND_D(unsigned char *addr, long data)
 {
+	union { void *v; unsigned short *s; } a;
+	union { long l; unsigned short s[2]; } d;
+	short shift;
+	unsigned short pixel, p, mask;
+
+	a.v = addr;
+	d.l = data;
+
+	shift = d.s[0];
+	mask = 0x8000 >> shift;
+	d.s[1] = (d.s[1] >> (shift + 1)) | (d.s[1] << (15 - shift));
+
+	p = *a.s;
+	pixel = (p & d.s[1]) & mask;
+	p &= ~mask;
+	p |= pixel;
+	*a.s = p;
+#if 0	
 	short shift = data >> 16;
 	unsigned short pixel, p;
 	unsigned short mask = 0x8000 >> shift;
@@ -118,10 +167,29 @@ S_AND_D(unsigned char *addr, long data)
 	*(unsigned short *)addr = p;
 
 	return;
+#endif
 }
 static void
 S_AND_NOTD(unsigned char *addr, long data)
 {
+	union { void *v; unsigned short *s; } a;
+	union { long l; short s[2]; } d;
+	short shift;
+	unsigned short pixel, p, mask;
+
+	a.v = addr;
+	d.l = data;
+
+	shift = d.s[0];
+	mask = 0x8000 >> shift;
+	d.s[1] = (d.s[1] >> (shift + 1)) | (d.s[1] << (15 - shift));
+	
+	p = *a.s;
+	pixel = (d.s[1] & ~p) & mask;
+	p &= ~mask;
+	p |= pixel;
+	*a.s = p;
+#if 0	
 	short shift = data >> 16;
 	unsigned short pixel, p;
 	unsigned short mask = 0x8000 >> shift;
@@ -136,10 +204,28 @@ S_AND_NOTD(unsigned char *addr, long data)
 	*(unsigned short *)addr = p;
 
 	return;
+#endif
 }
 static void
 S_ONLY(unsigned char *addr, long data)
 {
+	union { void *v; unsigned short *s; } a;
+	union { long l; short s[2]; } d;
+	short shift;
+	unsigned short p, mask;
+
+	a.v = addr;
+	d.l = data;
+
+	shift = d.s[0];
+	mask = 0x8000 >> shift;
+	d.s[1] = (d.s[1] >> (shift + 1)) | (d.s[1] << (15 - shift));
+	
+	p = *a.s;
+	p &= ~mask;
+	p |= d.s[1];
+	*a.s = p;
+#if 0
 	short shift = data >> 16;
 	unsigned short p;
 	unsigned short mask = 0x8000 >> shift;
@@ -154,10 +240,29 @@ S_ONLY(unsigned char *addr, long data)
 	*(unsigned short *)addr = p;
 
 	return;
+#endif
 }
 static void
 NOTS_AND_D(unsigned char *addr, long data)
 {
+	union { void *v; unsigned short *s; } a;
+	union { long l; short s[2]; } d;
+	short shift;
+	unsigned short pixel, p, mask;
+
+	a.v = addr;
+	d.l = data;
+
+	shift = d.s[0];
+	mask = 0x8000 >> shift;
+	d.s[1] = (d.s[1] >> (shift + 1)) | (d.s[1] << (15 - shift));
+	
+	p = *a.s;
+	pixel = (~d.s[1] & p) & mask;
+	p &= ~mask;
+	p |= pixel;
+	*a.s = p;
+#if 0	
 	short shift = data >> 16;
 	unsigned short pixel, p;
 	unsigned short mask = 0x8000 >> shift;
@@ -172,6 +277,7 @@ NOTS_AND_D(unsigned char *addr, long data)
 	*(unsigned short *)addr = p;
 
 	return;
+#endif
 }
 static void
 D_ONLY(unsigned char *addr, long data)
@@ -181,6 +287,24 @@ D_ONLY(unsigned char *addr, long data)
 static void
 S_XOR_D(unsigned char *addr, long data)
 {
+	union { void *v; unsigned short *s; } a;
+	union { long l; short s[2]; } d;
+	short shift;
+	unsigned short pixel, p, mask;
+
+	a.v = addr;
+	d.l = data;
+
+	shift = d.s[0];
+	mask = 0x8000 >> shift;
+	d.s[1] = (d.s[1] >> (shift + 1)) | (d.s[1] << (15 - shift));
+	
+	p = *a.s;
+	pixel = (p ^ data) & mask;
+	p &= ~mask;
+	p |= pixel;
+	*a.s = p;
+#if 0	
 	short shift = data >> 16;
 	unsigned short pixel, p;
 	unsigned short mask = 0x8000 >> shift;
@@ -195,10 +319,25 @@ S_XOR_D(unsigned char *addr, long data)
 	*(unsigned short *)addr = p;
 
 	return;
+#endif
 }
 static void
 S_OR_D(unsigned char *addr, long data)
 {
+	union { void *v; unsigned short *s; } a;
+	union { long l; short s[2]; } d;
+	short shift;
+	unsigned short mask;
+
+	a.v = addr;
+	d.l = data;
+
+	shift = d.s[0];
+	mask = 0x8000 >> shift;
+	d.s[1] = (d.s[1] >> (shift + 1)) | (d.s[1] << (15 - shift));
+	
+	*a.s |= (d.s[1] & mask);
+#if 0
 	short shift = data >> 16;
 	unsigned short mask = 0x8000 >> shift;
 	
@@ -208,10 +347,29 @@ S_OR_D(unsigned char *addr, long data)
 	*(unsigned short *)addr |= data & mask;
 
 	return;
+#endif
 }
 static void
 NOT_SORD(unsigned char *addr, long data)
 {
+	union { void *v; unsigned short *s; } a;
+	union { long l; short s[2]; } d;
+	short shift;
+	unsigned short mask, pixel, p;
+
+	a.v = addr;
+	d.l = data;
+
+	shift = d.s[0];
+	mask = 0x8000 >> shift;
+	d.s[1] = (d.s[1] >> (shift + 1)) | (d.s[1] << (15 - shift));
+	
+	p = *a.s;
+	pixel = ~(p & d.s[1]) & mask;
+	p &= ~mask;
+	p |= pixel;
+	*a.s = p;
+#if 0
 	short shift = data >> 16;
 	unsigned short pixel, p;
 	unsigned short mask = 0x8000 >> shift;
@@ -226,10 +384,29 @@ NOT_SORD(unsigned char *addr, long data)
 	*(unsigned short *)addr = p;
 
 	return;
+#endif
 }
 static void
 NOT_SXORD(unsigned char *addr, long data)
 {
+	union { void *v; unsigned short *s; } a;
+	union { long l; short s[2]; } d;
+	short shift;
+	unsigned short mask, pixel, p;
+
+	a.v = addr;
+	d.l = data;
+
+	shift = d.s[0];
+	mask = 0x8000 >> shift;
+	d.s[1] = (d.s[1] >> (shift + 1)) | (d.s[1] << (15 - shift));
+	
+	p = *a.s;
+	pixel = ~(p ^ d.s[1]) & mask;
+	p &= ~mask;
+	p |= pixel;
+	*a.s = p;
+#if 0	
 	short shift = data >> 16;
 	unsigned short pixel, p;
 	unsigned short mask = 0x8000 >> shift;
@@ -244,10 +421,29 @@ NOT_SXORD(unsigned char *addr, long data)
 	*(unsigned short *)addr = p;
 
 	return;
+#endif
 }
 static void
 NOT_D(unsigned char *addr, long data)
 {
+	union { void *v; unsigned short *s; } a;
+	union { long l; short s[2]; } d;
+	short shift;
+	unsigned short mask, pixel, p;
+
+	a.v = addr;
+	d.l = data;
+
+	shift = d.s[0];
+	mask = 0x8000 >> shift;
+	d.s[1] = (d.s[1] >> (shift + 1)) | (d.s[1] << (15 - shift));
+	
+	p = *a.s;
+	pixel = ~p & mask;
+	p &= ~mask;
+	p |= pixel;
+	*a.s = p;
+#if 0
 	short shift = data >> 16;
 	unsigned short pixel, p;
 	unsigned short mask = 0x8000 >> shift;
@@ -262,10 +458,29 @@ NOT_D(unsigned char *addr, long data)
 	*(unsigned short *)addr = p;
 
 	return;
+#endif
 }
 static void
 S_OR_NOTD(unsigned char *addr, long data)
 {
+	union { void *v; unsigned short *s; } a;
+	union { long l; short s[2]; } d;
+	short shift;
+	unsigned short mask, pixel, p;
+
+	a.v = addr;
+	d.l = data;
+
+	shift = d.s[0];
+	mask = 0x8000 >> shift;
+	d.s[1] = (d.s[1] >> (shift + 1)) | (d.s[1] << (15 - shift));
+	
+	p = *a.s;
+	pixel = (d.s[1] | ~p) & mask;
+	p &= (~mask);
+	p |= pixel;
+	*a.s = p;
+#if 0
 	short shift = data >> 16;
 	unsigned short pixel, p;
 	unsigned short mask = 0x8000 >> shift;
@@ -280,10 +495,28 @@ S_OR_NOTD(unsigned char *addr, long data)
 	*(unsigned short *)addr = p;
 
 	return;
+#endif
 }
 static void
 NOT_S(unsigned char *addr, long data)
 {
+	union { void *v; unsigned short *s; } a;
+	union { long l; short s[2]; } d;
+	short shift;
+	unsigned short mask, p;
+
+	a.v = addr;
+	d.l = data;
+
+	shift = d.s[0];
+	mask = 0x8000 >> shift;
+	d.s[1] = (d.s[1] >> (shift + 1)) | (d.s[1] << (15 - shift));
+
+	p = *a.s;
+	p &= ~mask;
+	p |= ~d.s[1] & mask;
+	*a.s = p;
+#if 0
 	short shift = data >> 16;
 	unsigned short p;
 	unsigned short mask = 0x8000 >> shift;
@@ -297,10 +530,29 @@ NOT_S(unsigned char *addr, long data)
 	*(unsigned short *)addr = p;
 
 	return;
+#endif
 }
 static void
 NOTS_OR_D(unsigned char *addr, long data)
 {
+	union { void *v; unsigned short *s; } a;
+	union { long l; short s[2]; } d;
+	short shift;
+	unsigned short mask, pixel, p;
+
+	a.v = addr;
+	d.l = data;
+
+	shift = d.s[0];
+	mask = 0x8000 >> shift;
+	d.s[1] = (d.s[1] >> (shift + 1)) | (d.s[1] << (15 - shift));
+	
+	p = *a.s;
+	pixel = (~d.s[1] | p) & mask;
+	p &= ~mask;
+	p |= pixel;
+	*a.s = p;
+#if 0
 	short shift = data >> 16;
 	unsigned short pixel, p;
 	unsigned short mask = 0x8000 >> shift;
@@ -315,10 +567,30 @@ NOTS_OR_D(unsigned char *addr, long data)
 	*(unsigned short *)addr = p;
 
 	return;
+#endif
 }
 static void
 NOT_SANDD(unsigned char *addr, long data)
 {
+	union { void *v; unsigned short *s; } a;
+	union { long l; short s[2]; } d;
+	short shift;
+	unsigned short mask, pixel, p;
+
+	a.v = addr;
+	d.l = data;
+
+	shift = d.s[0];
+	mask = 0x8000 >> shift;
+	d.s[1] = (d.s[1] >> (shift + 1)) | (d.s[1] << (15 - shift));
+
+	p = *a.s;
+	pixel = ~(p & d.s[1]) & mask;
+	p &= ~mask;
+	p |= pixel;
+	*a.s = p;
+
+#if 0
 	short shift = data >> 16;
 	unsigned short pixel, p;
 	unsigned short mask = 0x8000 >> shift;
@@ -334,10 +606,28 @@ NOT_SANDD(unsigned char *addr, long data)
 
 	*addr = ~((unsigned char)data & *addr);
 	return;
+#endif
 }
 static void
 ALL_BLACK(unsigned char *addr, long data)
 {
+	union { void *v; unsigned short *s; } a;
+	union { long l; short s[2]; } d;
+	short shift;
+	unsigned short mask, p;
+
+	a.v = addr;
+	d.l = data;
+
+	shift = d.s[0];
+	mask = 0x8000 >> shift;
+	d.s[1] = 1;
+	d.s[1] = (d.s[1] >> (shift + 1)) | (d.s[1] << (15 - shift));
+
+	p = *a.s;
+	p |= d.s[1];
+	*a.s = p;
+#if 0
 	short shift = data >> 16;
 	unsigned short mask = 0x8000 >> shift;
 	
@@ -347,6 +637,7 @@ ALL_BLACK(unsigned char *addr, long data)
 	*(unsigned short *)addr |= mask;
 
 	return;
+#endif
 }
 
 /* *************** RASTER OPERATIONS **************** */
@@ -390,7 +681,6 @@ raster_blit rops_1b[] =
 void
 draw_mousecurs_1b(register XMFORM *mf, register short x, register short y)
 {
-
 	register int width, height, xoff, yoff, bypl;
 	int	dbpl, w;
 	register XMSAVE *ms;

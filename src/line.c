@@ -24,6 +24,7 @@ pline(RASTER *r, COLINF *c, short *pts, long n, VDIRECT *clip, short *points, lo
 
 	if ((n -= 2) < 0)
 		return;
+
 	x = *pts++;
 	y = *pts++;
 
@@ -68,6 +69,87 @@ code(POINT *input, VDIRECT *clip)
 	return ccode;
 }
 
+#define BOTTOM	1
+#define TOP	2
+#define LEFT  4
+#define RIGHT 8
+static short
+ncode(short x, short y, VDIRECT *clip)
+{
+	short c = 0;
+
+	if (x < clip->x1)
+		c |= LEFT;
+	else if (x > clip->x2)
+		c |= RIGHT;
+	if (y < clip->y1)
+		c |= TOP;
+	else if (y > clip->y2)
+		c |= BOTTOM;
+	return c;
+}
+
+short
+clip_line(VDIRECT *input, VDIRECT *clip)
+{
+	short c0, c1, code;
+	short x, y, x1, y1, x2, y2;
+	long deltax, deltay;
+
+	x1 = x = input->x1;
+	y1 = y = input->y1;
+	x2 = input->x2;
+	y2 = input->y2;
+	
+	c0 = ncode(x1, y1, clip);
+	c1 = ncode(x2, y2, clip);
+
+	while (c0 || c1)
+	{
+		if ((c0 & c1))
+			return 0;
+
+		if (c0) code = c0;
+		else	code = c1;
+
+		deltax = (long)(x2 - x1);
+		deltay = (long)(y2 - y1);
+
+		if (code & BOTTOM) {
+			y = clip->y2;
+			x = x1 + (deltax * (y - y1) / deltay);
+		}
+		if (code & TOP) {
+			y = clip->y1;
+			x = x1 + (deltax * (y - y1) / deltay);
+		}
+		if (code & RIGHT) {
+			x = clip->x2;
+			y = y1 + (deltay * (long)(x - x1) / deltax);
+		}
+		if (code & LEFT) {
+			x = clip->x1;
+			y = y1 + (deltay * (long)(x - x1) / deltax);
+		}
+
+		if (code == c0) {
+			x1 = x;
+			y1 = y;
+			c0 = ncode(x1, y1, clip);
+		} else {
+			x2 = x;
+			y2 = y;
+			c1 = ncode(x2, y2, clip);
+		}
+	}
+
+	input->x1 = x1;
+	input->y1 = y1;
+	input->x2 = x2;
+	input->y2 = y2;
+	return 1;
+}
+#if 0
 /* Taken from fVDI (line.c), modified by Odd Skancke */
 short
 clip_line(VDIRECT *input, VDIRECT *clip)
@@ -77,12 +159,15 @@ clip_line(VDIRECT *input, VDIRECT *clip)
 	short deltax, deltay;
 	short *x, *y;
 
-	while ( (pts1_flag = code((POINT *)input, clip)) |
-		(pts2_flag = code((POINT *)&input->x2, clip)) )
+	while ( (pts1_flag = code((POINT *)input, clip)) || (pts2_flag = code((POINT *)&input->x2, clip)) )
 	{
+		
+		
+	
+	
 		if (pts1_flag & pts2_flag)
 			return 0;
-
+		
 		if (pts1_flag)
 		{
 			clip_flag = pts1_flag;
@@ -122,6 +207,8 @@ clip_line(VDIRECT *input, VDIRECT *clip)
 	}
 	return 1;
 }
+#endif
+
 /*
  * abline - draw a line (general purpose)
  *
@@ -345,7 +432,7 @@ abline (RASTER *r, COLINF *c, struct vdirect *pnts, PatAttr *ptrn)
 				if (linemask & 1)
 				{
 					if (dlp_fg)
-						(*dlp_fg)(addr, fcol); /**addr = color;*/
+						(*dlp_fg)(addr, fcol); /* *addr = color;*/
 				}
 				else if (dlp_bg)
 					(*dlp_bg)(addr, bcol);
@@ -1580,7 +1667,6 @@ draw_mspans(RASTER *r, COLINF *c, short x1, short x2, short y1, short y2, PatAtt
 				bcol = c->pixelvalues[bgcol];
 			}
 
-
 			left = 16 - (x1 & 0xf);
 			dx -= left;
 
@@ -1603,7 +1689,6 @@ draw_mspans(RASTER *r, COLINF *c, short x1, short x2, short y1, short y2, PatAtt
 
 			for (; dy > 0; dy--)
 			{
-
 				patrn = (unsigned char *)(long)ptrn->data + ((y1 % ptrn->height) * (ptrn->wwidth << 1));
 				addr = a;
 

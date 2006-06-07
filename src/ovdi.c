@@ -141,10 +141,9 @@ getstack(void)
 {
 	register long ret;
 	__asm__ volatile
-	("
-		move.l sp,%0
-	"	:
-		: "d"(ret)
+	(	"move.l sp,%0\n\t"	\
+		: "=r"(ret)
+		:
 	);
 	return ret;
 }
@@ -490,7 +489,9 @@ ovdi_init(void)
 	using_trap = 1;
 
 	scrnlog("OVDI start adr %lx, ends at adr %lx\n", _base->p_tbase, _base->p_tbase + _base->p_tlen + _base->p_blen + _base->p_dlen);
-	scrnlog("Linea vartab %lx, font ring %lx, func tab %lx", linea_vars, lafr, laft);
+	scrnlog("Linea vartab %lx, font ring %lx, func tab %lx\n", linea_vars, lafr, laft);
+	log("OVDI start adr %lx, ends at adr %lx\n", _base->p_tbase, _base->p_tbase + _base->p_tlen + _base->p_blen + _base->p_dlen);
+	log("Linea vartab %lx, font ring %lx, func tab %lx\n", linea_vars, lafr, laft);
 
 	return 0;
 }

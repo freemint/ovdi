@@ -63,13 +63,44 @@
 void
 reqrgb_2_actrgb(char *pixfmt, RGB_LIST *levels, RGB_LIST *reqrgb, RGB_LIST *rgbvals, unsigned long *pixelret)
 {
+	unsigned long register tmp;
 
+	tmp = reqrgb->red;
+	tmp *= levels->red;
+	tmp += 500;
+	tmp /= 1000;
+	rgbvals->red = tmp;
+
+	tmp = reqrgb->green;
+	tmp *= levels->green;
+	tmp += 500;
+	tmp /= 1000;
+	rgbvals->green = tmp;
+
+	tmp = reqrgb->blue;
+	tmp *= levels->blue;
+	tmp += 500;
+	tmp /= 1000;
+	rgbvals->blue = tmp;
+
+	tmp = reqrgb->alpha;
+	tmp *= levels->alpha;
+	tmp += 500;
+	tmp /= 1000;
+	rgbvals->alpha = tmp;
+
+	tmp = reqrgb->ovl;
+	tmp *= levels->ovl;
+	tmp += 500;
+	tmp /= 1000;
+	rgbvals->ovl = tmp;
+#if 0
 	rgbvals->red	= (unsigned short)(((long)reqrgb->red 	* levels->red + 500) / 1000);
 	rgbvals->green	= (unsigned short)(((long)reqrgb->green * levels->green + 500) / 1000);
 	rgbvals->blue	= (unsigned short)(((long)reqrgb->blue 	* levels->blue + 500) / 1000);
 	rgbvals->alpha	= (unsigned short)(((long)reqrgb->alpha * levels->alpha + 500) / 1000);
 	rgbvals->ovl	= (unsigned short)(((long)reqrgb->ovl 	* levels->ovl + 500) / 1000);
-
+#endif
 	if (pixelret)
 		*pixelret = calc_pixelvalue( pixfmt, rgbvals);
 }
@@ -80,12 +111,45 @@ reqrgb_2_actrgb(char *pixfmt, RGB_LIST *levels, RGB_LIST *reqrgb, RGB_LIST *rgbv
 void
 get_rgb_relatives( RGB_LIST *values, RGB_LIST *levels, RGB_LIST *result)
 {
+	unsigned long tmp;
+
+	tmp = values->red;
+	tmp *= 1000;
+	tmp += (levels->red >> 1);
+	tmp /= levels->red;
+	result->red = tmp;
+
+	tmp = values->green;
+	tmp *= 1000;
+	tmp += (levels->green >> 1);
+	tmp /= levels->green;
+	result->green = tmp;
+
+	tmp = values->blue;
+	tmp *= 1000;
+	tmp += (levels->blue >> 1);
+	tmp /= levels->blue;
+	result->blue = tmp;
+
+	tmp = values->alpha;
+	tmp *= 1000;
+	tmp += (levels->alpha >> 1);
+	tmp /= levels->alpha;
+	result->alpha = tmp;
+
+	tmp = values->ovl;
+	tmp *= 1000;
+	tmp += (levels->ovl >> 1);
+	tmp /= levels->ovl;
+	result->ovl = tmp;
+#if 0
 	result->red	= ((long)values->red 	* 1000) / levels->red;
 	result->green	= ((long)values->green	* 1000) / levels->green;
 	result->blue	= ((long)values->blue	* 1000) / levels->blue;
 
 	result->alpha	= levels->alpha ? ((long)values->alpha	* 1000) / levels->alpha : 0;
 	result->ovl	= levels->ovl ? ((long)values->ovl	* 1000) / levels->ovl : 0;
+#endif
 }
 
 /* Return specified channel of a pixel-value. which selects what channel to get

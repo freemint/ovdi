@@ -39,41 +39,45 @@ unsigned long nib2long[] =
 void
 ds_REPLACE_8b(struct fill16x_api *f)
 {
+	register union { void *v; char *c; long *l; } d;
 	int i;
 	register char *s = (char *)f->s;
-	register char *d = (char *)f->d;
+
+	d.v = f->d;
 
 	if (f->words < 0)
 	{
 		if ((i = f->sm))
-			s += i, d += i;
+			s += i, d.c += i;
 		for (i = f->em - i; i > 0; i--)
-			*d++ = *s++;
+			*d.c++ = *s++;
 	}
 	else
 	{
 		if ((i = f->sm))
 		{
 			register char *src = s + i;
-			d += i;
+			d.c += i;
 			for (i = 16 - i; i > 0; i--)
-				*d++ = *src++;
+				*d.c++ = *src++;
 		}
 		if ((i = f->words) > 0)
 		{
 			register unsigned long *src = (long *)s;
 			register unsigned long lp0, lp1, lp2, lp3;
 			lp0 = *src++, lp1 = *src++, lp2 = *src++, lp3 = *src;
-			for (; i > 0; i--) {
-				*(long *)((long *)d)++ = lp0;
-				*(long *)((long *)d)++ = lp1;
-				*(long *)((long *)d)++ = lp2;
-				*(long *)((long *)d)++ = lp3; }
+			for (; i > 0; i--)
+			{
+				*d.l++ = lp0;
+				*d.l++ = lp1;
+				*d.l++ = lp2;
+				*d.l++ = lp3;
+			}
 		}
 		if ((i = f->em) > 0)
 		{
 			for (; i > 0; i--)
-				*d++ = *s++;
+				*d.c++ = *s++;
 		}
 	}
 }
@@ -81,40 +85,42 @@ void
 ds_TRANS_8b(struct fill16x_api *f)
 {
 	int i;
+	register union { void *v; char *c; long *l; } d;
 
 	if (f->words < 0)
 	{
 		register char *s = (char *)f->s;
 		register char *m = (char *)f->m;
-		register char *d = (char *)f->d;
+		d.v = f->d;
 
 		i = f->sm;
 		if (i)
-			s += i, m += i, d += i;
+			s += i, m += i, d.c += i;
 		for (i = f->em - i; i > 0; i--)
 		{
 			if (*m++)
-				*d++ = *s++;
+				*d.c++ = *s++;
 			else
-				d++, s++;
+				d.c++, s++;
 		}
 	}
 	else
 	{
-		register char *d = (char *)f->d;
 		register char *m = (char *)f->m;
+
+		d.v = f->d;
 
 		if ((i = f->sm))
 		{
 			register char *s = (char *)f->s + i;
 			register char *msk = m + i;
-			d += i;
+			d.c += i;
 			for (i = 16 - i; i > 0; i--)
 			{
 				if (*msk++)
-					*d++ = *s++;
+					*d.c++ = *s++;
 				else
-					d++, s++;
+					d.c++, s++;
 			}
 		}
 		if ((i = f->words) > 0)
@@ -124,37 +130,29 @@ ds_TRANS_8b(struct fill16x_api *f)
 			lp0 = *s++, lp1 = *s++, lp2 = *s++, lp3 = *s;
 			for (; i > 0; i--)
 			{
-#if 1
 				t0 = *msk;
 				t1 = ~t0;
-				t1 &= *(long *)d;
+				t1 &= *d.l;
 				t1 |= t0 & lp0;
-				*(long *)((long *)d)++ = t1;
+				*d.l++ = t1;
 				
 				t0 = msk[1];
 				t1 = ~t0;
-				t1 &= *(long *)d;
+				t1 &= *d.l;
 				t1 |= t0 & lp1;
-				*(long *)((long *)d)++ = t1;
+				*d.l++ = t1;
 
 				t0 = msk[2];
 				t1 = ~t0;
-				t1 &= *(long *)d;
+				t1 &= *d.l;
 				t1 |= t0 & lp2;
-				*(long *)((long *)d)++ = t1;
+				*d.l++ = t1;
 
 				t0 = msk[3];
 				t1 = ~t0;
-				t1 &= *(long *)d;
+				t1 &= *d.l;
 				t1 |= t0 & lp3;
-				*(long *)((long *)d)++ = t1;
-#else
-				msk = (long *)m;
-				*(long *)((long *)d)++ = (*(long *)d & ~*msk) | (lp0 & *msk), msk++;
-				*(long *)((long *)d)++ = (*(long *)d & ~*msk) | (lp1 & *msk), msk++;
-				*(long *)((long *)d)++ = (*(long *)d & ~*msk) | (lp2 & *msk), msk++;
-				*(long *)((long *)d)++ = (*(long *)d & ~*msk) | (lp3 & *msk), msk++;
-#endif
+				*d.l++ = t1;
 			}
 		}
 		if ((i = f->em))
@@ -163,9 +161,9 @@ ds_TRANS_8b(struct fill16x_api *f)
 			for (; i > 0; i--)
 			{
 				if (*msk++)
-					*d++ = *s++;
+					*d.c++ = *s++;
 				else
-					d++, s++;
+					d.c++, s++;
 			}
 		}
 	}
@@ -174,58 +172,66 @@ ds_TRANS_8b(struct fill16x_api *f)
 void
 ds_XOR_8b(struct fill16x_api *f)
 {
+	register union { void *v; char *c; long *l; } d;
 	int i;
 	register unsigned long lp0 = 0xffffffffL;
-	register char *d = (char *)f->d;
+// 	register char *d = (char *)f->d;
+
+	d.v = f->d;
 
 	if (f->words < 0)
 	{
 		if ((i = f->sm))
-			d += i;
+			d.c += i;
 		for (i = f->em - i; i > 0; i--)
-				*d++ ^= (char)lp0;
+				*d.c++ ^= (char)lp0;
 	}
 	else
 	{
 		if ((i = f->sm))
 		{
-			d += i;
+			d.c += i;
 			for (i = 16 - i; i > 0; i--)
-				*d++ ^= (char)lp0;
+				*d.c++ ^= (char)lp0;
 		}
 		if ((i = f->words) > 0)
 		{
-			for (; i > 0; i--) {
-				*(long *)((long *)d)++ ^= lp0;
-				*(long *)((long *)d)++ ^= lp0;
-				*(long *)((long *)d)++ ^= lp0;
-				*(long *)((long *)d)++ ^= lp0; }
+			for (; i > 0; i--)
+			{
+				*d.l++ ^= lp0;
+				*d.l++ ^= lp0;
+				*d.l++ ^= lp0;
+				*d.l++ ^= lp0;
+			}
 		}
 		if ((i = f->em))
 		{
 			for (; i > 0; i--)
-				*d++ ^= (char)lp0;
+				*d.c++ ^= (char)lp0;
 		}
 	}
 }
 void
 ds_ERASE_8b(struct fill16x_api *f)
 {
+	register union { void *v; char *c; long *l; } d;
 	int i;
 	register unsigned long lp0 = 0xffffffffL;
-	register char *d = (char *)f->d;
+// 	register char *d = (char *)f->d;
 	register char *m = (char *)f->m;
+
+	d.v = f->d;
 
 	if (f->words < 0)
 	{
 		if ((i = f->sm))
-			m += i, d += i;
+			m += i, d.c += i;
 		for (i = f->em - i; i > 0; i--)
 		{
 			if (*m++)
-				d++;
+				d.c++;
 			else
-				*d++ ^= (char)lp0;
+				*d.c++ ^= (char)lp0;
 		}
 	}
 	else
@@ -234,13 +240,13 @@ ds_ERASE_8b(struct fill16x_api *f)
 		{
 			char *msk = m + i;
 
-			d += i;
+			d.c += i;
 			for (i = 16 - i; i > 0; i--)
 			{
 				if (*msk++)
-					d++;
+					d.c++;
 				else
-					*d++ ^= (char)lp0;
+					*d.c++ ^= (char)lp0;
 			}
 		}
 		if ((i = f->words) > 0)
@@ -250,21 +256,21 @@ ds_ERASE_8b(struct fill16x_api *f)
 			lp0 = *msk++, lp1 = *msk++, lp2 = *msk++, lp3 = *msk;
 			for (; i > 0; i--)
 			{
-				*(long *)((long *)d)++ = (*(long *)d & lp0) | (*(long *)d ^ ~lp0);
-				*(long *)((long *)d)++ = (*(long *)d & lp1) | (*(long *)d ^ ~lp1);
-				*(long *)((long *)d)++ = (*(long *)d & lp2) | (*(long *)d ^ ~lp2);
-				*(long *)((long *)d)++ = (*(long *)d & lp3) | (*(long *)d ^ ~lp3);
+				*d.l++ = (*d.l & lp0) | (*d.l ^ ~lp0);
+				*d.l++ = (*d.l & lp1) | (*d.l ^ ~lp1);
+				*d.l++ = (*d.l & lp2) | (*d.l ^ ~lp2);
+				*d.l++ = (*d.l & lp3) | (*d.l ^ ~lp3);
 			}
 		}
 		if ((i = f->em))
 		{
-			(char)lp0 = (char)0xff;
+			lp0 = 0xff;
 			for (; i > 0; i--)
 			{
 				if (*m++)
-					d++;
+					d.c++;
 				else
-					*d++ ^= lp0;
+					*d.c++ ^= (char )lp0;
 			}
 		}
 	}
@@ -285,8 +291,8 @@ spans_16x_8b(RASTER *r, COLINF *c, short *spans, short n, PatAttr *ptrn)
 	if (ptrn->expanded != 8 && ptrn->interior > FIS_SOLID)
 	{
 		int height;
-		unsigned short data;
-		unsigned long *s, *d, *m;
+		unsigned short data, *s;
+		unsigned long *d, *m;
 		unsigned long lp0, lp1, lp2;
 
 		/*
@@ -301,14 +307,14 @@ spans_16x_8b(RASTER *r, COLINF *c, short *spans, short n, PatAttr *ptrn)
 			if (ptrn->width > 16 || ptrn->height > 16)
 				return;
 
-			(long)ptrn->exp_data = (long)&fillbuff;
-			(long)ptrn->mask = (long)&maskbuff;
+			ptrn->exp_data = (unsigned short *)&fillbuff;
+			ptrn->mask = (unsigned short *)&maskbuff;
 			ptrn->expanded = 0;
 		}
 		else
 			ptrn->expanded = 8;
 
-		s = (unsigned long *)ptrn->data;
+		s = ptrn->data;
 		d = (unsigned long *)ptrn->exp_data;
 		m = (unsigned long *)ptrn->mask;
 		lp0 = (unsigned long)ptrn->color[wrmode];
@@ -318,7 +324,7 @@ spans_16x_8b(RASTER *r, COLINF *c, short *spans, short n, PatAttr *ptrn)
 		
 		for (height = ptrn->height; height > 0; height--)
 		{
-			data = *(unsigned short *)((short *)s)++;
+			data = *s++;
 
 			lp2 = nib2long[data & 0xf];
 			d[3] = (lp0 & lp2) | (lp1 & ~lp2);
@@ -421,7 +427,7 @@ singleline:
 
 	SYNC_RASTER(r);
 
-	for (;n > 0; n--)
+	for (; n > 0; n--)
 	{
 		register short y1, x1, x2;
 		register int sb;
@@ -440,9 +446,10 @@ singleline:
 		(*f.drawspan)(&f);
 	}
 
-done:	if (!ptrn->expanded)
+done:
+	if (!ptrn->expanded)
 	{
-		ptrn->exp_data = 0;
-		ptrn->mask = 0;
+		ptrn->exp_data = NULL;
+		ptrn->mask = NULL;
 	}
 }

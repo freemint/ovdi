@@ -17,9 +17,8 @@ BSw(unsigned short n)
 
 	ret = n;
 	__asm__
-	("
-		ror.w	#8,%0
-	"	:
+	(	"ror.w	#8,%0\n\t"	\
+		:
 		: "d"(ret)
 	);
 	return ret;
@@ -32,11 +31,10 @@ BSl(unsigned long n)
 
 	ret = n;
 	__asm__
-	("
-		ror.w	#8,%0
-		swap	%0
-		ror.w	#8,%0
-	"	:
+	(	"ror.w	#8,%0\n\t"	\
+		"swap	%0\n\t"		\
+		"ror.w	#8,%0\n\t"	\
+		:
 		: "d"(ret)
 	);
 	return ret;
@@ -58,9 +56,8 @@ __extension__							\
 								\
 	ret = *(volatile unsigned short *)(p + ofset);		\
 	__asm__							\
-	("							\
-		ror.w #8,%0					\
-	"	:						\
+	(	"ror.w #8,%0\n\t"				\
+		:						\
 		: "d"(ret)					\
 	);							\
 	ret;							\
@@ -73,11 +70,10 @@ __extension__							\
 								\
 	ret = *(volatile unsigned long *)(p + ofset);		\
 	__asm__							\
-	("							\
-		ror.w #8,%0	;				\
-		swap %0		;				\
-		ror.w #8,%0	;				\
-	"	:						\
+	(	"ror.w #8,%0\n\t"				\
+		"swap %0\n\t"					\
+		"ror.w #8,%0\n\t"				\
+		:						\
 		: "d"(ret)					\
 	);							\
 	ret;							\

@@ -2,6 +2,7 @@
 #define _pf_24b_motorola_h
 
 /* 24-bit Motorola pixelformat layout */
+/* rrrrrrrr.gggggggg.bbbbbbbb */
 char pf_24bM[] =
 {
 	/* red bits */

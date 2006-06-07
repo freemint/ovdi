@@ -30,9 +30,9 @@ fill_16x_8b(RASTER *r, COLINF *c, short *corners, PatAttr *ptrn)
 	interior = ptrn->interior;
 	if (ptrn->expanded != 8 && interior > FIS_SOLID)
 	{
-		unsigned short data;
+		unsigned short data, *s;
 		unsigned long lp0, lp1, lp2;
-		unsigned long *s, *d, *m;
+		unsigned long *d, *m;
 
 		/*
 		 * If there is no pointer to expanded data buffer,
@@ -46,14 +46,14 @@ fill_16x_8b(RASTER *r, COLINF *c, short *corners, PatAttr *ptrn)
 			if (ptrn->width > 16 || ptrn->height > 16)
 				return;
 
-			(long)ptrn->exp_data = (long)&fillbuff;
-			(long)ptrn->mask = (long)&maskbuff;
+			ptrn->exp_data = (unsigned short *)&fillbuff;
+			ptrn->mask = (unsigned short *)&maskbuff;
 			ptrn->expanded = 0;
 		}
 		else
 			ptrn->expanded = 8;
 #if 1
-		s = (unsigned long *)ptrn->data;
+		s = ptrn->data;
 		d = (unsigned long *)ptrn->exp_data;
 		m = (unsigned long *)ptrn->mask;
 		lp0 = (unsigned long)ptrn->color[wrmode];
@@ -63,7 +63,7 @@ fill_16x_8b(RASTER *r, COLINF *c, short *corners, PatAttr *ptrn)
 		
 		for (height = ptrn->height; height > 0; height--)
 		{
-			data = *(unsigned short *)((short *)s)++;
+			data = *s++;
 
 			lp2 = nib2long[data & 0xf];
 			d[3] = (lp0 & lp2) | (lp1 & ~lp2);
@@ -185,10 +185,15 @@ singleline:
 	if ((--height) >= 0)
 		(*f.drawspan)(&f);
 
-	for (; height > 0; height--)
 	{
-		(char *)f.d += f.dbpl;
-		(*f.drawspan)(&f);
+		long da;
+		da = (long)f.d;
+		for (; height > 0; height--)
+		{
+			da += f.dbpl;
+			f.d = (void *)da;
+			(*f.drawspan)(&f);
+		}
 	}
 
 done:	if (!ptrn->expanded)

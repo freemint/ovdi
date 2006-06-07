@@ -16,16 +16,16 @@
 
 void init (OVDI_LIB *, struct module_desc *ret, char *p, char *f);
 
-static OVDI_DRIVER *	dev_open		(OVDI_DEVICE *dev);
-static long		dev_close		(OVDI_DRIVER *drv);
-static short		dev_set_vdi_res		(OVDI_DRIVER *drv, short scrndev_id);
-static short		dev_get_res_info	(OVDI_DRIVER *drv);
-static unsigned char *	dev_setpscreen		(OVDI_DRIVER *drv, unsigned char *scrnadr);
-static unsigned char *	dev_setlscreen		(OVDI_DRIVER *drv, unsigned char *scrnadr);
-static void		dev_setcolor		(OVDI_DRIVER *drv, short pen, RGB_LIST *colors);
-static void		dev_vsync		(OVDI_DRIVER *drv);
-static void		dev_vreschk		(short x, short y);
-static int		et6k_sync		(void);
+static OVDI_DRIVER *	_cdecl dev_open			(OVDI_DEVICE *dev);
+static long		_cdecl dev_close		(OVDI_DRIVER *drv);
+static short		_cdecl dev_set_vdi_res		(OVDI_DRIVER *drv, short scrndev_id);
+static short		_cdecl dev_get_res_info		(OVDI_DRIVER *drv);
+static unsigned char *	_cdecl dev_setpscreen		(OVDI_DRIVER *drv, unsigned char *scrnadr);
+static unsigned char *	_cdecl dev_setlscreen		(OVDI_DRIVER *drv, unsigned char *scrnadr);
+static void		_cdecl dev_setcolor		(OVDI_DRIVER *drv, short pen, RGB_LIST *colors);
+static void		_cdecl dev_vsync		(OVDI_DRIVER *drv);
+static void		_cdecl dev_vreschk		(short x, short y);
+static long		_cdecl et6k_sync		(void);
 
 static short	Load_Resolution(char *fname, short index, RESOLUTION *res);
 static void	do_set_res(OVDI_DRIVER *drv, RESOLUTION *res);
@@ -45,7 +45,7 @@ static char fn[64] = { "0" };
 
 static OVDI_DEVICE et6k_device =
 {
-	0,
+	NULL,
 	0x00000001,
 	sname,
 	lname,
@@ -194,7 +194,7 @@ static RESFMT et6k_32b =
 };
 
 
-static int
+static long _cdecl
 et6k_sync(void)
 {
 	volatile unsigned char *et6k = et6kptr;
@@ -242,6 +242,137 @@ et6k_S_ONLY_8b(ROP_PB *rpb)
 		outl( et6k, ACL_DESTINATION_ADDRESS, dst );
 	}
 }
+#if 0
+static void
+et6k_filled_rect_16( RASTER *r, COLINF *c, VDIRECT *corners, VDIRECT *clip, PatAttr *ptrn)
+{
+	VDIRECT clipped = *corners;
+
+	if ((*r->utils->clipbox)(&clipped, clip))
+		return;
+	else
+	{
+		unsigned char *addr, *patrn, *a;
+		register long fcol, bcol;
+		int left, right, groups;
+		short x;
+		int dx, xinc, dy;
+		int planes, bypl;
+		int bgcol, fgcol;
+		int wrmode;
+		unsigned short pattern, bit;
+		int i, j;
+
+		if (clipped.x1 > clipped.x2)
+		{
+			x = clipped.x1;
+			clipped.x1 = clipped.x2;
+			clipped.x2 = x;
+		}
+
+		x = clipped.x1;
+		dx = clipped.x2 - clipped.x1 + 1;
+		dy = clipped.y2 - clipped.y1 + 1;
+
+		wrmode = ptrn->wrmode;
+		fgcol = ptrn->color[wrmode];
+		bgcol	= ptrn->bgcol[wrmode];
+		bypl	= r->bypl;
+
+		SYNC_RASTER(r);
+
+		xinc = 2;
+		a = (unsigned char *)r->base + ((long)x * xinc) + ((long)y1 * r->bypl);
+
+		fcol = c->pixelvalues[fgcol];
+		bcol = c->pixelvalues[bgcol];
+
+		left = 16 - (x1 & 0xf);
+		dx -= left;
+
+		if ( dx <= 0 )
+		{
+			left = left + dx;
+			groups = 0;
+			right = 0;
+		}
+		else if (dx > 15)
+		{
+			right = (x2 & 0xf) + 1;
+			groups = (dx - right) >> 4;
+		}
+		else
+		{
+			groups = 0;
+			right = dx;
+		}
+
+		for (; dy > 0; dy--)
+		{
+			patrn = (unsigned char *)(long)ptrn->data + ((y1 % ptrn->height) * (ptrn->wwidth << 1));
+			addr = a;
+
+			if (left)
+			{
+				pattern = x1 & 0xf ? (*(unsigned short *)patrn << ((x1 & 0xf))) | ( *(unsigned short *)patrn >> (16 - (x1 & 0xf)) ) : *(unsigned short *)patrn;
+
+				for (i = 0; i < left; i++)
+				{
+					if (pattern & 0x8000)
+					{
+						if (dpf_fg)
+							(*dpf_fg)(addr, fcol);
+					}
+					else if (dpf_bg)
+						(*dpf_bg)(addr, bcol);
+					addr += xinc;
+					pattern <<= 1;
+				}
+			}
+
+			if (groups)
+			{
+				bit = *(unsigned short *)patrn;
+
+				for (i = 0; i < groups; i++)
+				{
+					pattern = bit;
+					for (j = 0; j < 16; j++)
+					{
+						if (pattern & 0x8000)
+						{
+							if (dpf_fg)
+								(*dpf_fg)(addr, fcol);
+						}
+						else if (dpf_bg)
+							(*dpf_bg)(addr, bcol);
+						addr += xinc;
+						pattern <<= 1;
+					}
+				}
+			}
+			if (right)
+			{
+				pattern = *(unsigned short *)patrn;
+				for (i = 0; i < right; i++)
+				{
+					if (pattern & 0x8000)
+					{
+						if (dpf_fg)
+							(*dpf_fg)(addr, fcol);
+					}
+					else if (dpf_bg)
+						(*dpf_bg)(addr, bcol);
+					addr += xinc;
+					pattern <<= 1;
+				}
+			}
+			y1++;
+			a += bypl;
+		}
+	}
+}
+#endif
 
 static short
 Load_Resolution(char *fname, short res_index, RESOLUTION *res)
@@ -339,10 +470,10 @@ init(OVDI_LIB *l, struct module_desc *ret, char *path, char *file)
 	drv->drawers_32b->res = &et6k_32b;
 
 	ret->types	= D_VHW;
-	ret->vhw	= dev; //(void *)&et6k_device;
+	ret->vhw	= dev;
 };
 
-static OVDI_DRIVER *
+static OVDI_DRIVER * _cdecl
 dev_open(OVDI_DEVICE *dev)
 {
 	OVDI_DRIVER *drv = &et6k_driver;
@@ -359,7 +490,7 @@ dev_open(OVDI_DEVICE *dev)
 	return drv;
 }
 
-static long
+static long _cdecl
 dev_close(OVDI_DRIVER *drv)
 {
 	RESOLUTION res;
@@ -378,7 +509,7 @@ dev_close(OVDI_DRIVER *drv)
 	return (long)drv;
 }
 
-static short
+static short _cdecl
 dev_set_vdi_res(OVDI_DRIVER *drv, short res_id)
 {
 	XCB *x = xcb;
@@ -422,7 +553,7 @@ do_set_res(OVDI_DRIVER *drv, RESOLUTION *res)
 }
 
 /* WOOAHH - Fix the 'fmt' issue!! */
-static short
+static short _cdecl
 dev_get_res_info(OVDI_DRIVER *drv)
 {
 	short fmt, planes;
@@ -562,7 +693,7 @@ dev_get_res_info(OVDI_DRIVER *drv)
 	return 0;
 }
 
-static unsigned char *
+static unsigned char * _cdecl
 dev_setpscreen(OVDI_DRIVER *drv, unsigned char *scradr)
 {
 	if (scradr < (unsigned char *)drv->vram_start)
@@ -574,14 +705,14 @@ dev_setpscreen(OVDI_DRIVER *drv, unsigned char *scradr)
 	return	xcb->scr_base;
 }
 
-static unsigned char *
+static unsigned char * _cdecl
 dev_setlscreen(OVDI_DRIVER *drv, unsigned char *logscr)
 {
 	v_bas_ad = (long)logscr;
 	return logscr;
 }
 
-static void
+static void _cdecl
 dev_setcolor(OVDI_DRIVER *drv, short pen, RGB_LIST *colors)
 {
 	unsigned char bcols[4];
@@ -595,7 +726,7 @@ dev_setcolor(OVDI_DRIVER *drv, short pen, RGB_LIST *colors)
 	return;
 }
 
-static void
+static void _cdecl
 dev_vsync(OVDI_DRIVER *drv)
 {
 	do_p_vsync((long)xcb->p_vsync);
@@ -606,10 +737,9 @@ dev_vsync(OVDI_DRIVER *drv)
  * This will be called by the mouse-drivers (layer 1) mouse-interrupt whenever
  * the mouse moves.
 */
-static void
+static void _cdecl
 dev_vreschk(short x, short y)
 {
 	do_p_chng_vrt((long)xcb->p_chng_vrt, x, y);
 	return;
 }
-

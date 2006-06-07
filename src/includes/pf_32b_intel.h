@@ -2,6 +2,7 @@
 #define _pf_32b_intel_h
 
 /* 32-bit Intel pixelformat layout */
+/* rrrrrrrr.gggggggg.bbbbbbbb.00000000 */
 char pf_32bI[] = 
 {
 	/* red bits */

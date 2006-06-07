@@ -3,6 +3,10 @@
 
 #include <compiler.h>
 
+#ifndef _cdecl
+#define _cdecl __CDECL
+#endif
+
 #ifdef __MSHORT__
 #define O_POSLEN 2
 #define O_INTLEN 2

@@ -2,6 +2,7 @@
 #define _pf_24b_intel_h
 
 /* 24-bit Intel pixelformat layout */
+/* bbbbbbbb.gggggggg.rrrrrrrr */
 char pf_24bI[] =
 {
 	/* red bits */

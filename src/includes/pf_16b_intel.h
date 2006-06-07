@@ -2,6 +2,7 @@
 #define _pf_16b_intel_h
 
 /* 16-bit Intel pixelformat layout */
+/* gggbbbbb.rrrrrggg */
 char pf_16bI[] =
 {
 	/* red bits */

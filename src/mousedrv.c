@@ -166,8 +166,8 @@ init_mouse(OVDI_HWAPI *hw, LINEA_VARTAB *la)
 	m->la = la;
 	m->raster = 0;
 	m->colinf = 0;
-	(long)m->draw_mcurs = (long)mdonothing;
-	(long)m->undraw_mcurs = (long)mdonothing;
+	m->draw_mcurs = (DRAW_MC *)mdonothing; //(draw_mc)mdonothing;
+	m->undraw_mcurs = (UNDRAW_MC *)mdonothing; //(undraw_mc)mdonothing;
 
 	m->flags	= 0;
 	m->interrupt	= 1;
@@ -179,8 +179,8 @@ init_mouse(OVDI_HWAPI *hw, LINEA_VARTAB *la)
 	m->cb.relcmove	= m_rel_move;
 	m->cb.abscmove	= m_abs_move;
 	m->cb.buttchng	= m_but_chg;
-	(long)m->cb.relwheel	= (long)&mdonothing;
-	(long)m->cb.abswheel	= (long)&mdonothing;
+	m->cb.relwheel	= (MWHEEL *)&mdonothing;
+	m->cb.abswheel	= (MWHEEL *)&mdonothing;
 
 #if 0
 	m->relmovmcurs	= m_rel_move;		//mouse_relative_move;
@@ -236,7 +236,7 @@ enable_mouse(void)
 {
 	MOUSEDRV *m = &md;
 
-	(*m->pdapi->start)();			/* start the mouse device driver */
+	(*m->pdapi->start)();		/* start the mouse device driver */
 	m->flags |= MDRV_ENABLED;	/* Indicate mouse is enabled */
 }
 static void
@@ -247,7 +247,7 @@ disable_mouse(void)
 	if (m->flags & MDRV_ENABLED)
 	{
 		disable_mouse_curs();
-		(*m->pdapi->stop)();			/* stop the mouse device driver */
+		(*m->pdapi->stop)();		/* stop the mouse device driver */
 		m->flags &= ~MDRV_ENABLED;	/* Indicate mouse is disabled */
 	}
 }
@@ -279,12 +279,12 @@ set_xmf_res(RASTER *r, COLINF *c)
 	if (r->drawers->draw_mcurs)
 		m->draw_mcurs	= r->drawers->draw_mcurs;
 	else
-		(long)m->draw_mcurs = (long)mdonothing;
+		m->draw_mcurs = (DRAW_MC *)mdonothing;
 
 	if (r->drawers->undraw_mcurs)
 		m->undraw_mcurs	= r->drawers->undraw_mcurs;
 	else
-		(long)m->undraw_mcurs = (long)mdonothing;
+		m->undraw_mcurs = (UNDRAW_MC *)mdonothing;
 
 	m->min_x	= m->min_y = 0;
 	m->max_x	= r->w - 1;
@@ -386,12 +386,11 @@ mouse_relative_move(short x, short y)
 
 	/* Call user_mot function */
 	__asm__ volatile
-	("
-		movem.l	d2-d7/a0-a6,-(sp)
-		move.l	%2,a0
-		jsr	(a0)
-		movem.l (sp)+,d2-d7/a0-a6
-	"	:
+	(	"movem.l d2-d7/a0-a6,-(sp)\n\t"		\
+		"move.l	 %2,a0\n\t"			\
+		"jsr	 (a0)\n\t"			\
+		"movem.l (sp)+,d2-d7/a0-a6\n\t"		\
+		:
 		: "d"(nx),"d"(ny),"a"(la->user_mot)
 		: "a0"
 	);
@@ -403,12 +402,11 @@ mouse_relative_move(short x, short y)
 	la->gcury = ny;
 
 	__asm__ volatile
-	("
-		movem.l	d2-d7/a0-a6,-(sp)
-		move.l	%2,a0
-		jsr	(a0)
-		movem.l (sp)+,d2-d7/a0-a6
-	"	:
+	(	"movem.l d2-d7/a0-a6,-(sp)\n\t"		\
+		"move.l	 %2,a0\n\t"			\
+		"jsr	 (a0)\n\t"			\
+		"movem.l (sp)+,d2-d7/a0-a6\n\t"		\
+		:
 		: "d"(nx),"d"(ny),"a"(la->user_cur)
 		: "a0"
 	);
@@ -431,12 +429,11 @@ mouse_absolute_move(short x, short y)
 
 	/* Call user_mot function */
 	__asm__ volatile
-	("
-		movem.l	d2-d7/a0-a6,-(sp)
-		move.l	%2,a0
-		jsr	(a0)
-		movem.l (sp)+,d2-d7/a0-a6
-	"	:
+	(	"movem.l d2-d7/a0-a6,-(sp)\n\t"		\
+		"move.l	 %2,a0\n\t"			\
+		"jsr	 (a0)\n\t"			\
+		"movem.l (sp)+,d2-d7/a0-a6\n\t"		\
+		:
 		: "d"(nx),"d"(ny),"a"(la->user_mot)
 		: "a0"
 	);
@@ -448,12 +445,11 @@ mouse_absolute_move(short x, short y)
 	la->gcury = ny;
 
 	__asm__ volatile
-	("
-		movem.l	d2-d7/a0-a6,-(sp)
-		move.l	%2,a0
-		jsr	(a0)
-		movem.l	(sp)+,d2-d7/a0-a6
-	"	:
+	(	"movem.l d2-d7/a0-a6,-(sp)\n\t"		\
+		"move.l	 %2,a0\n\t"			\
+		"jsr	 (a0)\n\t"			\
+		"movem.l	 (sp)+,d2-d7/a0-a6\n\t"	\
+		:
 		: "d"(x),"d"(y),"a"(la->user_cur)
 		: "a0"
 	);
@@ -471,12 +467,11 @@ mouse_buttons_change(unsigned short bs)
 	if (nbs != obs)
 	{
 		__asm__ volatile
-		("
-			movem.l	d1-d7/a0-a6,-(sp)
-			move.l	%1,a0
-			jsr	(a0)
-			movem.l	(sp)+,d1-d7/a0-a6
-		"	:
+		(	"movem.l d1-d7/a0-a6,-(sp)\n\t"		\
+			"move.l	%1,a0\n\t"			\
+			"jsr	(a0)\n\t"			\
+			"movem.l	(sp)+,d1-d7/a0-a6\n\t"	\
+			:
 			: "d"(nbs),"a"(m->la->user_but)
 			: "d0","d1","a0"
 		);
@@ -681,19 +676,19 @@ set_mouse_vector(short vecnum, unsigned long vector)
 		case MVEC_BUT:
 		{
 			oldvec = (unsigned long)m->la->user_but;
-			(unsigned long)m->la->user_but = vector;
+			m->la->user_but = (void *)vector;
 			break;
 		}
 		case MVEC_CUR:
 		{
 			oldvec = (unsigned long)m->la->user_cur;
-			(unsigned long)m->la->user_cur = vector;
+			m->la->user_cur = (void *)vector;
 			break;
 		}
 		case MVEC_MOV:
 		{
 			oldvec = (unsigned long)m->la->user_mot;
-			(unsigned long)m->la->user_mot = vector;
+			m->la->user_mot = (void *)vector;
 			break;
 		}
 	}

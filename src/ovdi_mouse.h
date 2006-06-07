@@ -48,8 +48,10 @@ struct xmform
 };
 typedef	struct xmform XMFORM;
 
-typedef void (*draw_mc)		(struct xmform *xmf, short x, short y);
-typedef void (*undraw_mc)	(struct xmsave *xms);
+// typedef void (*draw_mc)		(struct xmform *xmf, short x, short y);
+// typedef void (*undraw_mc)	(struct xmsave *xms);
+typedef void DRAW_MC	(struct xmform *xmf, short x, short y);
+typedef void UNDRAW_MC	(struct xmsave *xms);
 
 #define MOUSE_SEMA(n) {				\
 	if (n->msema)				\
@@ -70,10 +72,10 @@ struct mousedrv
 	LINEA_VARTAB	*la;
 	XMFORM		*current_xmf;
 	XMSAVE		*current_xms;
-	draw_mc		draw_mcurs;
-	undraw_mc	undraw_mcurs;
+	DRAW_MC		*draw_mcurs; /*draw_mc		draw_mcurs;*/
+	UNDRAW_MC	*undraw_mcurs; /*undraw_mc	undraw_mcurs;*/
 	void		(*vreschk)(short, short);
-	short		(*msema)(void);
+	long _cdecl	(*msema)(void);
 	volatile unsigned long	flags;
 	volatile unsigned short	interrupt;
 #define MC_ENABLED	0x01

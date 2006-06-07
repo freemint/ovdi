@@ -322,7 +322,7 @@ get_family_name(VF_FACE *vff, FONT_HEAD *fh)
 	s = (char *)&fh->name;
 	d = (char *)&vff->family_name;
 
-	for (i = 0;i < 32 && (*d++ = *s++); i++)
+	for (i = 0; i < 32 && (*d++ = *s++); i++)
 		;
 
 	*d = 0;

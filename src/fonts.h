@@ -4,7 +4,7 @@
 #include "ovdi_types.h"
 #include "gdf_defs.h"
 
-long		load_font		( char *fn, long *flen, long *fadr, struct gdf_membuff *m);
+long		load_font		( char *fn, struct gdf_membuff *m, long *flen, XGDF_HEAD **fadr);
 void		fixup_font		( FONT_HEAD *font );
 void		init_systemfonts	( SIZ_TAB *st, DEV_TAB *dt);
 GDF_CACHED *	gdf_get_cachemem	( XGDF_HEAD *xf, short chr);

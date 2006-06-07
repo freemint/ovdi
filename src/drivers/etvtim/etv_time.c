@@ -23,7 +23,7 @@ struct timedrv
 	void		(*user_tim)(void);
 	void		(*next_tim)(void);
 };
-
+	
 void	init	(OVDI_LIB *l, struct module_desc *ret, char *p, char *f);
 
 extern unsigned long old_timeint;
@@ -222,15 +222,15 @@ time_interrupt(void)
 
  /* Call user_tim and next_tim */
 	__asm__ volatile
-	("
-		movem.l	d0-d7/a1-a6,-(sp)
-		move.l	%0,a0
-		jsr	(a0)
-		movem.l (sp),d0-d7/a1-a6
-		move.l	%1,a0
-		jsr	(a0)
-		movem.l	(sp)+,d0-d7/a1-a6
-	"	:
+	(
+		"movem.l	d0-d7/a1-a6,-(sp)\n\t"		\
+		"move.l		%0,a0\n\t"			\
+		"jsr		(a0)\n\t"			\
+		"movem.l	(sp),d0-d7/a1-a6\n\t"		\
+		"move.l		%1,a0\n\t"			\
+		"jsr		(a0)\n\t"			\
+		"movem.l	(sp)+,d0-d7/a1-a6\n\t"		\
+		:
 		: "a"(td->user_tim), "a"(td->next_tim)
 		: "a0"
 	);
@@ -319,8 +319,8 @@ set_user_tim(unsigned long function)
 
 	sr = spl7();
 	old = (unsigned long)td->user_tim;
-	(unsigned long)td->user_tim = function;
-	(unsigned long)td->la->user_tim = function;
+	td->user_tim = (void (*)(void))function;
+	td->la->user_tim = (void (*)(void))function;
 	spl(sr);
 	return old;
 }
@@ -330,18 +330,18 @@ set_next_tim(unsigned long function)
 {
 	short sr;
 	register struct timedrv *td = &tdrv;
-	unsigned long old;
+	void (*old)(void);
 
 	sr = spl7();
-	old = (unsigned long)td->next_tim;
-	(unsigned long)td->next_tim = function;
-	(unsigned long)td->la->next_tim = function;
+	old = td->next_tim;
+	td->next_tim = (void (*)(void))function;
+	td->la->next_tim = (void (*)(void))function;
 	spl(sr);
-	return old;
+	return (unsigned long)old;
 }
 
 static void
-donothing()
+donothing(void)
 {
 	return;
 }

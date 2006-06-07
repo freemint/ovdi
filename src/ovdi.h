@@ -2,9 +2,6 @@
 #define _OVDI_H
 
 #include "ovdi_defs.h"
-#ifndef _cdecl
-#define _cdecl
-#endif
 
 long	oVDI		(VDIPB *pb);
 long	ovdi_init	(void);

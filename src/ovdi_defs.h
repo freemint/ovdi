@@ -1,6 +1,7 @@
 #ifndef _OVDI_DEFS_H
 #define _OVDI_DEFS_H
 
+
 #include "ovdi_types.h"
 
 typedef struct raster RASTER;
@@ -56,7 +57,7 @@ struct raster
 	/* The top part of raster structure is filled	*/
 	/* in by the device driver upon resolution	*/
 	/* changes, etc.				*/
-	long			(*sync)(void);		/* Hardware ready? (accelerator done, etc) */
+	long _cdecl		(*sync)(void);		/* Hardware ready? (accelerator done, etc) */
 	unsigned char		*base;			/* Address of raster */
 	unsigned long		lenght;			/* Lenght of raster in bytes */
 	long			bypl;			/* Size of one line in bytes */
@@ -520,8 +521,8 @@ struct ovdi_drawers
 	raster_blits	raster_blits;
 
 	/* Mouse cursor rendering */
-	draw_mc		draw_mcurs;
-	undraw_mc	undraw_mcurs;
+	DRAW_MC		*draw_mcurs; // draw_mc		draw_mcurs;
+	UNDRAW_MC	*undraw_mcurs; //undraw_mc	undraw_mcurs;
 
 };
 typedef struct ovdi_drawers OVDI_DRAWERS;
@@ -576,7 +577,7 @@ struct ovdi_driver
 {
 	long		version;
 	short		format;
-	
+
 #define PF_ATARI	1
 #define PF_PLANES	2
 #define PF_PACKED	4
@@ -587,7 +588,11 @@ struct ovdi_driver
 	RASTER		r;
 	
 	unsigned long	palette;
-	short		v_top, v_bottom, v_left, v_right;
+
+	short		v_top;
+	short		v_bottom;
+	short		v_left;
+	short		v_right;
 
 	void		*vram_start;
 	long		vram_size;
@@ -598,6 +603,7 @@ struct ovdi_driver
 	void		*log_base;
 
 	OVDI_DEVICE	*dev;
+	void		*priv;			/* private data */
 
 /*
  * These are pointers to a ovdi_drawers function table for each
@@ -629,17 +635,17 @@ struct ovdi_device
 	char			*pathname;
 	char			*filename;
 
-	OVDI_DRIVER *		(*open)(struct ovdi_device *dev);
-	long			(*close)(OVDI_DRIVER *drv);
-	short			(*set_vdires)(OVDI_DRIVER *drv, short scrndev_id);
-	short			(*get_res_info)(OVDI_DRIVER *drv);
-	unsigned char *		(*setpscr)(OVDI_DRIVER *drv, unsigned char *scrnadr);
-	unsigned char *		(*setlscr)(OVDI_DRIVER *drv, unsigned char *logscr);
-	void			(*setcol)(OVDI_DRIVER *drv, short pen, RGB_LIST *colors);
-	void			(*vsync)(OVDI_DRIVER *drv);
+	OVDI_DRIVER *	_cdecl	(*open)(struct ovdi_device *dev);
+	long		_cdecl	(*close)(OVDI_DRIVER *drv);
+	short		_cdecl	(*set_vdires)(OVDI_DRIVER *drv, short scrndev_id);
+	short		_cdecl	(*get_res_info)(OVDI_DRIVER *drv);
+	unsigned char *	_cdecl	(*setpscr)(OVDI_DRIVER *drv, unsigned char *scrnadr);
+	unsigned char *	_cdecl	(*setlscr)(OVDI_DRIVER *drv, unsigned char *logscr);
+	void		_cdecl	(*setcol)(OVDI_DRIVER *drv, short pen, RGB_LIST *colors);
+	void		_cdecl	(*vsync)(OVDI_DRIVER *drv);
 
-	void			(*vreschk)(short x, short y);
-	short			(*msema)(void);
+	void		_cdecl	(*vreschk)(short x, short y);
+	long		_cdecl	(*msema)(void);
 };
 
 #endif	/* _OVDI_DEFS_H */

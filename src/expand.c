@@ -11,8 +11,8 @@ struct xpnd
 	short	width;
 	short	height;
 	short	pmask;
-	void	*src;
-	void	*dst;
+	char	*src;
+	char	*dst;
 	unsigned short	*mask;
 	short	count;
 };
@@ -196,7 +196,7 @@ exp_to_1b(short pen, struct xpnd *xpnd)
 	else
 		mask >>= 1;
 
-	xpnd->dst = dst;
+	xpnd->dst = (char *)dst;
 	xpnd->mask = msk;
 	xpnd->count = count;
 	xpnd->pmask = mask;
@@ -208,7 +208,7 @@ exp_to_2b(short pen, struct xpnd *xpnd)
 	short count = xpnd->count;
 	unsigned short mask = (unsigned short)xpnd->pmask;
 	unsigned short *msk = xpnd->mask;
-	unsigned short *dst = xpnd->dst;
+	unsigned short *dst = (unsigned short *)xpnd->dst;
 	unsigned short pix;
 
 	if (pen > 3)
@@ -236,7 +236,7 @@ exp_to_2b(short pen, struct xpnd *xpnd)
 	else
 		mask >>= 1;
 
-	xpnd->dst = dst;
+	xpnd->dst = (char *)dst;
 	xpnd->mask = msk;
 	xpnd->count = count;
 	xpnd->pmask = mask;
@@ -271,8 +271,8 @@ exp_to_4b(short pen, struct xpnd *xpnd)
 
 	if ((--count) < 0)
 	{
-		(unsigned short *)xpnd->dst += 4;
-		((unsigned short *)xpnd->mask)++;
+		xpnd->dst += 4 * sizeof(short);
+		xpnd->mask++;
 		xpnd->count = 15;
 		xpnd->pmask = 0x8000;
 	}
@@ -286,20 +286,26 @@ exp_to_4b(short pen, struct xpnd *xpnd)
 static void
 exp_to_8bTT(short pen, struct xpnd *xpnd)
 {
+	union { long lng; unsigned long *l; unsigned short *s; } da;
+	
 	short count = xpnd->count, i;
 	unsigned short mask = (unsigned short)xpnd->pmask, pix;
 	unsigned short *msk = xpnd->mask;
-	unsigned short *dst = (unsigned short *)xpnd->dst;
+// 	unsigned short *dst = (unsigned short *)xpnd->dst;
 
 	pen &= 255;
-
+	
+	da.l = (long *)xpnd->dst;
+	
 	if (count == 15)
-		(long)((long *)dst)[0] = (long)((long *)dst)[1] = (long)((long *)dst)[2] = (long)((long *)dst)[3] = *msk = 0;
-
+	{
+		da.l[0] = da.l[1] = da.l[2] = da.l[3] = 0;
+		*msk = 0;
+	}
 	pix = xpnd->dcols[pen];
 	for (i = 0; i < 8; i++)
 	{
-		dst[i] |= (pix << count) & mask;
+		da.s[i] |= (pix << count) & mask;
 		pix >>= 1;
 	}
 	if (pen)
@@ -307,14 +313,14 @@ exp_to_8bTT(short pen, struct xpnd *xpnd)
 
 	if ((--count) < 0)
 	{
-		(long *)xpnd->dst += 8;
-		((unsigned short *)xpnd->mask)++;
+		xpnd->dst += 8 * sizeof(long);
+		xpnd->mask++;
 		xpnd->count = 15;
 		xpnd->pmask = 0x8000;
 	}
 	else
 	{
-		(unsigned short)xpnd->pmask >>= 1;
+		xpnd->pmask = (short)((unsigned short)xpnd->pmask >> 1);
 		xpnd->count = count;
 	}
 
@@ -348,8 +354,10 @@ exp_to_8b(short pen, struct xpnd *xpnd)
 static void
 exp_to_16b(short pen, struct xpnd *xpnd)
 {
+	unsigned short *dst = (unsigned short *)xpnd->dst;
 
-	*(unsigned short *)((unsigned short *)xpnd->dst)++ = (unsigned short)xpnd->pixelvals[xpnd->dcols[pen & 255]];
+	*dst++ = (unsigned short)xpnd->pixelvals[xpnd->dcols[pen & 255]];
+
 	if (xpnd->count == 15)
 		*xpnd->mask = 0;
 	if (pen & 255)

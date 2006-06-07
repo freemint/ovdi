@@ -9,7 +9,6 @@ struct ovdi_lib
 {
 	short	_cdecl (*getcookie)	(long tag, long *ret);
 
-
 	void *	_cdecl (*memcpy)	(void *dst, const void *src, unsigned long nbytes);
 	void *	_cdecl (*memset)	(void *dst, int fill, unsigned long size);
 	void	_cdecl (*bcopy)		(const void *src, void *dst, unsigned long nbyte);

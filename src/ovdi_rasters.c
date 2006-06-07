@@ -41,29 +41,29 @@ static short setup_drawers_jumptable(OVDI_DRAWERS *src, OVDI_DRAWERS *dst, short
 static OVDI_DRAWERS defdrawers = 
 {
 	{ /* struct vdiprimitives */
-		rectfill,
-		draw_arc,
-		draw_pieslice,
-		draw_circle,
-		draw_ellipse,
-		draw_ellipsearc,
-		draw_ellipsepie,
-		draw_rbox,
+		rectfill,		/* draw_filledrect */
+		draw_arc,		/* draw_arc */
+		draw_pieslice,		/* draw_pieslice */
+		draw_circle,		/* draw_circle */
+		draw_ellipse,		/* draw_ellipse */
+		draw_ellipsearc,	/* draw_ellipsearc */
+		draw_ellipsepie,	/* draw_ellipsepie */
+		draw_rbox,		/* draw_rbox */
 
-		abline,
-		habline,
-		vabline,
-		pline,
-		wide_line,
+		abline,			/* draw_abline */
+		habline,		/* draw_hline */
+		vabline,		/* draw_vline */
+		pline,			/* draw_pline */
+		wide_line,		/* draw_wideline */
 
-		draw_spans,
-		draw_mspans,
+		draw_spans,		/* draw_spans */
+		draw_mspans,		/* draw_mspans */
 
-		filled_poly,
-		pmarker,
+		filled_poly,		/* draw_filledpoly */
+		pmarker,		/* draw_pmarker */
 
-		rt_cpyfm,
-		ro_cpyfm,
+		rt_cpyfm,		/* rt_cpyfm */
+		ro_cpyfm,		/* ro_cpyfm */
 	},
 	NULL,	/* RESFMT * */
 	NULL,	/* draw_pixel */
@@ -200,10 +200,9 @@ static RESFMT res_32b =
 void
 init_device_jumptable(OVDI_HWAPI *hw, OVDI_DRIVER *drv, char *mem)
 {
-
 	bzero(mem, 33*4);
 
-	(long)hw->odrawers = (long)mem;
+	hw->odrawers = (OVDI_DRAWERS **)mem;
 	mem	+= 33*4;
 
 	hw->odrawers[1] = (OVDI_DRAWERS *)mem;
@@ -376,7 +375,7 @@ new_raster(OVDI_HWAPI *hw, char *base, short x2, short y2, RESFMT *res)
 		lenght = (long)bypl * y2;
 		if (!base)
 		{
-			(long)base = (long)omalloc(lenght + 32, MX_PREFTTRAM | MX_SUPER);
+			base = (char *)omalloc(lenght + 32, MX_PREFTTRAM | MX_SUPER);
 			r->realflags = r->flags = R_MALLOCED;
 			scrnlog("rasterbase %lx\n", base);
 		}

@@ -579,15 +579,15 @@ vqt_name( VDIPB *pb, VIRTUAL *v)
 void
 vqt_width( VDIPB *pb, VIRTUAL *v)
 {
-	int chr;
+	unsigned short chr;
 	short *offtab;
 	char *hortab;
 	FONT_HEAD *f = v->font.header;
 
-	chr = pb->intin[0] & 0xff;
+	chr = (pb->intin[0] & 0x00ff);
 
-	if (chr < f->first_ade || chr > f->last_ade)
-		pb->intout[0] = 0xffff;
+	if (chr > 253 || chr < f->first_ade || chr > f->last_ade)
+		pb->intout[0] = -1;
 	else
 	{
 		pb->intout[0] = chr;

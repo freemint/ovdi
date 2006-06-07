@@ -54,7 +54,6 @@ init(OVDI_LIB *l, struct module_desc *ret, char *path, char *file)
 		*t = 0;
 	}
 }
-	
 
 static short
 install(void)

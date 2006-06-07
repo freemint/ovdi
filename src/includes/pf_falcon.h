@@ -29,7 +29,7 @@ char pf_falcon[] =
 
 	  0
 };
-
+/* rrrrrggg.ggobbbbb */
 /* Falcon's 15-bit pixelformat bit layout */
 char pf_15b_falc[] =
 {

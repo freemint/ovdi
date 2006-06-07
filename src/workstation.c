@@ -468,6 +468,7 @@ v_opnvwk(VDIPB *pb, VIRTUAL *v)
 
 			if (pb->contrl[SUBFUNCTION] == 1)
 			{
+				union {short s[2]; MFDB *m; } mptr;
 				short x2, y2;
 				long colors;
 				RASTER *r = root->raster;
@@ -478,44 +479,113 @@ v_opnvwk(VDIPB *pb, VIRTUAL *v)
 				struct opnwk_input *wkin = (struct opnwk_input *)&pb->intin[0];
 				RESFMT resfmt;
 
-				scrnlog("Open offscreen for %s\n", new->procname);
-
-				bm = *(MFDB **)&(pb->contrl[7]);
-
-				if ((x2 = wkin->dev.eddi.max_x) == 0)
-					x2 = r->x2;
-				if ((y2 = wkin->dev.eddi.max_y) == 0)
-					y2 = r->y2;
-
-				x2 |= 15;
-
-				resfmt.format = 0;
-
-				if (wkin->dev.eddi.planes)
+				log("Open offscreen on ID %d for %s\n", wkin->id, new->procname);
+				
+				if (wkin->id < 1 || wkin->id > 9)
 				{
-					resfmt.planes = wkin->dev.eddi.planes;
-					if (wkin->dev.eddi.pixelformat == 0)
-						resfmt.format = PF_ATARI;
-					else if (wkin->dev.eddi.pixelformat == 1)
-						resfmt.format = PF_PLANES;
-					else if (wkin->dev.eddi.pixelformat == 2)
-						resfmt.format = PF_PACKED;
-
-					if (wkin->dev.eddi.endian & 2)
-						resfmt.format |= PF_FALCON;
-					if (wkin->dev.eddi.endian & 128)
-						resfmt.format |= PF_BS;
-
-					colors = wkin->dev.eddi.colors;
+					scrnlog(" Nothing but screendrivers supported as of yet!\n");
+					goto error;
 				}
+				
+				mptr.s[0] = pb->contrl[7];
+				mptr.s[1] = pb->contrl[8];
+				bm = mptr.m;
+// 				bm = *(MFDB **)&pb->contrl[7];
+				
+				log("v = %lx, root = %lx, hw = %lx, raster = %lx, bm = %lx\n", v, root, hw, r, bm); 
+
+				{
+					int iy;
+					short *iyp;
+					for (iy = 0; iy < 20; iy++)
+						log(" intin[%d] = %d\n", iy, pb->intin[iy]);
+					iyp = (short *)&wkin->dev.eddi;
+					for (iy = 0; iy < 9; iy++)
+						log(" eddi[%d] = %d\n", iy, iyp[iy]);
+					
+					for (iy = 0; iy < 8; iy++)
+						log(" contrl[%d] = %x (%d)\n", iy, pb->contrl[iy], pb->contrl[iy]);
+						
+				}
+				
+				if (pb->contrl[N_INTIN] <= 11)
+				{
+					x2 = r->x2;
+					y2 = r->y2;
+					bm->fd_addr = NULL;
+					bm->fd_stand = 0;
+					resfmt.format = 0;
+					resfmt.planes = r->res.planes;
+				}
+				else
+				{
+					if (!(x2 = wkin->dev.eddi.max_x))
+						x2 = r->x2;
+					if (!(y2 = wkin->dev.eddi.max_y))
+						y2 = r->y2;
+
+					x2 |= 15;
+					resfmt.format = 0;
+
+						
+					log(" eddi.colors = %lx\n", wkin->dev.eddi.colors);
+				
+					if (!bm->fd_addr)
+					{
+						log(" eddi");
+
+						bm->fd_stand = 0;
+					
+						if (!wkin->dev.eddi.planes)
+							resfmt.planes = r->res.planes;
+						else
+						{
+							resfmt.planes = wkin->dev.eddi.planes;
+							if (wkin->dev.eddi.pixelformat == 0)
+								resfmt.format = PF_ATARI;
+							else if (wkin->dev.eddi.pixelformat == 1)
+								resfmt.format = PF_PLANES;
+							else if (wkin->dev.eddi.pixelformat == 2)
+								resfmt.format = PF_PACKED;
+
+							if (wkin->dev.eddi.endian & 2)
+								resfmt.format |= PF_FALCON;
+							if (wkin->dev.eddi.endian & 128)
+								resfmt.format |= PF_BS;
+
+							colors = wkin->dev.eddi.colors;
+						}
+					}
+					else
+					{
+						log("fd_addr   %lx\n", bm->fd_addr);
+						log("fd_w       %d (%d)\n", bm->fd_w, x2);
+						log("fd_h       %d (%d)\n", bm->fd_h, y2);
+						log("fd_wdwidth %d\n", bm->fd_wdwidth);
+						log("fd_stand   %d\n", bm->fd_stand);
+						log("fd_planes  %d\n", bm->fd_nplanes);
+					
+						if (bm->fd_nplanes)
+							resfmt.planes = bm->fd_nplanes;
+						else
+							resfmt.planes = r->res.planes;
+					}
+				}
+						
+			#if 0		
 				else if (bm->fd_nplanes)
 				{
+					log("bm");
 					resfmt.planes = bm->fd_nplanes;
 				}
 				else
 				{
+					log("raster");
 					resfmt.planes = r->res.planes;
 				}
+			#endif
+			
+				log(" resfmt = %d, planes = %d\n", resfmt.format, resfmt.planes);
 				drawers = hw->odrawers[resfmt.planes];
 
 				if (!resfmt.format)
@@ -525,13 +595,17 @@ v_opnvwk(VDIPB *pb, VIRTUAL *v)
 				resfmt.pixlen = drawers->res->pixlen;
 				resfmt.pixelformat = drawers->res->pixelformat;
 
+				log(" get new raster\n");
+				
 				if ( !(nr = new_raster(root->hw, bm->fd_addr, x2, y2, &resfmt)) )
 					goto error;
 
 				nr->wpixel = wkin->dev.eddi.wpixel;
 				nr->hpixel = wkin->dev.eddi.hpixel;
 
+				log(" init_raster..\n");
 				init_raster(root->hw, nr);
+				log(" init_raster_rgb..\n");
 				init_raster_rgb(nr);
 				nr->drawers = hw->odrawers[r->res.planes];
 				{
@@ -539,12 +613,14 @@ v_opnvwk(VDIPB *pb, VIRTUAL *v)
 					c = new_colinf(nr->res.pixelformat);
 					if (!c)
 					{
+						log("could not get new_colinf\n");
 						free_raster(nr);
 						free_mem(new);
 						goto error;
 					}
 					new->colinf = c;
 				}
+				log(" init_colinf..\n");
 				init_colinf(nr, new->colinf);
 
 				bm->fd_w	= nr->w;
@@ -558,11 +634,13 @@ v_opnvwk(VDIPB *pb, VIRTUAL *v)
 				if (bm->fd_addr)
 				{
 					if (bm->fd_stand == 1)
+					{	log(" trnfm...\n");
 						trnfm(bm, bm);
+					}
 				}
 				bm->fd_addr = nr->base;
 
-				scrnlog(" fd_adr %lx, w %d, h %d, wdw %d, planes %d \n",
+				log(" fd_adr %lx, w %d, h %d, wdw %d, planes %d \n",
 						bm->fd_addr, bm->fd_w, bm->fd_h, bm->fd_wdwidth, bm->fd_nplanes);
 
 				new->raster = nr;
@@ -601,6 +679,7 @@ v_opnvwk(VDIPB *pb, VIRTUAL *v)
 		else
 		{
 error:
+			log("ERROR\n");
 			handle = 0;
 			free_mem(new);
 		}
@@ -1191,7 +1270,7 @@ load_vdi_fonts(VIRTUAL *v, SIZ_TAB *st, DEV_TAB *dt)
 
 				*fnptrd++ = *fnptrs++;
 
-				if ( !load_font(&fname[0], &size, (long *)&xf, m) )
+				if ( !load_font(&fname[0], m, &size, &xf) )
 				{
 					fixup_font(xf->font_head);
 

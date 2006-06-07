@@ -2,14 +2,24 @@
 #define _PDVAPI_H
 
 #include "ovdi_types.h"
+typedef void CMOVE(short x, short y);
+typedef void MBCHG(unsigned short bs);
+typedef void MWHEEL(short id, short pos, unsigned short bs);
 
 struct mdrv_cb
 {
+	CMOVE	*relcmove;
+	CMOVE	*abscmove;
+	MBCHG	*buttchng;
+	MWHEEL	*relwheel;
+	MWHEEL	*abswheel;
+#if 0
 	void (*relcmove)(short x, short y);
 	void (*abscmove)(short x, short y);
 	void (*buttchng)(unsigned short bs);
 	void (*relwheel)(short id, short pos, unsigned short bs);
 	void (*abswheel)(short id, short pos, unsigned short bs);
+#endif
 };
 typedef struct mdrv_cb MDRV_CB;
 	

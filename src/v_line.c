@@ -200,5 +200,4 @@ vql_attributes( VDIPB *pb, VIRTUAL *v)
 	pb->contrl[N_INTOUT] = 5;
 	pb->contrl[N_PTSOUT] = 1;
 	return;
-
 }

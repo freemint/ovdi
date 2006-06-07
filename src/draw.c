@@ -17,12 +17,10 @@ rectfill( RASTER *r, COLINF *c, VDIRECT *corners, VDIRECT *clip, PatAttr *ptrn)
 	if (!clipbox (&clipped, clip))
 		return;
 
-	
 	if (ptrn->width == 16 && FILL_16X_PTR(r) )
 		FILL_16X(r, c, (short *)&clipped, ptrn);
 	else
 		DRAW_MSPANS( r, c, clipped.x1, clipped.x2, clipped.y1, clipped.y2, ptrn);
-
 #if 0
 	{
 

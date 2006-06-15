@@ -12,14 +12,14 @@ struct vbiapi
 	char		*filename;
 	char		*pathname;
 	
-	short		(*install)(void);
+	short _cdecl	(*install)(void);
 
-	short		(*get_tics)(void);
-	short		(*add_func)(unsigned long func, unsigned long tics);
-	void		(*del_func)(unsigned long func);
-	void		(*reset)(void);
-	void		(*enable)(void);
-	void		(*disable)(void);
+	short _cdecl	(*get_tics)(void);
+	short _cdecl	(*add_func)(unsigned long func, unsigned long tics, long arg);
+	void _cdecl	(*del_func)(unsigned long func, long arg);
+	void _cdecl	(*reset)(void);
+	void _cdecl	(*enable)(void);
+	void _cdecl	(*disable)(void);
 };
 typedef struct vbiapi VBIAPI;
 	

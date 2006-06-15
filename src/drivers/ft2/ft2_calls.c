@@ -2,13 +2,13 @@
 #include FT_FREETYPE_H
 
 
-long
+long  _cdecl
 get_instance_size(void)
 {
 	return sizeof(FT_Library);
 }
 
-long
+long _cdecl
 open(void *lib)
 {
 	long error;

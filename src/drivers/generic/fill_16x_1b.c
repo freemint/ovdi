@@ -10,7 +10,7 @@ extern unsigned short fillbuff1b[];
 extern unsigned short maskbuff1b[];
 extern unsigned short shifts1b[];
 
-void
+void _cdecl
 fill_16x_1b(RASTER *r, COLINF *c, short *corners, PatAttr *ptrn)
 {
 	short y;

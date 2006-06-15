@@ -14,7 +14,7 @@
 #include "acl.h"
 #include "inlines.h"
 
-void init (OVDI_LIB *, struct module_desc *ret, char *p, char *f);
+void  _cdecl init (OVDI_LIB *, struct module_desc *ret, char *p, char *f);
 
 static OVDI_DRIVER *	_cdecl dev_open			(OVDI_DEVICE *dev);
 static long		_cdecl dev_close		(OVDI_DRIVER *drv);
@@ -202,7 +202,7 @@ et6k_sync(void)
 	return inb(et6k, ACL_ACCELERATOR_STATUS) & 2 ? 0 : 1;
 }
 
-static void
+static void _cdecl
 et6k_S_ONLY_8b(ROP_PB *rpb)
 {
 	if (!rpb->d_is_scrn || !rpb->s_is_scrn)
@@ -243,7 +243,7 @@ et6k_S_ONLY_8b(ROP_PB *rpb)
 	}
 }
 #if 0
-static void
+static void _cdecl
 et6k_filled_rect_16( RASTER *r, COLINF *c, VDIRECT *corners, VDIRECT *clip, PatAttr *ptrn)
 {
 	VDIRECT clipped = *corners;
@@ -405,7 +405,7 @@ Load_Resolution(char *fname, short res_index, RESOLUTION *res)
 extern void rb_S_ONLY_1b(ROP_PB *);
 
 //OVDI_DEVICE *
-void
+void _cdecl
 init(OVDI_LIB *l, struct module_desc *ret, char *path, char *file)
 {
 	OVDI_DRIVER *drv = &et6k_driver;

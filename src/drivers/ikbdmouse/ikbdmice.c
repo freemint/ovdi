@@ -9,19 +9,19 @@
 
 #define ON 1
 
-void init(OVDI_LIB *l, struct module_desc *ret, char *p, char *f);
+void _cdecl init(OVDI_LIB *l, struct module_desc *ret, char *p, char *f);
 
 static char sname[] = "Atari IKBD Mouse\0";
 static char lname[] = "Atari IKBD Mouse pointing device driver for oVDI\0";
 static char fpath[128] = { "0" };
 static char fname[64] = { "0" };
 
-static short install(MDRV_CB *, PDVINFO *);
+static short _cdecl install(MDRV_CB *, PDVINFO *);
 
-static void exit(void);
+static void _cdecl exit(void);
 
-static void start_reporting(void);
-static void end_reporting(void);
+static void _cdecl start_reporting(void);
+static void _cdecl end_reporting(void);
 void IKBD_Mouse(char *pkt);
 extern void ikbd_mouse(void);
 
@@ -52,7 +52,7 @@ static unsigned char mparams[] =
 	1	/* yparam	*/
 };
 
-void
+void _cdecl
 init(OVDI_LIB *l, struct module_desc *ret, char *path, char *file)
 {
 	PDVAPI *p = &pdvapi;
@@ -72,7 +72,7 @@ init(OVDI_LIB *l, struct module_desc *ret, char *path, char *file)
 
 }
 
-static short
+static short _cdecl
 install(MDRV_CB *cb, PDVINFO *pdi)
 {
 	CB = cb;
@@ -84,14 +84,14 @@ install(MDRV_CB *cb, PDVINFO *pdi)
 	return 0;
 }
 
-static void
+static void _cdecl
 exit(void)
 {
 	end_reporting();
 	CB = 0;
 }
 
-static void
+static void _cdecl
 start_reporting()
 {
 	if (CB)
@@ -101,14 +101,14 @@ start_reporting()
 	}
 }
 
-static void
+static void _cdecl
 end_reporting()
 {
 	flags &= ~ON;
 	Initmous( 0, -1L, -1L);
 }
 
-void
+void _cdecl
 IKBD_Mouse(char *pkt)
 {
 	register unsigned short buts;

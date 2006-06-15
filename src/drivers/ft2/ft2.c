@@ -13,7 +13,7 @@ int
 main(void)
 { return 0; }
 
-void
+void _cdecl
 init(OVDI_LIB *lib, struct module_desc *ret, char *p, char *f)
 {
 	long handle, size;
@@ -25,7 +25,5 @@ init(OVDI_LIB *lib, struct module_desc *ret, char *p, char *f)
 	where = (void *)(*l->get_mem)(size, MX_PREFTTRAM | MX_GLOBAL);
 
 	handle = open(where);
-
-	return;
 }
 

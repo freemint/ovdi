@@ -1,11 +1,11 @@
 #include "ovdi_defs.h"
 
 
-void rb_ALL_BLACK_4b(ROP_PB *rpb);
+void  _cdecl rb_ALL_BLACK_4b(ROP_PB *rpb);
 
 extern short shifts4b[];
 
-void
+void _cdecl
 rb_ALL_BLACK_4b(ROP_PB *rpb)
 {
 	unsigned long lsm, lem, lp0;

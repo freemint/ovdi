@@ -11,7 +11,7 @@ extern unsigned short fillbuff4b[];
 extern unsigned short maskbuff4b[];
 extern unsigned short shifts4b[];
 
-void
+void _cdecl
 fill_16x_4b(RASTER *r, COLINF *c, short *corners, PatAttr *ptrn)
 {
 	int height, y, wrmode;

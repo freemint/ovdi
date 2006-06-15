@@ -161,10 +161,11 @@ set_vector(void)
 void
 linea_handler(int func)
 {
-#if 0
-	short pid = Pgetpid();
-	if (logit)
+#if 1
+	if (logit) {
+		short pid = Pgetpid();
 		log("(%d), calls liena func %d\n\n", pid, func);
+	}
 #endif
 	return;
 }

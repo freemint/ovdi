@@ -11,7 +11,7 @@ extern unsigned short fillbuff1b[];
 extern unsigned short maskbuff1b[];
 extern unsigned short shifts1b[];
 
-void
+void _cdecl
 spans_16x_1b(RASTER *r, COLINF *c, short *spans, short n, PatAttr *ptrn)
 {
 	int y, wrmode;
@@ -166,7 +166,7 @@ done:
 	}
 }		
 
-void
+void _cdecl
 ds_REPLACE_1b(struct fill16x_api *f)
 {
 	int i;
@@ -247,7 +247,7 @@ ds_REPLACE_1b(struct fill16x_api *f)
 	}
 }
 
-void
+void _cdecl
 ds_TRANS_1b(struct fill16x_api *f)
 {
 	int i;
@@ -340,7 +340,7 @@ ds_TRANS_1b(struct fill16x_api *f)
 		}
 	}
 }
-void
+void _cdecl
 ds_XOR_1b(struct fill16x_api *f)
 {
 	int i;
@@ -417,7 +417,7 @@ ds_XOR_1b(struct fill16x_api *f)
 		}
 	}
 }
-void
+void _cdecl
 ds_ERASE_1b(struct fill16x_api *f)
 {
 	int i;

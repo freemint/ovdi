@@ -2,10 +2,10 @@
 #include "acl.h"
 #include "inlines.h"
 
-void rb_S_ONLY_1b(ROP_PB *);
+void _cdecl rb_S_ONLY_1b(ROP_PB *);
 
 
-static void
+static void _cdecl
 et6k_S_ONLY_1b(ROP_PB *rpb)
 {
 	register volatile unsigned char *et6k;
@@ -43,7 +43,7 @@ et6k_S_ONLY_1b(ROP_PB *rpb)
 	outl( et6k, ACL_DESTINATION_ADDRESS, dst);
 }
 
-void
+void _cdecl
 rb_S_ONLY_1b(ROP_PB *rpb)
 {
 	short i, width, height, s_shift, d_shift, shift, hbits, ebits, groups, spans, sbpl, dbpl;
@@ -506,4 +506,3 @@ rb_S_ONLY_1b(ROP_PB *rpb)
 		}
 	}
 }
-

@@ -8,17 +8,17 @@
 #include "atarivideo.h"
 #include "includes/pf_tt.h"
 
-void init (OVDI_LIB *, struct module_desc *ret, char *p, char *f);
+void _cdecl init (OVDI_LIB *, struct module_desc *ret, char *p, char *f);
 
-static OVDI_DRIVER *	dev_open		(OVDI_DEVICE *dev);
-static long		dev_close		(OVDI_DRIVER *drv);
-static short		dev_set_vdi_res		(OVDI_DRIVER *drv, short scrndev_id);
-static short		dev_get_res_info	(OVDI_DRIVER *drv);
-static unsigned char *	dev_setpscreen		(OVDI_DRIVER *drv, unsigned char *scrnadr);
-static unsigned char *	dev_setlscreen		(OVDI_DRIVER *drv, unsigned char *scrnadr);
-static void		dev_setcolor		(OVDI_DRIVER *drv, short pen, RGB_LIST *colors);
-static void		dev_vsync		(OVDI_DRIVER *drv);
-static void		dev_vreschk		(short x, short y);
+static OVDI_DRIVER *	_cdecl	dev_open		(OVDI_DEVICE *dev);
+static long		_cdecl	dev_close		(OVDI_DRIVER *drv);
+static short		_cdecl	dev_set_vdi_res		(OVDI_DRIVER *drv, short scrndev_id);
+static short		_cdecl	dev_get_res_info	(OVDI_DRIVER *drv);
+static unsigned char *	_cdecl	dev_setpscreen		(OVDI_DRIVER *drv, unsigned char *scrnadr);
+static unsigned char *	_cdecl	dev_setlscreen		(OVDI_DRIVER *drv, unsigned char *scrnadr);
+static void		_cdecl	dev_setcolor		(OVDI_DRIVER *drv, short pen, RGB_LIST *colors);
+static void		_cdecl	dev_vsync		(OVDI_DRIVER *drv);
+static void		_cdecl	dev_vreschk		(short x, short y);
 
 static void		do_set_res(OVDI_DRIVER *drv, short res_id);
 
@@ -177,7 +177,7 @@ do_set_res(OVDI_DRIVER *drv, short res_id)
 	}
 }
 
-void
+void _cdecl
 init(OVDI_LIB *lib, struct module_desc *ret, char *path, char *file)
 {
 	OVDI_DRIVER *drv = &driver;
@@ -235,7 +235,7 @@ init(OVDI_LIB *lib, struct module_desc *ret, char *path, char *file)
 	ret->vhw	= dev; //(void *)&ovdidev;
 };
 
-static OVDI_DRIVER *
+static OVDI_DRIVER * _cdecl
 dev_open(OVDI_DEVICE *dev)
 {
 	OVDI_DRIVER *drv = &driver;
@@ -257,7 +257,7 @@ dev_open(OVDI_DEVICE *dev)
 	return drv;
 }
 
-static long
+static long _cdecl
 dev_close(OVDI_DRIVER *drv)
 {
 	long usp;
@@ -277,7 +277,7 @@ dev_close(OVDI_DRIVER *drv)
 	return (long)drv;
 }
 
-static short
+static short _cdecl
 dev_set_vdi_res(OVDI_DRIVER *drv, short res_id)
 {
 	//(*l->filelog)("set vdi res %d\n", res_id);
@@ -304,7 +304,7 @@ get_video_mode(void)
 	return mode;
 }
 
-static short
+static short _cdecl
 dev_get_res_info(OVDI_DRIVER *drv)
 {
 	short mode;
@@ -442,14 +442,14 @@ dev_get_res_info(OVDI_DRIVER *drv)
 	return 0;
 }
 
-static unsigned char *
+static unsigned char * _cdecl
 dev_setpscreen(OVDI_DRIVER *drv, unsigned char *scradr)
 {
-	if ((long)scradr > 0 && (long)scradr < (0x00e00000L - 156000) )
+	if (scradr > (unsigned char *)0L && scradr < (unsigned char *)(0x00e00000L - 156000) )
 	{
-		VB_HI = (char)((long)scradr >> 16);
-		VB_MI = (char)((long)scradr >> 8);
-		VB_LO = (char)((long)scradr);
+		VB_HI = (unsigned char)((unsigned long)scradr >> 16);
+		VB_MI = (unsigned char)((unsigned long)scradr >> 8);
+		VB_LO = (unsigned char)((unsigned long)scradr);
 #if 0
 		if (hw & GOT_VB_LO)
 			*(volatile unsigned char *)VB_LO = (char)scradr;
@@ -460,14 +460,14 @@ dev_setpscreen(OVDI_DRIVER *drv, unsigned char *scradr)
 	return	scradr;
 }
 
-static unsigned char *
+static unsigned char * _cdecl
 dev_setlscreen(OVDI_DRIVER *drv, unsigned char *logscr)
 {
 	v_bas_ad = (long)logscr;
 	return logscr;
 }
 
-static void
+static void _cdecl
 dev_setcolor(OVDI_DRIVER *drv, short pen, RGB_LIST *colors)
 {
 	volatile unsigned short *palreg = (short *)(TT_PALETTE0_REG + (pen << 1));
@@ -495,7 +495,7 @@ dev_setcolor(OVDI_DRIVER *drv, short pen, RGB_LIST *colors)
 	//(*l->scrnlog)("Oki\n");
 }
 
-static void
+static void _cdecl
 dev_vsync(OVDI_DRIVER *drv)
 {
 	return;
@@ -504,7 +504,7 @@ dev_vsync(OVDI_DRIVER *drv)
 /* This will be called by the mouse-drivers (layer 1) mouse-interrupt whenever
 * the mouse moves.
 */
-static void
+static void _cdecl
 dev_vreschk(short x, short y)
 {
 	return;

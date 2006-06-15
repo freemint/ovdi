@@ -4,13 +4,13 @@
 #include "modinf.h"
 #include "ovdi_lib.h"
 
-void	init	(OVDI_LIB *l, struct module_desc *ret, char *p, char *f);
+void _cdecl init	(OVDI_LIB *l, struct module_desc *ret, char *p, char *f);
 
-static short		install(void);
-static short		key_available(void);
-static short		get_key(short *asci, short *scan, long *state);
-static void		wait_key(short *asci, short *scan, long *state);
-static long		get_kbd_state(void);
+static short _cdecl	install(void);
+static short _cdecl	key_available(void);
+static short _cdecl	get_key(short *asci, short *scan, long *state);
+static void  _cdecl	wait_key(short *asci, short *scan, long *state);
+static long  _cdecl	get_kbd_state(void);
 
 static char sname[] = 	"Atari BIOS keyboard";
 static char lname[] =	"Atari Bios keyboard device driver for\n" \
@@ -34,7 +34,7 @@ static KBDAPI	kapi =
 	get_kbd_state,
 };
 
-void
+void _cdecl
 init(OVDI_LIB *l, struct module_desc *ret, char *path, char *file)
 {
 	KBDAPI *k = &kapi;
@@ -55,19 +55,19 @@ init(OVDI_LIB *l, struct module_desc *ret, char *path, char *file)
 	}
 }
 
-static short
+static short _cdecl
 install(void)
 {
 	return 0;
 }
 
-static short
+static short _cdecl
 key_available(void)
 {
 	return Bconstat(2);
 }
 
-static short
+static short _cdecl
 get_key(short *a, short *s, long *sft)
 {
 	if ( (key_available()) == 0 )
@@ -84,7 +84,7 @@ get_key(short *a, short *s, long *sft)
 	return 1;
 }
 
-static void
+static void _cdecl
 wait_key(short *a, short *s, long *sft)
 {
 	long key;
@@ -99,7 +99,7 @@ wait_key(short *a, short *s, long *sft)
 	return;
 }
 
-static long
+static long _cdecl
 get_kbd_state(void)
 {
 	return (long)Kbshift(-1);

@@ -244,7 +244,7 @@ v_opnwk(VDIPB *pb, VIRTUAL *wk, VIRTUAL *lawk, OVDI_HWAPI *hwapi) //struct ovdi_
 		/*
 		 * Add the mousecursor rendering function to VBI
 		*/
-		(*wk->vbiapi->add_func)((unsigned long)wk->mouseapi->housekeep, 0);
+		(*wk->vbiapi->add_func)((unsigned long)wk->mouseapi->housekeep, 0, 0);
 
 		/*
 		 * Enable things ...
@@ -635,7 +635,7 @@ v_opnvwk(VDIPB *pb, VIRTUAL *v)
 				{
 					if (bm->fd_stand == 1)
 					{	log(" trnfm...\n");
-						trnfm(bm, bm);
+						trnfm(nr, bm, bm);
 					}
 				}
 				bm->fd_addr = nr->base;
@@ -748,9 +748,9 @@ v_clswk( VDIPB *pb, VIRTUAL *root)
 		(*root->timeapi->reset_user_tim)();
 		(*root->timeapi->reset_next_tim)();
 	/* remove consoles textcursor blinker from VBI */
-	//	(*root->vbiapi->del_func)((unsigned long)root->con->textcursor_blink);
+	//	(*root->vbiapi->del_func)((unsigned long)root->con->textcursor_blink, 0);
 	/* remove the mousecursor rendering function from VBI */
-		(*root->vbiapi->del_func)((unsigned long)root->mouseapi->housekeep);
+		(*root->vbiapi->del_func)((unsigned long)root->mouseapi->housekeep, 0);
 
 
 	lvst_exit(root);

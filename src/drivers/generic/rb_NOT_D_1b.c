@@ -1,11 +1,11 @@
 #include "ovdi_defs.h"
 
 
-void rb_NOT_D_1b(ROP_PB *rpb);
+void _cdecl rb_NOT_D_1b(ROP_PB *rpb);
 
 extern short shifts1b[];
 
-void
+void _cdecl
 rb_NOT_D_1b(ROP_PB *rpb)
 {
 	unsigned short lsm, lem;

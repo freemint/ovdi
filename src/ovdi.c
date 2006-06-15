@@ -155,7 +155,7 @@ ovdi_init(void)
 	OVDI_HWAPI *hw = &hw_api;
 	struct module_desc md;
 	long lavt, lafr, laft;
-	void (*init)(OVDI_LIB *, struct module_desc *, char *, char *);
+	void _cdecl (*init)(OVDI_LIB *, struct module_desc *, char *, char *);
 
 	scrnlog("OVDI start adr %lx, ends at adr %lx\n", _base->p_tbase,
 		_base->p_tbase + _base->p_tlen + _base->p_blen + _base->p_dlen);
@@ -238,7 +238,7 @@ ovdi_init(void)
 			if (err == 0)
 			{
 				md.types = 0;
-				(long)init	= (long)b->p_tbase;
+				init	= (void *)b->p_tbase;
 				(*init)(&ovdilib, &md, (char *)&module_path, (char *)&ndta.dta_name);
 				/*
 				 * Video HardWare driver
@@ -463,7 +463,7 @@ ovdi_init(void)
 		 * Install console-drivers 'blink-cursor' VBI function - no blinking without it ;-)
 		 * Then enable VBI driver...
 		*/
-		(*hw->vbi->add_func)((unsigned long)hw->console->textcursor_blink, 25);
+		(*hw->vbi->add_func)((unsigned long)hw->console->textcursor_blink, 25, 0);
 		(*hw->vbi->enable)();
 
 		if (usp)
@@ -835,7 +835,7 @@ oVDI( VDIPB *pb )
 	v->func = func;		/* Store the actual VDI function */
 
 #if 0
-	if ((Kbshift(-1) & 0x1) && !(strcmp("JINNEE", v->procname)) )
+	if ((Kbshift(-1) & 0x1) && !(strnicmp("aes_lupe", v->procname, 8)) )
 		logit = 1;
 	else
 		logit = 0;
@@ -845,8 +845,9 @@ oVDI( VDIPB *pb )
 #endif
 
 #if 1
-	if ( !(strcmp("PORTHOS", v->procname)) )
-	//if ( (Kbshift(-1) & 0x1) && !(strcmp("JINNEE", v->procname)) )// && func == 121)
+// 	if ( !(strcmp("PORTHOS", v->procname)) )
+// 	if ( (Kbshift(-1) & 0x1) && !(strcmp("JINNEE", v->procname)) )// && func == 121)
+	if ((Kbshift(-1) & 0x01) && !strnicmp("aes_lupe", v->procname, 8))
 		logit = 1;
 	else
 		logit = 0;

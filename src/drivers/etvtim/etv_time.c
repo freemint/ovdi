@@ -2,7 +2,7 @@
  This file contains the time-related stuff.
 */
 #include <osbind.h>
-
+#include <stddef.h>
 #include "timerapi.h"
 
 #include "modinf.h"
@@ -20,11 +20,11 @@ struct timedrv
 {
 	volatile short	flags;
 	LINEA_VARTAB	*la;
-	void		(*user_tim)(void);
-	void		(*next_tim)(void);
+	void _cdecl	(*user_tim)(void);
+	void _cdecl	(*next_tim)(void);
 };
-	
-void	init	(OVDI_LIB *l, struct module_desc *ret, char *p, char *f);
+
+void _cdecl init	(OVDI_LIB *l, struct module_desc *ret, char *p, char *f);
 
 extern unsigned long old_timeint;
 extern void time_interruptw(void);
@@ -32,18 +32,18 @@ static void donothing(void);
 
 void time_interrupt(void);
 
-static short install(LINEA_VARTAB *la);
-static short get_tics_per_sec(void);
-static short add_time_interrupt(unsigned long function, unsigned long tics);
-static void delete_time_interrupt(unsigned long func);
-static unsigned long set_user_tim(unsigned long func);
-static unsigned long set_next_tim(unsigned long func);
+static short _cdecl		install(LINEA_VARTAB *la);
+static short _cdecl		get_tics_per_sec(void);
+static short _cdecl		add_time_interrupt(unsigned long function, unsigned long tics, long arg);
+static void _cdecl		delete_time_interrupt(unsigned long func, long arg);
+static unsigned long _cdecl	set_user_tim(unsigned long func);
+static unsigned long _cdecl	set_next_tim(unsigned long func);
 
-static void enable_tint(void);
-static void disable_tint(void);
-static void reset_time(void);
-static void reset_user_tim(void);
-static void reset_next_tim(void);
+static void _cdecl enable_tint(void);
+static void _cdecl disable_tint(void);
+static void _cdecl reset_time(void);
+static void _cdecl reset_user_tim(void);
+static void _cdecl reset_next_tim(void);
 
 static char sname[] =	"'etv_timer' time device driver";
 static char lname[] =	"Time device driver using standard\n" \
@@ -74,26 +74,34 @@ static struct timeapi tapi =
 	disable_tint,
 };
 
-#define MAX_TINTS	10
-static unsigned long timeints[] =
+struct tint_entry
 {
-	0, 0, 0,
-	0, 0, 0,
-	0, 0, 0,
-	0, 0, 0,
-	0, 0, 0,
-	0, 0, 0,
-	0, 0, 0,
-	0, 0, 0,
-	0, 0, 0,
-	0, 0, 0,
-	0, 0, 0,
+	long	ticks;
+	long	rticks;
+	timefunc func;
+	long	arg;
+};
+
+#define MAX_TINTS	10
+static struct tint_entry Tints[] =
+{
+	{0,0,NULL,0},
+	{0,0,NULL,0},
+	{0,0,NULL,0},
+	{0,0,NULL,0},
+	{0,0,NULL,0},
+	{0,0,NULL,0},
+	{0,0,NULL,0},
+	{0,0,NULL,0},
+	{0,0,NULL,0},
+	{0,0,NULL,0},
+	{0,0,NULL,0},
 };
 /* At the time when this function is called, the linea variable table is not
 *  not initialized! So, do not rely on anything in it, and only setup
 *  own things.
 */
-void
+void _cdecl
 init(OVDI_LIB *l, struct module_desc *ret, char *path, char *file)
 {
 	struct timeapi *ta = &tapi;
@@ -115,7 +123,7 @@ init(OVDI_LIB *l, struct module_desc *ret, char *path, char *file)
 	}
 }
 
-static short
+static short _cdecl
 install(LINEA_VARTAB *la)
 {
 	short sr;
@@ -131,6 +139,8 @@ install(LINEA_VARTAB *la)
 	if (old_timeint != 0)
 	{
 		reset_time();
+		if (usp)
+			Super(usp);
 		return 0;
 	}
 
@@ -149,77 +159,68 @@ install(LINEA_VARTAB *la)
 	return 0;
 }
 
-static void
+static void _cdecl
 enable_tint(void)
 {
 	struct timedrv *td = &tdrv;
 
 	if (old_timeint)
 		td->flags |= TIME_ACTIVE;
-	return;
 }
-static void
+static void _cdecl
 disable_tint(void)
 {
 	struct timedrv *td = &tdrv;
 
 	td->flags &= ~TIME_ACTIVE;
-	return;
 }
 
-static void
+static void _cdecl
 reset_time(void)
 {
 	int	i;
 	short	sr;
-	unsigned long *tints = timeints;
+	struct tint_entry *tints = Tints;
 
 	sr = spl7();
 	disable_tint();
 	for (i = 0; i < MAX_TINTS; i++)
-	{
-		tints[0] = tints[1] = tints[2] = 0;
-		tints += 3;
-	}
+		tints[i] = tints[MAX_TINTS];
 	spl(sr);
 
 	reset_user_tim();
 	reset_next_tim();
-
-	return;
 }
 
-static short
+static short _cdecl
 get_tics_per_sec(void)
 {
 	return (1000/TPS);
 }
 
 /* Main etv_timer routine */
-void
+void _cdecl
 time_interrupt(void)
 {
-	register unsigned long *tints = (unsigned long *)&timeints;
-	register void (*func)(void);
+	register struct tint_entry *tints;
 	register struct timedrv *td = &tdrv;
 
 	if (!(td->flags & TIME_ACTIVE))
 		return;
 
-	while (tints[2])
+	tints = Tints;
+
+	while (tints->func)
 	{
-		if (!tints[0])
+		if (!tints->rticks)
 		{
-			tints[0] = tints[1];
-			func = (void (*))tints[2];
-			(*func)();
+			tints->rticks = tints->ticks;
+			(*tints->func)(tints->arg);
 		}
 		else
-			tints[0]--;
-
-		tints += 3;
+			tints->rticks--;
+		tints++;
 	}
-
  /* Call user_tim and next_tim */
 	__asm__ volatile
 	(
@@ -234,83 +235,66 @@ time_interrupt(void)
 		: "a"(td->user_tim), "a"(td->next_tim)
 		: "a0"
 	);
-
-	return;
 }	
 
 /* Installs a function that is called each timer tick	*/
 /* Returns the 'handle' of the function or a negative	*/
 /* number on error.					*/
-static short
-add_time_interrupt(unsigned long function, unsigned long tics)
+static short _cdecl
+add_time_interrupt(unsigned long function, unsigned long ticks, long arg)
 {
 	short i;
-	register unsigned long *tints = (unsigned long *)&timeints;
+	register struct tint_entry *tints = Tints;
 
-	for (i = 0; i < MAX_TINTS; i++)
-	{
-		if (!tints[2])
-		{
+	for (i = 0; i < MAX_TINTS; i++) {
+		if (!tints[i].func) {
 			short sr;
-
 			sr = spl7();
-			tints[0] = 0;
-			tints[1] = tics;
-			tints[2] = function;
+			tints[i].ticks = ticks;
+			tints[i].rticks = ticks;
+			tints[i].func = (void *)function;
+			tints[i].arg = arg;
 			spl(sr);
 			return i;
 		}
-		else if (tints[2] == function)
-			return i;
-
-		tints += 3;
 	}
 	return -1;
 }
 
-static void
-delete_time_interrupt(unsigned long function)
+static void _cdecl
+delete_time_interrupt(unsigned long function, long arg)
 {
 	short sr;
 	int i;
-	register unsigned long *tints = (unsigned long *)&timeints;
+	register struct tint_entry *tints = Tints;
 
-	for (i = 0; i < MAX_TINTS; i++)
-	{
-		if (tints[2] == function)
-		{
+	for (i = 0; i < MAX_TINTS; i++) {
+		if (tints[i].func == (void *)function && tints[i].arg == arg) {
 			sr = spl7();
-			while (i < MAX_TINTS)
-			{
-				tints[0] = tints[0+3];
-				tints[1] = tints[1+3];
-				tints[2] = tints[2+3];
-				tints += 3;
+			while (i < MAX_TINTS) {
+				tints[i] = tints[i + 1];
 				i++;
 			}
-				
 			spl(sr);
 			break;
 		}
-		tints += 3;
 	}
-	return;
 }
 
-static void
+static void _cdecl
 reset_user_tim(void)
 {
 	(void)set_user_tim((unsigned long)&donothing);
 	return;
 }
-static void
+static void _cdecl
 reset_next_tim(void)
 {
 	(void)set_next_tim((unsigned long)&donothing);
 	return;
 }
 
-static unsigned long
+static unsigned long _cdecl
 set_user_tim(unsigned long function)
 {
 	short sr;
@@ -319,8 +303,8 @@ set_user_tim(unsigned long function)
 
 	sr = spl7();
 	old = (unsigned long)td->user_tim;
-	td->user_tim = (void (*)(void))function;
-	td->la->user_tim = (void (*)(void))function;
+	td->user_tim = (void _cdecl (*)(void))function;
+	td->la->user_tim = (void _cdecl (*)(void))function;
 	spl(sr);
 	return old;
 }
@@ -334,8 +318,8 @@ set_next_tim(unsigned long function)
 
 	sr = spl7();
 	old = td->next_tim;
-	td->next_tim = (void (*)(void))function;
-	td->la->next_tim = (void (*)(void))function;
+	td->next_tim = (void _cdecl (*)(void))function;
+	td->la->next_tim = (void _cdecl (*)(void))function;
 	spl(sr);
 	return (unsigned long)old;
 }

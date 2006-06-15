@@ -8,28 +8,28 @@
 /* ******************************************************** */
 /* *************** DIFFERENT WRMODES **************** */
 /* ******************************************************** */
-static void ALL_WHITE	(unsigned char *addr, long data);
-static void S_AND_D	(unsigned char *addr, long data);
-static void S_AND_NOTD	(unsigned char *addr, long data);
-static void S_ONLY	(unsigned char *addr, long data);
-static void NOTS_AND_D	(unsigned char *addr, long data);
-static void D_ONLY	(unsigned char *addr, long data);
-static void S_XOR_D	(unsigned char *addr, long data);
-static void S_OR_D	(unsigned char *addr, long data);
-static void NOT_SORD	(unsigned char *addr, long data);
-static void NOT_SXORD	(unsigned char *addr, long data);
-static void NOT_D	(unsigned char *addr, long data);
-static void S_OR_NOTD	(unsigned char *addr, long data);
-static void NOT_S	(unsigned char *addr, long data);
-static void NOTS_OR_D	(unsigned char *addr, long data);
-static void NOT_SANDD	(unsigned char *addr, long data);
-static void ALL_BLACK	(unsigned char *addr, long data);
+static void _cdecl ALL_WHITE	(unsigned char *addr, long data);
+static void _cdecl S_AND_D	(unsigned char *addr, long data);
+static void _cdecl S_AND_NOTD	(unsigned char *addr, long data);
+static void _cdecl S_ONLY	(unsigned char *addr, long data);
+static void _cdecl NOTS_AND_D	(unsigned char *addr, long data);
+static void _cdecl D_ONLY	(unsigned char *addr, long data);
+static void _cdecl S_XOR_D	(unsigned char *addr, long data);
+static void _cdecl S_OR_D	(unsigned char *addr, long data);
+static void _cdecl NOT_SORD	(unsigned char *addr, long data);
+static void _cdecl NOT_SXORD	(unsigned char *addr, long data);
+static void _cdecl NOT_D	(unsigned char *addr, long data);
+static void _cdecl S_OR_NOTD	(unsigned char *addr, long data);
+static void _cdecl NOT_S	(unsigned char *addr, long data);
+static void _cdecl NOTS_OR_D	(unsigned char *addr, long data);
+static void _cdecl NOT_SANDD	(unsigned char *addr, long data);
+static void _cdecl ALL_BLACK	(unsigned char *addr, long data);
 
 static unsigned short pm[] =
 { 0x8000, 0x4000, 0x2000, 0x1000, 0x0800, 0x0400, 0x0200, 0x0100,
   0x0080, 0x0040, 0x0020, 0x0010, 0x0008, 0x0004, 0x0002, 0x0001 };
 
-unsigned long
+unsigned long _cdecl
 get_pixel_4b(unsigned char *_sb, short bpl, short x, short y)
 {
 	unsigned short *sb;
@@ -53,7 +53,7 @@ get_pixel_4b(unsigned char *_sb, short bpl, short x, short y)
 	return (unsigned long)pixel;
 }
 
-void
+void _cdecl
 put_pixel_4b(unsigned char *_sb, short bpl, short x, short y, unsigned long pixel)
 {
 	unsigned short *sb;
@@ -113,7 +113,7 @@ pixel_blit rt_ops_4b[] =
 	ALL_BLACK
 };
 
-static void
+static void _cdecl
 ALL_WHITE(unsigned char *_addr, long data)
 {
 	unsigned short *addr = (unsigned short *)_addr;
@@ -125,7 +125,7 @@ ALL_WHITE(unsigned char *_addr, long data)
 	*addr	&= mask;
 }
 
-static void
+static void _cdecl
 S_AND_D(unsigned char *_addr, long _data)
 {
 	unsigned short *addr = (unsigned short *)_addr;
@@ -143,7 +143,7 @@ S_AND_D(unsigned char *_addr, long _data)
 	data >>= 1;
 	*addr++ = (*addr & ~mask) | ((*addr & ((data & 1) << shift)) & mask);
 }
-static void
+static void _cdecl
 S_AND_NOTD(unsigned char *_addr, long _data)
 {
 	unsigned short *addr = (unsigned short *)_addr;
@@ -161,7 +161,7 @@ S_AND_NOTD(unsigned char *_addr, long _data)
 	data >>= 1;
 	*addr++ = (*addr & ~mask) | ((~*addr & ((data & 1) << shift)) & mask);
 }
-static void
+static void _cdecl
 S_ONLY(unsigned char *_addr, long _data)
 {
 	unsigned short *addr = (unsigned short *)_addr;
@@ -179,7 +179,7 @@ S_ONLY(unsigned char *_addr, long _data)
 	data >>= 1;
 	*addr++ = (*addr & ~mask) | ( ((data & 1) << shift) & mask);
 }
-static void
+static void _cdecl
 NOTS_AND_D(unsigned char *_addr, long _data)
 {
 	unsigned short *addr = (unsigned short *)_addr;
@@ -197,12 +197,12 @@ NOTS_AND_D(unsigned char *_addr, long _data)
 	data >>= 1;
 	*addr++ = (*addr & ~mask) | ((*addr & ((data & 1) << shift)) & mask);
 }
-static void
+static void _cdecl
 D_ONLY(unsigned char *addr, long data)
 {
 	return;
 }
-static void
+static void _cdecl
 S_XOR_D(unsigned char *_addr, long _data)
 {
 	unsigned short *addr = (unsigned short *)_addr;
@@ -220,7 +220,7 @@ S_XOR_D(unsigned char *_addr, long _data)
 	data >>= 1;
 	*addr++ = (*addr & ~mask) | ((*addr ^ ((data & 1) << shift)) & mask);
 }
-static void
+static void _cdecl
 S_OR_D(unsigned char *_addr, long _data)
 {
 	unsigned short *addr = (unsigned short *)_addr;
@@ -238,7 +238,7 @@ S_OR_D(unsigned char *_addr, long _data)
 	data >>= 1;
 	*addr++ = (*addr & ~mask) | ((*addr | ((data & 1) << shift)) & mask);
 }
-static void
+static void _cdecl
 NOT_SORD(unsigned char *_addr, long _data)
 {
 	unsigned short *addr = (unsigned short *)_addr;
@@ -256,7 +256,7 @@ NOT_SORD(unsigned char *_addr, long _data)
 	data >>= 1;
 	*addr++ = (*addr & ~mask) | (~(*addr | ((data & 1) << shift)) & mask);
 }
-static void
+static void _cdecl
 NOT_SXORD(unsigned char *_addr, long _data)
 {
 	unsigned short *addr = (unsigned short *)_addr;
@@ -274,7 +274,7 @@ NOT_SXORD(unsigned char *_addr, long _data)
 	data >>= 1;
 	*addr++ = (*addr & ~mask) | (~(*addr ^ ((data & 1) << shift)) & mask);
 }
-static void
+static void _cdecl
 NOT_D(unsigned char *_addr, long _data)
 {
 	unsigned short *addr = (unsigned short *)_addr;
@@ -292,7 +292,7 @@ NOT_D(unsigned char *_addr, long _data)
 	data >>= 1;
 	*addr++ = (*addr & ~mask) | (~*addr & mask);
 }
-static void
+static void _cdecl
 S_OR_NOTD(unsigned char *_addr, long _data)
 {
 	unsigned short *addr = (unsigned short *)_addr;
@@ -310,7 +310,7 @@ S_OR_NOTD(unsigned char *_addr, long _data)
 	data >>= 1;
 	*addr++ = (*addr & ~mask) | ((~*addr | ((data & 1) << shift)) & mask);
 }
-static void
+static void _cdecl
 NOT_S(unsigned char *_addr, long _data)
 {
 	unsigned short *addr = (unsigned short *)_addr;
@@ -328,7 +328,7 @@ NOT_S(unsigned char *_addr, long _data)
 	data >>= 1;
 	*addr++ = (*addr & ~mask) | ( ((data & 1) << shift) & mask);
 }
-static void
+static void _cdecl
 NOTS_OR_D(unsigned char *_addr, long _data)
 {
 	unsigned short *addr = (unsigned short *)_addr;
@@ -346,7 +346,7 @@ NOTS_OR_D(unsigned char *_addr, long _data)
 	data >>= 1;
 	*addr++ = (*addr & ~mask) | ((*addr | ((data & 1) << shift)) & mask);
 }
-static void
+static void _cdecl
 NOT_SANDD(unsigned char *_addr, long _data)
 {
 	unsigned short *addr = (unsigned short *)_addr;
@@ -364,7 +364,7 @@ NOT_SANDD(unsigned char *_addr, long _data)
 	data >>= 1;
 	*addr++ = (*addr & ~mask) | (~(*addr & ((data & 1) << shift)) & mask);
 }
-static void
+static void _cdecl
 ALL_BLACK(unsigned char *_addr, long data)
 {
 	unsigned short *addr = (unsigned short *)_addr;
@@ -377,22 +377,22 @@ ALL_BLACK(unsigned char *_addr, long data)
 }
 
 /* *************** RASTER OPERATIONS **************** */
-extern void rb_ALL_WHITE_4b	(ROP_PB *);
-extern void rb_S_AND_D_4b	(ROP_PB *);
-extern void rb_S_AND_NOTD_4b	(ROP_PB *);
-extern void rb_S_ONLY_4b	(ROP_PB *);
-extern void rb_NOTS_AND_D_4b	(ROP_PB *);
+extern void _cdecl rb_ALL_WHITE_4b	(ROP_PB *);
+extern void _cdecl rb_S_AND_D_4b	(ROP_PB *);
+extern void _cdecl rb_S_AND_NOTD_4b	(ROP_PB *);
+extern void _cdecl rb_S_ONLY_4b	(ROP_PB *);
+extern void _cdecl rb_NOTS_AND_D_4b	(ROP_PB *);
 //static void rb_D_ONLY		(ROP_PB *);
-extern void rb_S_XOR_D_4b	(ROP_PB *);
-extern void rb_S_OR_D_4b	(ROP_PB *);
-extern void rb_NOT_SORD_4b	(ROP_PB *);
-extern void rb_NOT_SXORD_4b	(ROP_PB *);
-extern void rb_NOT_D_4b		(ROP_PB *);
-extern void rb_S_OR_NOTD_4b	(ROP_PB *);
-extern void rb_NOT_S_4b		(ROP_PB *);
-extern void rb_NOTS_OR_D_4b	(ROP_PB *);
-extern void rb_NOT_SANDD_4b	(ROP_PB *);
-extern void rb_ALL_BLACK_4b	(ROP_PB *);
+extern void _cdecl rb_S_XOR_D_4b	(ROP_PB *);
+extern void _cdecl rb_S_OR_D_4b	(ROP_PB *);
+extern void _cdecl rb_NOT_SORD_4b	(ROP_PB *);
+extern void _cdecl rb_NOT_SXORD_4b	(ROP_PB *);
+extern void _cdecl rb_NOT_D_4b		(ROP_PB *);
+extern void _cdecl rb_S_OR_NOTD_4b	(ROP_PB *);
+extern void _cdecl rb_NOT_S_4b		(ROP_PB *);
+extern void _cdecl rb_NOTS_OR_D_4b	(ROP_PB *);
+extern void _cdecl rb_NOT_SANDD_4b	(ROP_PB *);
+extern void _cdecl rb_ALL_BLACK_4b	(ROP_PB *);
 
 raster_blit rops_4b[] =
 {
@@ -414,7 +414,7 @@ raster_blit rops_4b[] =
 	rb_ALL_BLACK_4b,	/* rb_ALL_BLACK*/
 };
 
-void
+void _cdecl
 draw_mousecurs_4b(register XMFORM *mf, register short x, register short y)
 {
 
@@ -635,7 +635,7 @@ draw_mousecurs_4b(register XMFORM *mf, register short x, register short y)
 	return;
 }
 
-void
+void _cdecl
 restore_msave_4b(XMSAVE *ms)
 {
 	register int width, w, height, nl;

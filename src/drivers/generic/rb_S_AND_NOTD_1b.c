@@ -1,8 +1,8 @@
 #include "ovdi_defs.h"
 
-void rb_S_AND_NOTD_1b(ROP_PB *rpb);
+void _cdecl rb_S_AND_NOTD_1b(ROP_PB *rpb);
 
-void
+void _cdecl
 rb_S_AND_NOTD_1b(ROP_PB *rpb)
 {
 	unsigned short begmask, endmask, p0;

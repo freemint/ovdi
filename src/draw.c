@@ -7,7 +7,7 @@
 #include "vdi_defs.h"
 #include "polygon.h"
 
-void
+void _cdecl 
 rectfill( RASTER *r, COLINF *c, VDIRECT *corners, VDIRECT *clip, PatAttr *ptrn)
 {
 	VDIRECT clipped;
@@ -63,7 +63,7 @@ slowashell:	DRAW_MSPANS( r, c, clipped.x1, clipped.x2, clipped.y1, clipped.y2, p
 #endif
 }
 
-void
+void _cdecl
 sortcpy_corners( short *source, short *dest )
 {
 	short x1, y1, x2, y2, tmp;
@@ -94,7 +94,7 @@ sortcpy_corners( short *source, short *dest )
 	return;
 }
 
-short
+short _cdecl
 clipbox( VDIRECT *corners, VDIRECT *clip)
 {
 	short x1, y1, x2, y2, tmp;
@@ -158,7 +158,7 @@ clipbox( VDIRECT *corners, VDIRECT *clip)
 	return 1;
 }
 
-void
+void _cdecl
 draw_arc(VIRTUAL *v, short xc, short yc, short xrad, short beg_ang, short end_ang, short *points, PatAttr *ptrn)
 {
 	short del_ang, n_steps;
@@ -179,7 +179,7 @@ draw_arc(VIRTUAL *v, short xc, short yc, short xrad, short beg_ang, short end_an
 	return;
 }
 
-void
+void _cdecl
 draw_pieslice( VIRTUAL *v, short xc, short yc, short xrad, short beg_ang, short end_ang, short *points, PatAttr *ptrn)
 {
 	short del_ang, n_steps;
@@ -202,7 +202,7 @@ draw_pieslice( VIRTUAL *v, short xc, short yc, short xrad, short beg_ang, short 
 }
 
 #if 0
-void
+void _cdecl
 draw_circle( VIRTUAL *v, short xc, short yc, short xrad, short *points, PatAttr *ptrn)
 {
 	short yrad;
@@ -216,7 +216,7 @@ draw_circle( VIRTUAL *v, short xc, short yc, short xrad, short *points, PatAttr 
 }
 #else
 //bcircle(RASTER *r, COLINF *c, int sx, int sy, int r, VDIRECT *clip, int *spanbuff, long spanbuffsiz, PatAttr *ptrn)
-void
+void _cdecl
 draw_circle( VIRTUAL *v, short xc, short yc, short xrad, short *points, PatAttr *ptrn)
 {
 	VDIRECT *clip;
@@ -227,7 +227,7 @@ draw_circle( VIRTUAL *v, short xc, short yc, short xrad, short *points, PatAttr 
 }
 #endif
 
-void
+void _cdecl
 draw_ellipse( VIRTUAL *v, short xc, short yc, short xrad, short yrad, short *points, PatAttr *ptrn)
 {
 	short n_steps;
@@ -238,7 +238,7 @@ draw_ellipse( VIRTUAL *v, short xc, short yc, short xrad, short yrad, short *poi
 	return;
 
 }
-void
+void _cdecl
 draw_ellipsearc( VIRTUAL *v, short xc, short yc, short xrad, short yrad, short beg_ang, short end_ang, short *points, PatAttr *ptrn)
 {
 	short del_ang, n_steps;
@@ -256,7 +256,7 @@ draw_ellipsearc( VIRTUAL *v, short xc, short yc, short xrad, short yrad, short b
 	return;
 }
 
-void
+void _cdecl
 draw_ellipsepie( VIRTUAL *v, short xc, short yc, short xrad, short yrad, short beg_ang, short end_ang, short *points, PatAttr *ptrn)
 {
 
@@ -281,7 +281,7 @@ extern long arc_split;
 extern short arc_max;
 extern short arc_min;
 
-short
+short _cdecl
 clc_nsteps( short xrad, short yrad)
 {
 
@@ -333,7 +333,7 @@ clipspan(short y, short x1, short x2, short *spans, VDIRECT *clip)
 	*spans++ = x2;
 	return 1;
 }	
-void
+void _cdecl
 brescircle( RASTER *r, COLINF *c, short sx, short sy, short rad, VDIRECT *clip, short *spanbuff, long spanbuffsiz, PatAttr *ptrn)
 {
 	short *spans;
@@ -396,7 +396,7 @@ brescircle( RASTER *r, COLINF *c, short sx, short sy, short rad, VDIRECT *clip, 
 		SPANS_16X(r, c, spanbuff, n_spans, ptrn);
 }
 
-void
+void _cdecl
 clc_arc(VIRTUAL *v, short gdp_code, short xc, short yc, short xrad, short yrad, short beg_ang, short end_ang,
 	short del_ang, short n_steps, short *points, PatAttr *ptrn)
 {
@@ -458,7 +458,7 @@ clc_arc(VIRTUAL *v, short gdp_code, short xc, short yc, short xrad, short yrad, 
 
 
 /* Assumes coordinates have been sorted */
-void
+void _cdecl
 draw_rbox(VIRTUAL *v, short gdp_code, VDIRECT *corners, PatAttr *ptrn)
 {
 	RASTER *r;

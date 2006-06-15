@@ -11,22 +11,22 @@
 #define	_vblqueue	0x456L
 #define nvbls		0x454L
 
-#define MAX_VINTS	10
+#define MAX_VBIINTS 10
 #define VBI_INST	1
 #define VBI_ENABLE	2
 
-void	init	(OVDI_LIB *l, struct module_desc *ret, char *p, char *f);
+void _cdecl init	(OVDI_LIB *l, struct module_desc *ret, char *p, char *f);
 
 extern void new_vbi_wrapper(void);
 void new_vbi (void);
 
-static short	install(void);
-static short	get_vbitics(void);
-static short	add_vbi_function(unsigned long function, unsigned long tics);
-static void	remove_vbi_function(unsigned long function);
-static void	reset_vbi(void);
-static void	enable_vbi(void);
-static void	disable_vbi(void);
+static short _cdecl	install(void);
+static short _cdecl	get_vbitics(void);
+static short _cdecl	add_vbi_function(unsigned long function, unsigned long tics, long arg);
+static void _cdecl	remove_vbi_function(unsigned long function, long arg);
+static void _cdecl	reset_vbi(void);
+static void _cdecl	enable_vbi(void);
+static void _cdecl	disable_vbi(void);
 
 static char sname[] = "VBI driver (Atari standard)";
 static char lname[] = "VBI driver for oVDI installing in the\nstandard '_vblqueue'";
@@ -55,27 +55,33 @@ static VBIAPI vbiapi =
 	disable_vbi,
 };
 
+
 static unsigned short flags = 0;
-
-static unsigned long vbiints[] = 
+struct vbi_entry
 {
-	0, 0, 0,
-	0, 0, 0,
-	0, 0, 0,
-	0, 0, 0,
-	0, 0, 0,
-	0, 0, 0,
-	0, 0, 0,
-	0, 0, 0,
-	0, 0, 0,
-	0, 0, 0,
-	0, 0, 0
+	long ticks;
+	long rticks;
+	void _cdecl (*func)(long arg);
+	long arg;
 };
-
+static struct vbi_entry VBIints[] =
+{
+	{0,0,NULL},
+	{0,0,NULL},
+	{0,0,NULL},
+	{0,0,NULL},
+	{0,0,NULL},
+	{0,0,NULL},
+	{0,0,NULL},
+	{0,0,NULL},
+	{0,0,NULL},
+	{0,0,NULL},
+	{0,0,NULL},
+};
 /*
  * oVDI calls us here right after we've been loaded.
 */
-void
+void _cdecl
 init(OVDI_LIB *l, struct module_desc *ret, char *path, char *file)
 {
 	VBIAPI *v = &vbiapi;
@@ -100,7 +106,7 @@ init(OVDI_LIB *l, struct module_desc *ret, char *path, char *file)
 */
 static void I(void);
 
-static short
+static short _cdecl
 install(void)
 {
 	reset_vbi();
@@ -141,17 +147,17 @@ I(void)
 /*
  * Disable VBI and clear all installed VBI functions
 */
-static void
+static void _cdecl
 reset_vbi(void)
 {
 	disable_vbi();
-	(*L->bzero)(vbiints, sizeof(vbiints));
+	(*L->bzero)(VBIints, sizeof(VBIints)); //(vbiints, sizeof(vbiints));
 }
 
 /*
  * Enable the VB interrupts
 */
-static void
+static void _cdecl
 enable_vbi(void)
 {
 	if ((flags & VBI_INST))
@@ -161,7 +167,7 @@ enable_vbi(void)
 /*
  * Turn off VB interrupts
 */
-static void
+static void _cdecl
 disable_vbi(void)
 {
 	flags &= ~VBI_ENABLE;
@@ -170,7 +176,7 @@ disable_vbi(void)
 /*
  * return
 */
-static short
+static short _cdecl
 get_vbitics(void)
 {
 	return (1000/50);
@@ -179,81 +185,68 @@ get_vbitics(void)
 /*
  * High level VBI handler. This calls out the installed functions.
 */
-void
+void _cdecl
 new_vbi(void)
 {
-	register unsigned long *vints = (unsigned long *)&vbiints;
-	register void (*func)(void);
+	register int i;
+	register struct vbi_entry *vints;
 
 	if (!(flags & VBI_ENABLE))
 		return;
 
-	while (vints[2])
-	{
-		if (!vints[0])
-		{
-			vints[0] = vints[1];
-			func = (void (*))vints[2];
-			(*func)();
+	vints = VBIints;
+
+	for (i = 0; i < MAX_VBIINTS; i++) {
+		if (vints[i].func) {
+			if (!vints[i].rticks) {
+				vints[i].rticks = vints[i].ticks;
+				(*vints[i].func)(vints[i].arg);
+			}
+			else
+				vints[i].rticks--;
 		}
 		else
-			vints[0]--;
-
-		vints += 3;
+			break;
 	}
 }
 
-static short
-add_vbi_function(unsigned long function, unsigned long tics)
+static short _cdecl
+add_vbi_function(unsigned long function, unsigned long tics, long arg)
 {
 	int i;
-	unsigned long *vints = (unsigned long *)&vbiints;
+	struct vbi_entry *vints = VBIints;
 
-	for (i = 0; i < MAX_VINTS; i++)
-	{
-		if (!vints[2])
-		{
+	for (i = 0; i < MAX_VBIINTS; i++) {
+		if (!vints[i].func) {
 			short sr;
-
 			sr = spl7();
-			vints[0] = 0;
-			vints[1] = tics;
-			vints[2] = function;
+			vints[i].rticks = 0;
+			vints[i].ticks = tics;
+			vints[i].func = (void *)function;
+			vints[i].arg = arg;
 			spl(sr);
 			return 0;
 		}
-		else if (vints[2] == function)
-			return 0;
-
-		vints += 3;
 	}
 	return -1;
 }
 
-static void
-remove_vbi_function(unsigned long function)
+static void _cdecl
+remove_vbi_function(unsigned long function, long arg)
 {
 	short sr;
 	int i;
-	unsigned long *vints = (unsigned long *)&vbiints;
+	struct vbi_entry *vints = VBIints;
 
-	for (i = 0; i < MAX_VINTS; i++)
-	{
-		if (vints[2] == function)
-		{
+	for (i = 0; i < MAX_VBIINTS; i++) {
+		if (vints[i].func == (void *)function && vints[i].arg == arg) {
 			sr = spl7();
-			while (i < MAX_VINTS)
-			{
-				vints[0] = vints[0+3];
-				vints[1] = vints[1+3];
-				vints[2] = vints[2+3];
-				vints += 3;
+			while (i < MAX_VBIINTS) {
+				vints[i] = vints[i + 1];
 				i++;
 			}
-
 			spl(sr);
-			return;
+			break;
 		}
-		vints += 3;
 	}
 }

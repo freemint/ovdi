@@ -77,10 +77,37 @@ static OVDI_DRAWERS defdrawers =
 	{ NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL },	/* pixel_blits */
 	{ NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL },	/* raster_blits */
 
+	NULL,	/* vdi2dev convert functions */
+	NULL,	/* dev2vdi convert functions */
+
 	NULL,	/* draw_mcurs */
 	NULL,	/* undraw_mcurs */
 };
 
+static struct v2d2v def_vdi2dev =
+{
+	conv_vdi2dev_1b,
+	conv_vdi2dev_2b,
+	conv_vdi2dev_4b,
+	conv_vdi2dev_8b,
+	conv_vdi2dev_16b,
+	conv_vdi2dev_16b,
+	conv_vdi2dev_24b,
+	conv_vdi2dev_32b,
+};
+
+static struct v2d2v def_dev2vdi =
+{
+	conv_dev2vdi_1b,
+	conv_dev2vdi_2b,
+	conv_dev2vdi_4b,
+	conv_dev2vdi_8b,
+	conv_dev2vdi_16b,
+	conv_dev2vdi_16b,
+	conv_dev2vdi_24b,
+	conv_dev2vdi_32b,
+};
+	
 static OVDI_UTILS defutils =
 {
 	clc_nsteps,
@@ -90,8 +117,8 @@ static OVDI_UTILS defutils =
 	code,
 	clip_line,
 	fix_raster_coords,
+#if 0
 	trnfm,
-
 	conv_vdi2dev_1b,
 	conv_vdi2dev_2b,
 	conv_vdi2dev_4b,
@@ -111,6 +138,7 @@ static OVDI_UTILS defutils =
 	conv_dev2vdi_24b,
 	conv_dev2vdi_32b,
 	{0, 0, 0, 0}
+#endif
 };
 
 #if 0
@@ -846,6 +874,17 @@ setup_drawers_jumptable(OVDI_DRAWERS *src, OVDI_DRAWERS *dst, short planes)
 
 
 	}
+
+	/* v2d2v - vdi2dev2vdi structure - vdi2dev */
+	if (src->vdi2dev)
+		dst->vdi2dev = src->vdi2dev;
+	else
+		dst->vdi2dev = &def_vdi2dev;
+	
+	if (src->dev2vdi)
+		dst->dev2vdi = src->dev2vdi;
+	else
+		dst->dev2vdi = &def_dev2vdi;
 
  /* DRP - Draw Raster Point, used for vrt_cpyfm(). */
 	/* MD_REPLACE */

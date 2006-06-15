@@ -15,7 +15,7 @@ extern void ds_ERASE_8b		(struct fill16x_api *);
 static unsigned char fillbuff[16 * 16];
 static unsigned char maskbuff[16 * 16];
 
-void
+void _cdecl
 fill_16x_8b(RASTER *r, COLINF *c, short *corners, PatAttr *ptrn)
 {
 	int height, y, wrmode, interior;

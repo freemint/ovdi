@@ -15,7 +15,7 @@ unsigned long clc_rlen(MFDB *r);
 void conv_vdi2dev( unsigned short *src, unsigned short *dst, unsigned long splen, unsigned long dplen, short planes);
 void conv_dev2vdi( unsigned short *src, unsigned short *dst, unsigned long splen, unsigned long dplen, short planes);
 
-short
+short _cdecl
 fix_raster_coords(short *spts, short *dpts, short *c)
 {
 	short *p;
@@ -137,7 +137,7 @@ frc_fail:
 static short rt2ro[] = { 3, 0, 0, 0 };
 
 /* if wrmode has bit 15 set, wrmode is interpreted to be a vdi writing mode, not a blitblt */
-void
+void _cdecl
 rt_cpyfm(RASTER *r, COLINF *c, MFDB *src, MFDB *dst, short *pnts, VDIRECT *clip, short fgcol, short bgcol, short wrmode)
 {
 	int i, j, k;
@@ -474,7 +474,7 @@ rt_cpyfm(RASTER *r, COLINF *c, MFDB *src, MFDB *dst, short *pnts, VDIRECT *clip,
 	}
 }
 
-void
+void _cdecl
 ro_cpyfm(RASTER *r, MFDB *src, MFDB *dst, short *pts, VDIRECT *clip, short wrmode)
 {
 	int srcplanes, dstplanes;
@@ -499,12 +499,11 @@ ro_cpyfm(RASTER *r, MFDB *src, MFDB *dst, short *pts, VDIRECT *clip, short wrmod
 	else
 	{
 		dstplanes	= dst->fd_nplanes;
-		rpb->d_bypl	= (dst->fd_wdwidth << 1) * dst->fd_nplanes;
+		rpb->d_bypl	= (unsigned long)(dst->fd_wdwidth << 1) * dst->fd_nplanes;
 		rpb->d_addr	= dst->fd_addr;
 		rpb->d_w	= dst->fd_w;
 		rpb->d_h	= dst->fd_h;
-		rpb->d_is_scrn	= 0;
-		
+		rpb->d_is_scrn	= 0;	
 	}
 
 	if ( !src->fd_addr || (long)src->fd_addr == (long)r->base)
@@ -519,7 +518,7 @@ ro_cpyfm(RASTER *r, MFDB *src, MFDB *dst, short *pts, VDIRECT *clip, short wrmod
 	else
 	{
 		srcplanes	= src->fd_nplanes;
-		rpb->s_bypl	= (src->fd_wdwidth << 1) * src->fd_nplanes;
+		rpb->s_bypl	= (unsigned long)(src->fd_wdwidth << 1) * src->fd_nplanes;
 		rpb->s_addr	= src->fd_addr;
 		rpb->s_w	= src->fd_w;
 		rpb->s_h	= src->fd_h;
@@ -564,14 +563,21 @@ ro_cpyfm(RASTER *r, MFDB *src, MFDB *dst, short *pts, VDIRECT *clip, short wrmod
 #endif
 	if (rop)
 	{
+		if (logit) {
+			log("wrmode %d\n", wrmode);
+			log("s coords - %d/%d/%d/%d\n", rpb->sx1, rpb->sy1, rpb->sx2, rpb->sy2);
+			log("d coords - %d/%d/%d/%d\n", rpb->dx1, rpb->dy1, rpb->dx2, rpb->dy2);
+			log("s adr %lx - bypl %ld, d adr %lx - bypl %ld\n", rpb->s_addr, rpb->s_bypl, rpb->d_addr, rpb->d_bypl);
+			log("s screen? %s, d screen? %s\n", rpb->s_is_scrn ? "Yes":"No", rpb->d_is_scrn ? "Yes":"No");
+		}
 		if (rpb->d_is_scrn)
 			SYNC_RASTER(r);
 		(*rop)(rpb);
 	}
 }
 
-void
-trnfm(MFDB *src, MFDB *dst)
+void _cdecl
+trnfm(RASTER *r, MFDB *src, MFDB *dst)
 {
 	unsigned short *source, *dest;
 	unsigned long rlen, plen;
@@ -587,6 +593,9 @@ trnfm(MFDB *src, MFDB *dst)
 	}
 	else /* source planes != 1 */
 	{
+		struct v2d2v *cnvtab;
+		vditfdev *cnvfunc;
+#if 0
 		rlen = clc_rlen(src);
 		plen = clc_plen(src);
 
@@ -600,28 +609,61 @@ trnfm(MFDB *src, MFDB *dst)
 			dest = dst->fd_addr;
 
 		source = (unsigned short *)src->fd_addr;
+#endif
 
 		if (!src->fd_stand)		/* DEV_SPEC to VDI */
 		{
-			conv_dev2vdi(source, dest, plen, plen, src->fd_nplanes);
+			cnvtab = r->drawers->dev2vdi;
+// 			conv_dev2vdi(source, dest, plen, plen, src->fd_nplanes);
 			dst->fd_stand = 1;
-			
 		}
 		else				/* VDI to DEV_SPEC */
 		{
-			conv_vdi2dev(source, dest, plen, plen, src->fd_nplanes);
+			cnvtab = r->drawers->vdi2dev;
+// 			conv_vdi2dev(source, dest, plen, plen, src->fd_nplanes);
 			dst->fd_stand = 0;
 		}
-
-		dst->fd_w	= src->fd_w;
-		dst->fd_h	= src->fd_h;
-		dst->fd_wdwidth	= src->fd_wdwidth;
-		dst->fd_nplanes	= src->fd_nplanes;
-
-		if (src->fd_addr == dst->fd_addr)
+		switch (src->fd_nplanes)
 		{
-			memcpy(src->fd_addr, dest, rlen);
-			Mfree(dest);
+			case 1:  cnvfunc = cnvtab->cnv_01b; break;
+			case 2:  cnvfunc = cnvtab->cnv_02b; break;
+			case 4:  cnvfunc = cnvtab->cnv_04b; break;
+			case 8:  cnvfunc = cnvtab->cnv_08b; break;
+			case 15: cnvfunc = cnvtab->cnv_15b; break;
+			case 16: cnvfunc = cnvtab->cnv_16b; break;
+			case 24: cnvfunc = cnvtab->cnv_24b; break;
+			case 32: cnvfunc = cnvtab->cnv_32b; break;
+			default: cnvfunc = NULL; break;
+		}
+
+		if (cnvfunc)
+		{
+			rlen = clc_rlen(src);
+			plen = clc_plen(src);
+
+			if (src->fd_addr == dst->fd_addr)
+			{
+				dest = (unsigned short *)Malloc(rlen + 4);
+				if (!dest)
+					return;
+			}
+			else
+				dest = dst->fd_addr;
+
+			source = (unsigned short *)src->fd_addr;
+
+			(*cnvfunc)(source, dest, plen);
+			
+			dst->fd_w	= src->fd_w;
+			dst->fd_h	= src->fd_h;
+			dst->fd_wdwidth	= src->fd_wdwidth;
+			dst->fd_nplanes	= src->fd_nplanes;
+
+			if (src->fd_addr == dst->fd_addr)
+			{
+				memcpy(src->fd_addr, dest, rlen);
+				Mfree(dest);
+			}
 		}
 	}
 }
@@ -629,13 +671,13 @@ trnfm(MFDB *src, MFDB *dst)
 unsigned long
 clc_plen( MFDB *r)
 {
-	return ((unsigned long) (((unsigned long)r->fd_wdwidth << 1) * (unsigned long)r->fd_h));
+	return (unsigned long)((unsigned long)r->fd_wdwidth << 1) * r->fd_h;
 }
 
 unsigned long
 clc_rlen( MFDB *r)
 {
-	return ((unsigned long)(((unsigned long)r->fd_wdwidth << 1) * (unsigned long)r->fd_h * (unsigned long)r->fd_nplanes));
+	return (unsigned long)((unsigned long)r->fd_wdwidth << 1) * r->fd_h * r->fd_nplanes;
 }
 
 
@@ -649,126 +691,138 @@ conv_vdi2dev( unsigned short *src, unsigned short *dst, unsigned long splen, uns
 	splen >>= 1;
 	len = splen;
 
-	if (planes == 1)
+	switch (planes)
 	{
-		memcpy( dst, src, splen << 1);
-	}
-	else if (planes == 2)
-	{
-		while (len > 0)
+		case 1:
 		{
-			*dst++ = src[0];
-			*dst++ = src[splen];
-			src++;
-			len--;
+			memcpy(dst,src, splen << 1);
+			break;
 		}
+		case 2:
+		{
+			while (len > 0)
+			{
+				*dst++ = src[0];
+				*dst++ = src[splen];
+				src++;
+				len--;
+			}
+			break;
+		}
+		case 4:
+		{	
+			register union { unsigned short *s; unsigned long *l; } da;
+			unsigned long i2, i3;
+
+			da.s = dst;
+			i2 = splen << 1;
+			i3 = i2 + splen;
 			
-	}
-	else if (planes == 4)
-	{
-		while (len > 0)
-		{
-			*(long *)((long *)dst)++ = (unsigned long)((long)src[0] << 16) | src[splen];
-			*(long *)((long *)dst)++ = (unsigned long)((long)src[splen <<1 ] << 16) | src[splen * 3];
-#if 0
-			*dst++ = src[0];
-			*dst++ = src[splen];
-			*dst++ = src[splen << 1];
-			*dst++ = src[(splen << 1) + splen];
-#endif
-			src++;
-			len--;
+			while (len > 0)
+			{
+				*da.l++ = (unsigned long)((unsigned long)src[0] << 16) | src[splen];
+				*da.l++ = (unsigned long)((unsigned long)src[i2] << 16) | src[i3];
+			
+				src++;
+				len--;
+			}
+			break;
 		}
-	}
-	else if (planes == 8)
-	{
-		unsigned char *d;
+		case 8:
+		{
+			unsigned char *d;
 
-		d = (unsigned char *)dst;
+			d = (unsigned char *)dst;
 
-		while (len > 0)
-		{
-			for (j = 15; j > -1; j--)
+			while (len > 0)
 			{
-				pixel = 0;
-				for (i = 0; i < 8; i++)
+				for (j = 15; j >= 0; j--)
 				{
-					pixel >>= 1;
-					pixel |= (src[splen * i] & (1 << j)) << (15 - j);
+					pixel = 0;
+					for (i = 0; i < 8; i++)
+					{
+						pixel >>= 1;
+						pixel |= (src[splen * i] & (1 << j)) << (15 - j);
+					}
+					*d++ = (unsigned char)(pixel >> 8);
 				}
-				*d++ = (unsigned char)(pixel >> 8);
+				len--;
+				src++;
 			}
-			len--;
-			src++;
+			break;
 		}
-	}
-	else if (planes == 16)
-	{
-		while (len > 0)
+		case 15:
+		case 16:
 		{
-			for (j = 15; j > -1; j--)
+			while (len > 0)
 			{
-				pixel = 0;
-				for (i = 0; i < 16; i++)
+				for (j = 15; j >= 0; j--)
 				{
-					pixel >>= 1;
-					pixel |= ( (src[splen * i] & (1 << j)) << (15 - j) );
+					pixel = 0;
+					for (i = 0; i < 16; i++)
+					{
+						pixel >>= 1;
+						pixel |= ( (src[splen * i] & (1 << j)) << (15 - j) );
+					}
+					*dst++ = (unsigned short)pixel;
 				}
-				*dst++ = (unsigned short)pixel;
+				len--;
+				src++;
 			}
-			len--;
-			src++;
+			break;
 		}
-	}
-	else if (planes == 24)
-	{
-		while (len > 0)
+		case 24:
 		{
-			for (j = 15; j > -1; j--)
+			while (len > 0)
 			{
-				pixel = 0;
-				for (i = 0; i < 24; i++)
+				for (j = 15; j > -1; j--)
 				{
-					pixel >>= 1;
-					pixel |= ( (src[splen * i] & (1 << j)) << (15 - j) );
+					pixel = 0;
+					for (i = 0; i < 24; i++)
+					{
+						pixel >>= 1;
+						pixel |= ( (src[splen * i] & (1 << j)) << (15 - j) );
+					}
+					*dst++ = (unsigned char)((unsigned long)pixel >> 16);
+					*dst++ = (unsigned char)((unsigned long)pixel >> 8);
+					*dst++ = (unsigned char)pixel;
 				}
-				*dst++ = (unsigned char)((unsigned long)pixel >> 16);
-				*dst++ = (unsigned char)((unsigned long)pixel >> 8);
-				*dst++ = (unsigned char)pixel;
+				len--;
+				src++;
 			}
-			len--;
-			src++;
+			break;
 		}
-	}
-	else if (planes == 32)
-	{
-		while (len > 0)
+		case 32:
 		{
-			for (j = 15; j > -1; j--)
+			while (len > 0)
 			{
-				pixel = 0;
-				for (i = 0; i < 32; i++)
+				for (j = 15; j > -1; j--)
 				{
-					pixel >>= 1;
-					pixel |= ( (src[splen * i] & (1 << j)) << (15 - j) );
+					pixel = 0;
+					for (i = 0; i < 32; i++)
+					{
+						pixel >>= 1;
+						pixel |= ( (src[splen * i] & (1 << j)) << (15 - j) );
+					}
+					*dst++ = (unsigned long)pixel;
 				}
-				*dst++ = (unsigned long)pixel;
+				len--;
+				src++;
 			}
-			len--;
-			src++;
+			break;
 		}
+		default:;
 	}
-	return;
 }
 /************************************************************************/
 /************************************************************************/
-void
+void _cdecl
 conv_vdi2dev_1b( unsigned short *src, unsigned short *dst, unsigned long splen)
 {
 	memcpy( dst, src, splen);
-	return;
 }
-void
+
+void _cdecl
 conv_vdi2dev_2b( unsigned short *src, unsigned short *dst, unsigned long splen)
 {
 	long len;
@@ -783,30 +837,77 @@ conv_vdi2dev_2b( unsigned short *src, unsigned short *dst, unsigned long splen)
 		src++;
 		len--;
 	}
-	return;
 }
-void
+void _cdecl
 conv_vdi2dev_4b( unsigned short *src, unsigned short *dst, unsigned long splen)
 {
 	long len;
+	unsigned long i2, i3;
 
 	splen >>= 1;
 	len = splen;
+
+	i2 = splen << 1;
+	i3 = i2 + splen;
 
 	while (len > 0)
 	{
 		*dst++ = src[0];
 		*dst++ = src[splen];
-		*dst++ = src[splen << 1];
-		*dst++ = src[(splen << 1) + splen];
+		*dst++ = src[i2];
+		*dst++ = src[i3];
 		src++;
 		len--;
 	}
-	return;
 }
-void
+void _cdecl
 conv_vdi2dev_8b( unsigned short *src, unsigned short *dst, unsigned long splen)
 {
+#if 0
+	int i, j;
+	unsigned short p[8];
+	union { unsigned short pixel[2]; unsigned long lpixel; } pxl;
+	long len, idx;
+
+	splen >>= 1;
+	len = splen;
+	
+	for (;len > 0; len--, src++)
+	{
+		for (j = 0, idx = 0, pxl.lpixel = 0L; j < 8; j++, idx += splen)
+		{
+			p[j] = src[idx];
+			pxl.pixel[1] |= p[j] & 0x8000;
+			pxl.lpixel <<= 1;
+			p[j] <<= 1;
+		}
+		for (j = 0; j < 8; j++)
+		{
+			pxl.pixel[1] |= p[j] & 0x8000;
+			pxl.lpixel <<= 1;
+			p[j] <<= 1;
+		}	
+		*dst++ = pxl.pixel[0];
+		
+		for (i = 0; i < 7; i++)
+		{
+			pxl.lpixel = 0L;
+			for (j = 0; j < 8; j++)
+			{
+				pxl.pixel[1] |= p[j] & 0x8000;
+				pxl.lpixel <<= 1;
+				p[j] <<= 1;
+			}
+			for (j = 0; j < 8; j++)
+			{
+				pxl.pixel[1] |= p[j] & 0x8000;
+				pxl.lpixel <<= 1;
+				p[j] <<= 1;
+			}	
+			*dst++ = pxl.pixel[0];
+		}
+	}
+#else
 	int i, j;
 	long len;
 	unsigned short pixel;
@@ -819,7 +920,7 @@ conv_vdi2dev_8b( unsigned short *src, unsigned short *dst, unsigned long splen)
 
 	while (len > 0)
 	{
-		for (j = 15; j > -1; j--)
+		for (j = 15; j >= 0; j--)
 		{
 			pixel = 0;
 			for (i = 0; i < 8; i++)
@@ -832,9 +933,9 @@ conv_vdi2dev_8b( unsigned short *src, unsigned short *dst, unsigned long splen)
 		len--;
 		src++;
 	}
-	return;
+#endif
 }
-void
+void _cdecl
 conv_vdi2dev_16b( unsigned short *src, unsigned short *dst, unsigned long splen)
 {
 	int i, j;
@@ -846,7 +947,7 @@ conv_vdi2dev_16b( unsigned short *src, unsigned short *dst, unsigned long splen)
 
 	while (len > 0)
 	{
-		for (j = 15; j > -1; j--)
+		for (j = 15; j >= 0; j--)
 		{
 			pixel = 0;
 			for (i = 0; i < 16; i++)
@@ -859,9 +960,9 @@ conv_vdi2dev_16b( unsigned short *src, unsigned short *dst, unsigned long splen)
 		len--;
 		src++;
 	}
-	return;
 }
-void
+
+void _cdecl
 conv_vdi2dev_24b( unsigned short *src, unsigned short *dst, unsigned long splen)
 {
 	int i, j;
@@ -876,7 +977,7 @@ conv_vdi2dev_24b( unsigned short *src, unsigned short *dst, unsigned long splen)
 
 	while (len > 0)
 	{
-		for (j = 15; j > -1; j--)
+		for (j = 15; j >= 0; j--)
 		{
 			pixel = 0;
 			for (i = 0; i < 24; i++)
@@ -891,9 +992,9 @@ conv_vdi2dev_24b( unsigned short *src, unsigned short *dst, unsigned long splen)
 		len--;
 		src++;
 	}
-	return;
 }
-void
+
+void _cdecl
 conv_vdi2dev_32b( unsigned short *src, unsigned short *dst, unsigned long splen)
 {
 	int i, j;
@@ -908,7 +1009,7 @@ conv_vdi2dev_32b( unsigned short *src, unsigned short *dst, unsigned long splen)
 
 	while (len > 0)
 	{
-		for (j = 15; j > -1; j--)
+		for (j = 15; j >= 0; j--)
 		{
 			pixel = 0;
 			for (i = 0; i < 32; i++)
@@ -921,14 +1022,12 @@ conv_vdi2dev_32b( unsigned short *src, unsigned short *dst, unsigned long splen)
 		len--;
 		src++;
 	}
-	return;
 }
 /************************************************************************/
 /************************************************************************/
 void
 conv_dev2vdi( unsigned short *src, unsigned short *dst, unsigned long splen, unsigned long dplen, short planes)
 {
-
 	int i, j;
 	long len;
 	unsigned long pixel;
@@ -1061,14 +1160,12 @@ conv_dev2vdi( unsigned short *src, unsigned short *dst, unsigned long splen, uns
 }
 /************************************************************************/
 /************************************************************************/
-void
+void _cdecl
 conv_dev2vdi_1b( unsigned short *src, unsigned short *dst, unsigned long splen)
 {
-
 	memcpy( dst, src, splen << 1);
-	return;
 }
-void
+void _cdecl
 conv_dev2vdi_2b( unsigned short *src, unsigned short *dst, unsigned long splen)
 {
 	long len;
@@ -1076,37 +1173,64 @@ conv_dev2vdi_2b( unsigned short *src, unsigned short *dst, unsigned long splen)
 	splen >>= 1;
 	len = splen;
 
-	while (len > 0)
+	for (; len > 0; len--, dst++)
 	{
 		dst[0] = *src++;
 		dst[splen] = *src++;
-		dst++;
-		len--;
 	}
 	return;
 }
-void
+void _cdecl
 conv_dev2vdi_4b( unsigned short *src, unsigned short *dst, unsigned long splen)
 {
-	long len;
+	long i1, i2, i3;
+
+	splen >>= 1;
+	i1 = splen;
+	i2 = splen << 1;
+	i3 = i2 + splen;
+
+	for (; splen > 0; splen--, dst++)
+	{
+		dst[ 0] = *src++;
+		dst[i1] = *src++;
+		dst[i2] = *src++;
+		dst[i3] = *src++;
+	}
+	return;
+}
+
+void _cdecl
+conv_dev2vdi_8b( unsigned short *src, unsigned short *dst, unsigned long splen)
+{
+#if 0
+	unsigned short  pixel;
+	long len, idx;
+	int i, j;
 
 	splen >>= 1;
 	len = splen;
 
 	while (len > 0)
 	{
-		dst[0] = *src++;
-		dst[splen] = *src++;
-		dst[splen << 1] = *src++;
-		dst[(splen << 1) + splen] = *src++;
+		pixel = *src++;
+
+		for (i = 0, idx = 0; i < 8; i++, idx += splen) {
+			dst[idx] = (pixel & (1 | (1 << 8))) << 7;
+			pixel >>= 1;
+		}
+		for (j = 6; j >= 0; j--) {
+			pixel = *src++;
+			for (i = 0, idx = 0; i < 8; i++, idx += splen) {
+				dst[idx] |= (pixel & (1 | (1 << 8))) << j;
+				pixel >>= 1;
+			}
+		}
 		dst++;
 		len--;
 	}
-	return;
-}
-void
-conv_dev2vdi_8b( unsigned short *src, unsigned short *dst, unsigned long splen)
-{
+
+#else
 	int i, j;
 	long len;
 	unsigned short pixel;
@@ -1135,8 +1259,9 @@ conv_dev2vdi_8b( unsigned short *src, unsigned short *dst, unsigned long splen)
 		len--;
 	}
 	return;
+#endif
 }
-void
+void _cdecl
 conv_dev2vdi_16b( unsigned short *src, unsigned short *dst, unsigned long splen)
 {
 	int i, j;
@@ -1165,7 +1290,7 @@ conv_dev2vdi_16b( unsigned short *src, unsigned short *dst, unsigned long splen)
 	}
 	return;
 }
-void
+void _cdecl
 conv_dev2vdi_24b( unsigned short *src, unsigned short *dst, unsigned long splen)
 {
 	int i, j;
@@ -1199,7 +1324,7 @@ conv_dev2vdi_24b( unsigned short *src, unsigned short *dst, unsigned long splen)
 	}
 	return;
 }
-void
+void _cdecl
 conv_dev2vdi_32b( unsigned short *src, unsigned short *dst, unsigned long splen)
 {
 	int i, j;

@@ -5,10 +5,10 @@
 #include "drawing.h"
 #include "8b_generic.h"
 
-void ds_REPLACE_8b	(struct fill16x_api *);
-void ds_TRANS_8b	(struct fill16x_api *);
-void ds_XOR_8b		(struct fill16x_api *);
-void ds_ERASE_8b	(struct fill16x_api *);
+void _cdecl ds_REPLACE_8b	(struct fill16x_api *);
+void _cdecl ds_TRANS_8b	(struct fill16x_api *);
+void _cdecl ds_XOR_8b		(struct fill16x_api *);
+void _cdecl ds_ERASE_8b	(struct fill16x_api *);
 
 static unsigned char fillbuff[16 * 16];
 static unsigned char maskbuff[16 * 16];
@@ -36,7 +36,7 @@ unsigned long nib2long[] =
 	0xffffffff,
 };
 
-void
+void _cdecl
 ds_REPLACE_8b(struct fill16x_api *f)
 {
 	register union { void *v; char *c; long *l; } d;
@@ -81,7 +81,7 @@ ds_REPLACE_8b(struct fill16x_api *f)
 		}
 	}
 }
-void
+void _cdecl
 ds_TRANS_8b(struct fill16x_api *f)
 {
 	int i;
@@ -169,7 +169,7 @@ ds_TRANS_8b(struct fill16x_api *f)
 	}
 }
 
-void
+void _cdecl
 ds_XOR_8b(struct fill16x_api *f)
 {
 	register union { void *v; char *c; long *l; } d;
@@ -211,7 +211,7 @@ ds_XOR_8b(struct fill16x_api *f)
 		}
 	}
 }
-void
+void _cdecl
 ds_ERASE_8b(struct fill16x_api *f)
 {
 	register union { void *v; char *c; long *l; } d;
@@ -276,7 +276,7 @@ ds_ERASE_8b(struct fill16x_api *f)
 	}
 }
 
-void
+void _cdecl
 spans_16x_8b(RASTER *r, COLINF *c, short *spans, short n, PatAttr *ptrn)
 {
 	int y, wrmode;

@@ -58,7 +58,7 @@ vr_trnfm( VDIPB *pb, VIRTUAL *v)
 	//trnfm( v, s, d);
 	if (!MiNT && !(v->flags & V_OSBM))
 		patch_gem(v->raster->res.planes, v->raster->w - 1);
-	trnfm(s, d);
+	trnfm(v->raster, s, d);
 }
 
 void

@@ -7,24 +7,24 @@
 /* ******************************************************** */
 /* *************** DIFFERENT WRMODES **************** */
 /* ******************************************************** */
-static void ALL_WHITE	(unsigned char *addr, long data);
-static void S_AND_D	(unsigned char *addr, long data);
-static void S_AND_NOTD	(unsigned char *addr, long data);
-static void S_ONLY	(unsigned char *addr, long data);
-static void NOTS_AND_D	(unsigned char *addr, long data);
-static void D_ONLY	(unsigned char *addr, long data);
-static void S_XOR_D	(unsigned char *addr, long data);
-static void S_OR_D	(unsigned char *addr, long data);
-static void NOT_SORD	(unsigned char *addr, long data);
-static void NOT_SXORD	(unsigned char *addr, long data);
-static void NOT_D	(unsigned char *addr, long data);
-static void S_OR_NOTD	(unsigned char *addr, long data);
-static void NOT_S	(unsigned char *addr, long data);
-static void NOTS_OR_D	(unsigned char *addr, long data);
-static void NOT_SANDD	(unsigned char *addr, long data);
-static void ALL_BLACK	(unsigned char *addr, long data);
+static void  _cdecl ALL_WHITE	(unsigned char *addr, long data);
+static void  _cdecl S_AND_D	(unsigned char *addr, long data);
+static void  _cdecl S_AND_NOTD	(unsigned char *addr, long data);
+static void  _cdecl S_ONLY	(unsigned char *addr, long data);
+static void  _cdecl NOTS_AND_D	(unsigned char *addr, long data);
+static void  _cdecl D_ONLY	(unsigned char *addr, long data);
+static void  _cdecl S_XOR_D	(unsigned char *addr, long data);
+static void  _cdecl S_OR_D	(unsigned char *addr, long data);
+static void  _cdecl NOT_SORD	(unsigned char *addr, long data);
+static void  _cdecl NOT_SXORD	(unsigned char *addr, long data);
+static void  _cdecl NOT_D	(unsigned char *addr, long data);
+static void  _cdecl S_OR_NOTD	(unsigned char *addr, long data);
+static void  _cdecl NOT_S	(unsigned char *addr, long data);
+static void  _cdecl NOTS_OR_D	(unsigned char *addr, long data);
+static void  _cdecl NOT_SANDD	(unsigned char *addr, long data);
+static void  _cdecl ALL_BLACK	(unsigned char *addr, long data);
 
-unsigned long
+unsigned long _cdecl
 get_pixel_16b(unsigned char *sb, short bpl, short x, short y)
 {
 	union { long lng; unsigned short *s; } a;
@@ -32,7 +32,7 @@ get_pixel_16b(unsigned char *sb, short bpl, short x, short y)
 	return (*a.s & 0xffffUL);
 }
 
-void
+void _cdecl
 put_pixel_16b(unsigned char *sb, short bpl, short x, short y, unsigned long pixel)
 {
 	union { long lng; unsigned short *s; } a;
@@ -79,139 +79,123 @@ pixel_blit rt_ops_16b[] =
 	ALL_BLACK
 };
 
-static void
+static void _cdecl
 ALL_WHITE(unsigned char *_addr, long data)
 {
 	unsigned short *addr = (unsigned short *)_addr;
 	*addr = 0xffff;
-	return;
 }
-static void
+static void _cdecl
 S_AND_D(unsigned char *_addr, long data)
 {
 	unsigned short *addr = (unsigned short *)_addr;
 	
 	*addr = (unsigned short)data & *addr;
-	return;
 }
-static void
+static void _cdecl
 S_AND_NOTD(unsigned char *_addr, long data)
 {
 	unsigned short *addr = (unsigned short *)_addr;
 	
 	*addr = (unsigned short)data & ~*addr;
-	return;
 }
-static void
+static void _cdecl
 S_ONLY(unsigned char *_addr, long data)
 {
 	unsigned short *addr = (unsigned short *)_addr;
 	*addr = (unsigned short)data;
-	return;
 }
-static void
+static void _cdecl
 NOTS_AND_D(unsigned char *_addr, long data)
 {
 	unsigned short *addr = (unsigned short *)_addr;
 	*addr &= (unsigned short)~data;
-	return;
 }
-static void
+static void _cdecl
 D_ONLY(unsigned char *_addr, long data)
 {
-	return;
 }
-static void
+static void _cdecl
 S_XOR_D(unsigned char *_addr, long data)
 {
 	unsigned short *addr = (unsigned short *)_addr;
 	*addr ^= (unsigned short)data;
-	return;
 }
-static void
+static void _cdecl
 S_OR_D(unsigned char *_addr, long data)
 {
 	unsigned short *addr = (unsigned short *)_addr;
 	*addr |= (unsigned short)data;
-	return;
 }
-static void
+static void _cdecl
 NOT_SORD(unsigned char *_addr, long data)
 {
 	unsigned short *addr = (unsigned short *)_addr;
 	*addr = ~((unsigned short)data | *addr);
-	return;
 }
-static void
+static void _cdecl
 NOT_SXORD(unsigned char *_addr, long data)
 {
 	unsigned short *addr = (unsigned short *)_addr;
 	*addr = ~((unsigned short)data ^ *addr);
-	return;
 }
-static void
+static void _cdecl
 NOT_D(unsigned char *_addr, long data)
 {
 	unsigned short *addr = (unsigned short *)_addr;
 	*addr = ~*addr;
-	return;
 }
-static void
+static void _cdecl
 S_OR_NOTD(unsigned char *_addr, long data)
 {
 	unsigned short *addr = (unsigned short *)_addr;
 	*addr = (unsigned short)data | ~*addr;
-	return;
 }
-static void
+static void _cdecl
 NOT_S(unsigned char *_addr, long data)
 {
 	unsigned short *addr = (unsigned short *)_addr;
 
 	*addr = (unsigned short)~data;
-	return;
 }
-static void
+static void _cdecl
 NOTS_OR_D(unsigned char *_addr, long data)
 {
 	unsigned short *addr = (unsigned short *)_addr;
 	*addr = (unsigned short)~data | *addr;
-	return;
 }
-static void
+static void _cdecl
 NOT_SANDD(unsigned char *_addr, long data)
 {
 	unsigned short *addr = (unsigned short *)_addr;
 	*addr = ~((unsigned short)data & *addr);
-	return;
 }
-static void
+static void _cdecl
 ALL_BLACK(unsigned char *_addr, long data)
 {
 	unsigned short *addr = (unsigned short *)_addr;
 	*addr = 0;
-	return;
 }
 
 
 	
 /* *************** RASTER OPERATIONS **************** */
-static void rb_ALL_WHITE	(ROP_PB *);
-static void rb_S_AND_D		(ROP_PB *);
-static void rb_S_AND_NOTD	(ROP_PB *);
-static void rb_S_ONLY		(ROP_PB *);
-static void rb_NOTS_AND_D	(ROP_PB *);
-static void rb_D_ONLY		(ROP_PB *);
-static void rb_S_XOR_D		(ROP_PB *);
-static void rb_S_OR_D		(ROP_PB *);
-static void rb_NOT_SORD		(ROP_PB *);
-static void rb_NOT_SXORD	(ROP_PB *);
-static void rb_NOT_D		(ROP_PB *);
-static void rb_S_OR_NOTD	(ROP_PB *);
-static void rb_NOT_S		(ROP_PB *);
-static void rb_NOTS_OR_D	(ROP_PB *);
-static void rb_NOT_SANDD	(ROP_PB *);
-static void rb_ALL_BLACK	(ROP_PB *);
+static void _cdecl rb_ALL_WHITE		(ROP_PB *);
+static void _cdecl rb_S_AND_D		(ROP_PB *);
+static void _cdecl rb_S_AND_NOTD	(ROP_PB *);
+static void _cdecl rb_S_ONLY		(ROP_PB *);
+static void _cdecl rb_NOTS_AND_D	(ROP_PB *);
+static void _cdecl rb_D_ONLY		(ROP_PB *);
+static void _cdecl rb_S_XOR_D		(ROP_PB *);
+static void _cdecl rb_S_OR_D		(ROP_PB *);
+static void _cdecl rb_NOT_SORD		(ROP_PB *);
+static void _cdecl rb_NOT_SXORD		(ROP_PB *);
+static void _cdecl rb_NOT_D		(ROP_PB *);
+static void _cdecl rb_S_OR_NOTD		(ROP_PB *);
+static void _cdecl rb_NOT_S		(ROP_PB *);
+static void _cdecl rb_NOTS_OR_D		(ROP_PB *);
+static void _cdecl rb_NOT_SANDD		(ROP_PB *);
+static void _cdecl rb_ALL_BLACK		(ROP_PB *);
 
 raster_blit rops_16b[] =
 {
@@ -233,7 +217,7 @@ raster_blit rops_16b[] =
 	rb_ALL_BLACK
 };
 
-static void
+static void _cdecl
 rb_ALL_WHITE(ROP_PB *rpb)
 {
 	register int i, width, height, dbpl;
@@ -264,7 +248,7 @@ rb_ALL_WHITE(ROP_PB *rpb)
 	}
 }
 
-static void
+static void _cdecl
 rb_S_AND_D(ROP_PB *rpb)
 {
 	register int i, width, height, dbpl, sbpl;
@@ -327,7 +311,7 @@ rb_S_AND_D(ROP_PB *rpb)
 		}
 	}
 }
-static void
+static void _cdecl
 rb_S_AND_NOTD(ROP_PB *rpb)
 {
 	register int i, width, height, dbpl, sbpl;
@@ -390,7 +374,7 @@ rb_S_AND_NOTD(ROP_PB *rpb)
 		}
 	}
 }
-static void
+static void _cdecl
 rb_S_ONLY(ROP_PB *rpb)
 {
 	register int i, width, height, dbpl, sbpl;
@@ -453,7 +437,7 @@ rb_S_ONLY(ROP_PB *rpb)
 		}
 	}
 }
-static void
+static void _cdecl
 rb_NOTS_AND_D(ROP_PB *rpb)
 {
 	register int i, width, height, dbpl, sbpl;
@@ -516,12 +500,12 @@ rb_NOTS_AND_D(ROP_PB *rpb)
 		}
 	}
 }
-static void
+static void _cdecl
 rb_D_ONLY(ROP_PB *rpb)
 {
 	return;
 }
-static void
+static void _cdecl
 rb_S_XOR_D(ROP_PB *rpb)
 {
 	register int i, width, height, dbpl, sbpl;
@@ -584,7 +568,7 @@ rb_S_XOR_D(ROP_PB *rpb)
 		}
 	}
 }
-static void
+static void _cdecl
 rb_S_OR_D(ROP_PB *rpb)
 {
 	register int i, width, height, dbpl, sbpl;
@@ -647,7 +631,7 @@ rb_S_OR_D(ROP_PB *rpb)
 		}
 	}
 }
-static void
+static void _cdecl
 rb_NOT_SORD(ROP_PB *rpb)
 {
 	register int i, width, height, dbpl, sbpl;
@@ -710,7 +694,7 @@ rb_NOT_SORD(ROP_PB *rpb)
 		}
 	}
 }
-static void
+static void _cdecl
 rb_NOT_SXORD(ROP_PB *rpb)
 {
 	register int i, width, height, dbpl, sbpl;
@@ -773,7 +757,7 @@ rb_NOT_SXORD(ROP_PB *rpb)
 		}
 	}
 }
-static void
+static void _cdecl
 rb_NOT_D(ROP_PB *rpb)
 {
 	register int i, width, height, dbpl;
@@ -803,7 +787,7 @@ rb_NOT_D(ROP_PB *rpb)
 		da.lng -= dbpl;
 	}
 }
-static void
+static void _cdecl
 rb_S_OR_NOTD(ROP_PB *rpb)
 {
 	register int i, width, height, dbpl, sbpl;
@@ -866,7 +850,7 @@ rb_S_OR_NOTD(ROP_PB *rpb)
 		}
 	}
 }
-static void
+static void _cdecl
 rb_NOT_S(ROP_PB *rpb)
 {
 	register int i, width, height, dbpl, sbpl;
@@ -929,7 +913,7 @@ rb_NOT_S(ROP_PB *rpb)
 		}
 	}
 }
-static void
+static void _cdecl
 rb_NOTS_OR_D(ROP_PB *rpb)
 {
 	register int i, width, height, dbpl, sbpl;
@@ -992,7 +976,7 @@ rb_NOTS_OR_D(ROP_PB *rpb)
 		}
 	}
 }
-static void
+static void _cdecl
 rb_NOT_SANDD(ROP_PB *rpb)
 {
 	register int i, width, height, dbpl, sbpl;
@@ -1055,7 +1039,7 @@ rb_NOT_SANDD(ROP_PB *rpb)
 		}
 	}
 }
-static void
+static void _cdecl
 rb_ALL_BLACK(ROP_PB *rpb)
 {
 	register int i, width, height, dbpl;
@@ -1086,10 +1070,9 @@ rb_ALL_BLACK(ROP_PB *rpb)
 	}
 }
 
-void
+void _cdecl
 draw_mousecurs_16b(register XMFORM *mf, register short x, register short y)
 {
-
 	register short width, height, xoff, yoff, bypl;
 	register XMSAVE *ms;
 
@@ -1330,7 +1313,7 @@ draw_mousecurs_16b(register XMFORM *mf, register short x, register short y)
 	return;
 }
 
-void
+void _cdecl
 restore_msave_16b(XMSAVE *ms)
 {
 	register int width, w, height, nl;

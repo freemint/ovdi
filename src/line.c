@@ -14,8 +14,38 @@ static int Planes2xinc[] =
 { 1, 0, 0, 0, 0, 0, 0, 2, 2, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 4 };
 #endif
 
+/* Taken from fVDI (line.c), adapted by Odd Skancke*/
+static void
+do_arrow(RASTER *r, COLINF *c, short *pts, short numpts, VDIRECT *clip, short *points, long pointasize, PatAttr *ptrn)
+{
+	short x_start, y_start, new_x_start, new_y_start;
+
+	/* Function "arrow" will alter the end of the line segment.
+	* Save the starting point of the polyline in case two calls to "arrow"
+	* are necessary.
+	*/
+	new_x_start = x_start = pts[0];
+	new_y_start = y_start = pts[1];
+
+	if (ptrn->t.l.beg & LE_ARROW)
+	{
+		arrow(r, c, &pts[0], 2, numpts, clip, points, pointasize, ptrn);
+		new_x_start = pts[0];
+		new_y_start = pts[1];
+	}
+
+	if (ptrn->t.l.end & LE_ARROW)
+	{
+		pts[0] = x_start;
+		pts[1] = y_start;
+		arrow(r, c, &pts[2 * numpts - 2], -2, numpts, clip, points, pointasize, ptrn);
+		pts[0] = new_x_start;
+		pts[1] = new_y_start;
+	}
+}
+
 /* Written by Odd Skancke */
-void
+void _cdecl
 pline(RASTER *r, COLINF *c, short *pts, long n, VDIRECT *clip, short *points, long pointasize, PatAttr *ptrn)
 {
 	VDIRECT line, clipped;
@@ -51,7 +81,7 @@ pline(RASTER *r, COLINF *c, short *pts, long n, VDIRECT *clip, short *points, lo
 }
 
 /* Taken from fVDI (line.c), modified by Odd Skancke */
-short
+short _cdecl
 code(POINT *input, VDIRECT *clip)
 {
 	int ccode = 0;
@@ -89,7 +119,7 @@ ncode(short x, short y, VDIRECT *clip)
 	return c;
 }
 
-short
+short _cdecl
 clip_line(VDIRECT *input, VDIRECT *clip)
 {
 	short c0, c1, code;
@@ -151,7 +181,7 @@ clip_line(VDIRECT *input, VDIRECT *clip)
 }
 #if 0
 /* Taken from fVDI (line.c), modified by Odd Skancke */
-short
+short _cdecl
 clip_line(VDIRECT *input, VDIRECT *clip)
 {
 
@@ -214,7 +244,7 @@ clip_line(VDIRECT *input, VDIRECT *clip)
  *
  * Taken from EmuTOS (monout.c), almost totally rewritten by Odd Skancke
 */
-void
+void _cdecl
 abline (RASTER *r, COLINF *c, struct vdirect *pnts, PatAttr *ptrn)
 {
 	unsigned char *addr;		/* using void pointer is much faster */
@@ -453,7 +483,7 @@ abline (RASTER *r, COLINF *c, struct vdirect *pnts, PatAttr *ptrn)
  * habline - draw a horizontal line
  * Written by Odd Skancke
  */
-void
+void _cdecl
 habline (RASTER *r, COLINF *c, short x1, short x2, short y, PatAttr *ptrn)
 {
 	short x;
@@ -569,7 +599,7 @@ habline (RASTER *r, COLINF *c, short x1, short x2, short y, PatAttr *ptrn)
  * vabline - draw a vertical line
  * Written by Odd Skancke
  */
-void
+void _cdecl
 vabline (RASTER *r, COLINF *c, short y1, short y2, short x, PatAttr *ptrn)
 {
 	int i;
@@ -675,7 +705,7 @@ vabline (RASTER *r, COLINF *c, short y1, short y2, short x, PatAttr *ptrn)
 }
 
 /* Taken from fVDI (line.c), adapted by Odd Skancke */
-short
+static short
 wide_setup(RASTER *r, short width, short *q_circle)
 {
 	int i, j;
@@ -767,7 +797,7 @@ wide_setup(RASTER *r, short width, short *q_circle)
 }
 
 /* Taken from fVDI (line.c), adapted by Odd Skancke*/
-void
+static void
 quad_xform(short quad, short x, short y, short *tx, short *ty)
 {
 	if (quad & 2)
@@ -782,7 +812,7 @@ quad_xform(short quad, short x, short y, short *tx, short *ty)
 }
 
 /* Taken from fVDI, adapted by Odd Skancke */
-void
+static void
 perp_off(short *vx, short *vy, short *q_circle, short num_qc_lines)
 {
 	/*int x, y, u, v, quad, magnitude, min_val, x_val, y_val;*/
@@ -933,38 +963,8 @@ arrow(RASTER *r, COLINF *c, short *xy, short inc, short numpts, VDIRECT *clip, s
 	}
 }
 
-/* Taken from fVDI (line.c), adapted by Odd Skancke*/
-void
-do_arrow(RASTER *r, COLINF *c, short *pts, short numpts, VDIRECT *clip, short *points, long pointasize, PatAttr *ptrn)
-{
-	short x_start, y_start, new_x_start, new_y_start;
-
-	/* Function "arrow" will alter the end of the line segment.
-	 * Save the starting point of the polyline in case two calls to "arrow"
-	 * are necessary.
-	 */
-	new_x_start = x_start = pts[0];
-	new_y_start = y_start = pts[1];
-
-	if (ptrn->t.l.beg & LE_ARROW)
-	{
-		arrow(r, c, &pts[0], 2, numpts, clip, points, pointasize, ptrn);
-		new_x_start = pts[0];
-		new_y_start = pts[1];
-	}
-
-	if (ptrn->t.l.end & LE_ARROW)
-	{
-		pts[0] = x_start;
-		pts[1] = y_start;
-		arrow(r, c, &pts[2 * numpts - 2], -2, numpts, clip, points, pointasize, ptrn);
-		pts[0] = new_x_start;
-		pts[1] = new_y_start;
-	}
-}
-
 /* Taken from fVDI (line.c), modified by Odd Skancke*/
-void
+void _cdecl
 wide_line(RASTER *r, COLINF *c, short *pts, long numpts, VDIRECT *clip, short *points, long pointasize, PatAttr *ptrn)
 {
 	int i, j, k;
@@ -1064,7 +1064,7 @@ wide_line(RASTER *r, COLINF *c, short *pts, long numpts, VDIRECT *clip, short *p
 }
 
 /* pmarker taken from fVDI (line.c), modified by Odd Skancke */
-void
+void _cdecl
 pmarker( RASTER *r, COLINF *c, POINT *center, VDIRECT *clip, short type, short size, short w_in, short h_in, PatAttr *ptrn)
 {
 	Fabline dl;
@@ -1145,7 +1145,7 @@ pmarker( RASTER *r, COLINF *c, POINT *center, VDIRECT *clip, short type, short s
 }
 
 /* Writen by Odd Skancke */
-void
+void  _cdecl
 draw_spans(RASTER *r, COLINF *c, short x1, short x2, short y, PatAttr *ptrn)
 {
 	short x;
@@ -1443,7 +1443,7 @@ draw_spans(RASTER *r, COLINF *c, short x1, short x2, short y, PatAttr *ptrn)
 	}
 }
 /* Writen by Odd Skancke */
-void
+void _cdecl
 draw_mspans(RASTER *r, COLINF *c, short x1, short x2, short y1, short y2, PatAttr *ptrn)
 {
 	short x;

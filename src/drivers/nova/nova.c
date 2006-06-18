@@ -216,7 +216,7 @@ init(OVDI_LIB *l, struct module_desc *ret, char *path, char *file)
 
 	(*l->bzero)(&drw_1b, sizeof(OVDI_DRAWERS));
 	drv->drawers_1b = &drw_1b;
-	drv->drawers_1b->res = &resfmt_1b;
+	drv->drawers_1b->resfmt = &resfmt_1b;
 
 	(*l->bzero)(&drw_2b, sizeof(OVDI_DRAWERS));
 	drv->drawers_2b = &drw_2b;
@@ -226,23 +226,23 @@ init(OVDI_LIB *l, struct module_desc *ret, char *path, char *file)
 
 	(*l->bzero)(&drw_8b, sizeof(OVDI_DRAWERS));
 	drv->drawers_8b = &drw_8b;
-	drv->drawers_8b->res = &resfmt_8b;
+	drv->drawers_8b->resfmt = &resfmt_8b;
 
 	(*l->bzero)(&drw_15b, sizeof(OVDI_DRAWERS));
 	drv->drawers_15b = &drw_15b;
-	drv->drawers_15b->res = &resfmt_15b;
+	drv->drawers_15b->resfmt = &resfmt_15b;
 
 	(*l->bzero)(&drw_16b, sizeof(OVDI_DRAWERS));
 	drv->drawers_16b = &drw_16b;
-	drv->drawers_16b->res = &resfmt_16b;
+	drv->drawers_16b->resfmt = &resfmt_16b;
 
 	(*l->bzero)(&drw_24b, sizeof(OVDI_DRAWERS));
 	drv->drawers_24b = &drw_24b;
-	drv->drawers_24b->res = &resfmt_24b;
+	drv->drawers_24b->resfmt = &resfmt_24b;
 
 	(*l->bzero)(&drw_32b, sizeof(OVDI_DRAWERS));
 	drv->drawers_32b = &drw_32b;
-	drv->drawers_32b->res = &resfmt_32b;
+	drv->drawers_32b->resfmt = &resfmt_32b;
 
 	ret->types	= D_VHW;
 	ret->vhw	= dev;
@@ -364,7 +364,7 @@ dev_get_res_info(OVDI_DRIVER *drv)
 	{
 		case 1:
 		{
-			drv->r.res		= *drv->drawers_1b->res;
+			drv->r.resfmt		= *drv->drawers_1b->resfmt;
 #if 0
 			drv->r.format		= PF_ATARI;
 			drv->r.pixelformat	= pf_nova;
@@ -376,7 +376,7 @@ dev_get_res_info(OVDI_DRIVER *drv)
 #if 0
 		case 4:
 		{
-			drv->r.res		= *drv->drawers_b4->res;
+			drv->r.resfmt		= *drv->drawers_b4->resfmt;
 			drv->r.format		= PF_ATARI;
 			drv->r.pixelformat	= pf_nova;
 			drv->r.clut		= 1;
@@ -386,7 +386,7 @@ dev_get_res_info(OVDI_DRIVER *drv)
 #endif
 		case 8:
 		{
-			drv->r.res		= *drv->drawers_8b->res;
+			drv->r.resfmt		= *drv->drawers_8b->resfmt;
 #if 0
 			drv->r.format		= PF_PACKED;
 			drv->r.pixelformat	= pf_nova;
@@ -397,7 +397,7 @@ dev_get_res_info(OVDI_DRIVER *drv)
 		}
 		case 15:
 		{
-			drv->r.res		= *drv->drawers_15b->res;
+			drv->r.resfmt		= *drv->drawers_15b->resfmt;
 #if 0
 			drv->r.format		= PF_PACKED;
 			drv->r.pixelformat	= pf_15bI;
@@ -408,7 +408,7 @@ dev_get_res_info(OVDI_DRIVER *drv)
 		}
 		case 16:
 		{
-			drv->r.res		= *drv->drawers_16b->res;
+			drv->r.resfmt		= *drv->drawers_16b->resfmt;
 #if 0
 			drv->r.format		= PF_PACKED;
 			drv->r.pixelformat	= pf_16bI;

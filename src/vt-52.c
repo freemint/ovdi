@@ -254,7 +254,7 @@ change_console_resolution(CONSOLE *c, RASTER *r)
 	
 	init_colinf(r, cinf);
 
-	if (r->res.clut)
+	if (r->resfmt.clut)
 	{
 		for (i = 0; i < cinf->pens; i++)
 		{
@@ -265,9 +265,9 @@ change_console_resolution(CONSOLE *c, RASTER *r)
 
 	c->pattern.expanded = 0;
 	c->pattern.color[0] = c->pattern.color[1] = cinf->color_vdi2hw[0];
-	c->pattern.color[2] = c->pattern.color[3] = r->res.planes > 8 ? 0 : 0xff;
+	c->pattern.color[2] = c->pattern.color[3] = r->resfmt.planes > 8 ? 0 : 0xff;
 	c->pattern.bgcol[0] = c->pattern.bgcol[1] = cinf->color_vdi2hw[1];
-	c->pattern.bgcol[2] = c->pattern.bgcol[3] = r->res.planes > 8 ? 0xff : 0x0;
+	c->pattern.bgcol[2] = c->pattern.bgcol[3] = r->resfmt.planes > 8 ? 0xff : 0x0;
 
 	c->pattern.width	= 16;
 	c->pattern.height	= 1;
@@ -1214,7 +1214,7 @@ draw_character(CONSOLE *c, short chr)
 
 	dst.fd_addr = NULL;
 
-	if (r->res.planes == 1)
+	if (r->resfmt.planes == 1)
 	{
 		if (c->la->v_cur_flag & V_INVERSED)
 			RO_CPYFM(r, &fontd, &dst, (short *)coords, (VDIRECT *)&r->x1, 12);

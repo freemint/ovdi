@@ -161,13 +161,13 @@ rt_cpyfm(RASTER *r, COLINF *c, MFDB *src, MFDB *dst, short *pnts, VDIRECT *clip,
 
 	if ( dst->fd_addr == NULL)
 	{	/* destination screen! */
-		if (r->res.planes == 1 && !wrmode) //rt2ro[wrmode] != 0)
+		if (r->resfmt.planes == 1 && !wrmode) //rt2ro[wrmode] != 0)
 		{
 			ro_cpyfm(r, src, dst, pnts, clip, rt2ro[wrmode]);
 			return;
 		}
 		drawers 	= r->drawers;
-		planes		= r->res.planes;
+		planes		= r->resfmt.planes;
 		bypl		= r->bypl;
 		addr		= r->base;
 		dst_w		= r->w;
@@ -362,7 +362,7 @@ rt_cpyfm(RASTER *r, COLINF *c, MFDB *src, MFDB *dst, short *pnts, VDIRECT *clip,
 	{
 		register long fcol, bcol;
 
-		if (r->res.clut)
+		if (r->resfmt.clut)
 		{
 			fcol = fgcol;
 			bcol = bgcol;
@@ -489,7 +489,7 @@ ro_cpyfm(RASTER *r, MFDB *src, MFDB *dst, short *pts, VDIRECT *clip, short wrmod
 
 	if ( !dst->fd_addr || (long)dst->fd_addr == (long)r->base)
 	{	/* destination screen! */
-		dstplanes	= r->res.planes;
+		dstplanes	= r->resfmt.planes;
 		rpb->d_bypl	= r->bypl;
 		rpb->d_addr	= r->base;
 		rpb->d_w	= r->w;
@@ -508,7 +508,7 @@ ro_cpyfm(RASTER *r, MFDB *src, MFDB *dst, short *pts, VDIRECT *clip, short wrmod
 
 	if ( !src->fd_addr || (long)src->fd_addr == (long)r->base)
 	{	/* Source is screen */
-		srcplanes	= r->res.planes;
+		srcplanes	= r->resfmt.planes;
 		rpb->s_bypl	= r->bypl;
 		rpb->s_addr	= r->base;
 		rpb->s_w	= r->w;

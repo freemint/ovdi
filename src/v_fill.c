@@ -261,7 +261,7 @@ set_udfill( VIRTUAL *v, short planes, unsigned short *ud, short width, short hei
 
 		if (planes == 1)
 			v->udfill.expanded = 0;
-		else if (planes == v->raster->res.planes)
+		else if (planes == v->raster->resfmt.planes)
 		{
 			//log("set_udfill: Multiplane fill for pid %d - %s\n", v->pid, v->procname);
 			v->udfill.expanded = 0;

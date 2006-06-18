@@ -66,7 +66,7 @@ struct raster
 	short			w, h;			/* width and height of raster in pixels */
 	short			x1, y1, x2, y2;		/* Bounding rectangle (usually 0,0, w-1, h-1) */
 
-	RESFMT			res;
+	RESFMT			resfmt;
 
 	/* This part is filled in by the VDI.		*/
 	/* Device driver must NOT touch this area!	*/
@@ -519,7 +519,7 @@ struct ovdi_drawers
   * Functions below here is always color-depth dependant. If driver dont provide
   * these, standard and VERY, VERY slow ones are used.
  */
-	RESFMT		*res;
+	RESFMT		*resfmt;
 
 	void _cdecl 		(*draw_pixel)		( unsigned char *adr, long data);
 	void _cdecl 		(*read_pixel)		( unsigned char *adr, long data);

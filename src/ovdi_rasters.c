@@ -389,9 +389,9 @@ new_raster(OVDI_HWAPI *hw, char *base, short x2, short y2, RESFMT *res)
 	if (r)
 	{
 		bzero(r, sizeof(RASTER));
-		r->res = *res;
+		r->resfmt = *res;
 		x2 |= 15;
-		pixlen = r->res.pixlen;
+		pixlen = r->resfmt.pixlen;
 		if (pixlen < 0)
 		{
 			pixlen = -pixlen;
@@ -447,8 +447,8 @@ raster_reschange(RASTER *r, COLINF *c)
 	if (c)
 		init_colinf(r, c);
 
-	r->drawers	= r->odrawers[r->res.planes];
-	r->res		= *r->drawers->res;
+	r->drawers	= r->odrawers[r->resfmt.planes];
+	r->resfmt		= *r->drawers->resfmt;
 
 	if (scrsizmm_x)
 		r->wpixel = scrsizmm_x; //((long)scrsizmm_x * 1000) / r->w;
@@ -464,8 +464,8 @@ raster_reschange(RASTER *r, COLINF *c)
 void
 init_raster_rgb(RASTER *r)
 {
-	get_rgb_levels( r->res.pixelformat, &r->rgb_levels);
-	get_rgb_bits( r->res.pixelformat, &r->rgb_bits);
+	get_rgb_levels( r->resfmt.pixelformat, &r->rgb_levels);
+	get_rgb_bits( r->resfmt.pixelformat, &r->rgb_bits);
 }
 
 void
@@ -478,8 +478,8 @@ reschange_devtab(DEV_TAB *dt, RASTER *r)
 	dt->wpixel	= r->wpixel;
 	dt->hpixel	= r->hpixel;
 
-	dt->cancolor	= r->res.planes == 1 ? 0 : 1;
-	dt->colors	= r->res.planes < 8 ? 1 << r->res.planes : 256;
+	dt->cancolor	= r->resfmt.planes == 1 ? 0 : 1;
+	dt->colors	= r->resfmt.planes < 8 ? 1 << r->resfmt.planes : 256;
 	palettesize	= (long)r->rgb_levels.red * (long)r->rgb_levels.green * (long)r->rgb_levels.blue;
 	dt->palette	= palettesize > 32767UL ? 0 : (short)palettesize;
 }
@@ -487,8 +487,8 @@ reschange_devtab(DEV_TAB *dt, RASTER *r)
 void
 reschange_inqtab(INQ_TAB *it, RASTER *r)
 {
-	it->planes	= r->res.planes;
-	it->lut		= r->res.clut;
+	it->planes	= r->resfmt.planes;
+	it->lut		= r->resfmt.clut;
 }
 
 COLINF *
@@ -543,9 +543,9 @@ init_colinf(RASTER *r, COLINF *c)
 		c->color_vdi2hw[i] = VDI2HW_colorindex[i];
 		c->color_hw2vdi[i] = HW2VDI_colorindex[i];
 	}
-	if (r->res.planes < 8)
+	if (r->resfmt.planes < 8)
 	{
-		pens = 1 << r->res.planes;
+		pens = 1 << r->resfmt.planes;
 		c->color_vdi2hw[1] = pens - 1;
 		c->color_hw2vdi[pens - 1] = 1;
 	}
@@ -556,7 +556,7 @@ init_colinf(RASTER *r, COLINF *c)
 		pens = 256;
 	}
 	c->pens		= pens;
-	c->planes	= r->res.planes;
+	c->planes	= r->resfmt.planes;
 	syspal	= (short *)&systempalette;
 	temp.alpha = temp.ovl = 0;
 	for (i = 0; i < pens; i++)
@@ -616,10 +616,10 @@ setup_drawers_jumptable(OVDI_DRAWERS *src, OVDI_DRAWERS *dst, short planes)
 	{
 		case 1:
 		{
-			if (src->res)
-				dst->res = src->res;
+			if (src->resfmt)
+				dst->resfmt = src->resfmt;
 			else
-				dst->res = &res_1b;
+				dst->resfmt = &res_1b;
 
 			for (i = 0; i < 16; i++)
 			{
@@ -667,10 +667,10 @@ setup_drawers_jumptable(OVDI_DRAWERS *src, OVDI_DRAWERS *dst, short planes)
 		}
 		case 4:
 		{
-			if (src->res)
-				dst->res = src->res;
+			if (src->resfmt)
+				dst->resfmt = src->resfmt;
 			else
-				dst->res = &res_4b;
+				dst->resfmt = &res_4b;
 
 			for (i = 0; i < 16; i++)
 			{
@@ -718,10 +718,10 @@ setup_drawers_jumptable(OVDI_DRAWERS *src, OVDI_DRAWERS *dst, short planes)
 		}
 		case 8:
 		{
-			if (src->res)
-				dst->res = src->res;
+			if (src->resfmt)
+				dst->resfmt = src->resfmt;
 			else
-				dst->res = &res_8b;
+				dst->resfmt = &res_8b;
 
 			for (i = 0; i < 16; i++)
 			{
@@ -771,10 +771,10 @@ setup_drawers_jumptable(OVDI_DRAWERS *src, OVDI_DRAWERS *dst, short planes)
 		}
 		case 15:
 		{
-			if (src->res)
-				dst->res = src->res;
+			if (src->resfmt)
+				dst->resfmt = src->resfmt;
 			else
-				dst->res = &res_15b;
+				dst->resfmt = &res_15b;
 
 			for (i = 0; i < 16; i++)
 			{
@@ -813,10 +813,10 @@ setup_drawers_jumptable(OVDI_DRAWERS *src, OVDI_DRAWERS *dst, short planes)
 		}
 		case 16:
 		{
-			if (src->res)
-				dst->res = src->res;
+			if (src->resfmt)
+				dst->resfmt = src->resfmt;
 			else
-				dst->res = &res_16b;
+				dst->resfmt = &res_16b;
 
 			for (i = 0; i < 16; i++)
 			{

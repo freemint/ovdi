@@ -133,7 +133,7 @@ calc_vdicolor( RASTER *r, COLINF *c, short vdipen, RGB_LIST *color)
 
 	c->request_rgb[hwpen] = *color;
 
-	reqrgb_2_actrgb( r->res.pixelformat,
+	reqrgb_2_actrgb( r->resfmt.pixelformat,
 			 &r->rgb_levels,
 			&c->request_rgb[hwpen],
 			&c->actual_rgb[hwpen],
@@ -145,7 +145,7 @@ calc_vdicolor( RASTER *r, COLINF *c, short vdipen, RGB_LIST *color)
 void
 lvs_color( VIRTUAL *v, short hwpen, RGB_LIST *color)
 {
-	if (v->driver == v->physical && v->raster->res.clut && !(v->flags & V_OSBM))
+	if (v->driver == v->physical && v->raster->resfmt.clut && !(v->flags & V_OSBM))
 		(*v->driver->dev->setcol)(v->driver, hwpen, color);
 
 }

@@ -1,4 +1,5 @@
 #include <osbind.h>
+#include <stddef.h>
 
 #include "kbdapi.h"
 #include "modinf.h"
@@ -96,7 +97,6 @@ wait_key(short *a, short *s, long *sft)
 	*a	= key & 0xff;
 	*s	= (key >> 16) & 0xff;
 	*sft	= Kbshift(-1);
-	return;
 }
 
 static long _cdecl

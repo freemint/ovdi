@@ -11,10 +11,19 @@
 #include "ovdi_types.h"
 #include "../../sys/mint/arch/asm_spl.h"
 
-#define TPS	50
+#define TPS		50
 #define	etv_timer	0x400
 
 #define TIME_ACTIVE	1
+#define MAX_TINTS	10
+
+struct tint_entry
+{
+	long	ticks;
+	long	rticks;
+	timefunc func;
+	long	arg;
+};
 
 struct timedrv
 {
@@ -27,7 +36,7 @@ struct timedrv
 void _cdecl init	(OVDI_LIB *l, struct module_desc *ret, char *p, char *f);
 
 extern unsigned long old_timeint;
-extern void time_interruptw(void);
+extern void _cdecl time_interruptw(void);
 static void donothing(void);
 
 void time_interrupt(void);
@@ -74,15 +83,6 @@ static struct timeapi tapi =
 	disable_tint,
 };
 
-struct tint_entry
-{
-	long	ticks;
-	long	rticks;
-	timefunc func;
-	long	arg;
-};
-
-#define MAX_TINTS	10
 static struct tint_entry Tints[] =
 {
 	{0,0,NULL,0},
@@ -314,7 +314,7 @@ set_next_tim(unsigned long function)
 {
 	short sr;
 	register struct timedrv *td = &tdrv;
-	void (*old)(void);
+	void _cdecl (*old)(void);
 
 	sr = spl7();
 	old = td->next_tim;
@@ -327,5 +327,4 @@ set_next_tim(unsigned long function)
 static void
 donothing(void)
 {
-	return;
 }

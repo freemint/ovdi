@@ -15,9 +15,17 @@
 #define VBI_INST	1
 #define VBI_ENABLE	2
 
+struct vbi_entry
+{
+	long ticks;
+	long rticks;
+	void _cdecl (*func)(long arg);
+	long arg;
+};
+
 void _cdecl init	(OVDI_LIB *l, struct module_desc *ret, char *p, char *f);
 
-extern void new_vbi_wrapper(void);
+extern void _cdecl new_vbi_wrapper(void);
 void new_vbi (void);
 
 static short _cdecl	install(void);
@@ -54,16 +62,7 @@ static VBIAPI vbiapi =
 	enable_vbi,
 	disable_vbi,
 };
-
-
 static unsigned short flags = 0;
-struct vbi_entry
-{
-	long ticks;
-	long rticks;
-	void _cdecl (*func)(long arg);
-	long arg;
-};
 static struct vbi_entry VBIints[] =
 {
 	{0,0,NULL},
@@ -201,11 +200,9 @@ new_vbi(void)
 			if (!vints[i].rticks) {
 				vints[i].rticks = vints[i].ticks;
 				(*vints[i].func)(vints[i].arg);
-			}
-			else
+			} else
 				vints[i].rticks--;
-		}
-		else
+		} else
 			break;
 	}
 }

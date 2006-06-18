@@ -170,7 +170,7 @@ v_opnwk(VDIPB *pb, VIRTUAL *wk, VIRTUAL *lawk, OVDI_HWAPI *hwapi) //struct ovdi_
 		change_resolution(wk);
 
 		//log("vdidev_id=%d, base=%lx, length=%ld, bypl=%ld, planes=%d, clut=%d, format=%d, pixlen=%d\n",
-		//	vdidev_id, r->base, r->lenght, r->bypl, r->res.planes, r->res.clut, r->res.format, r->res.pixlen);
+		//	vdidev_id, r->base, r->lenght, r->bypl, r->resfmt.planes, r->resfmt.clut, r->resfmt.format, r->resfmt.pixlen);
 
 		/*
 		 * If console is on another hardware driver (may be same device),
@@ -182,7 +182,7 @@ v_opnwk(VDIPB *pb, VIRTUAL *wk, VIRTUAL *lawk, OVDI_HWAPI *hwapi) //struct ovdi_
 		/*
 		 * Set initial hardware palette registers, if we're in clut mode.
 		*/
-		if (r->res.clut)
+		if (r->resfmt.clut)
 		{
 			for (i = 0; i <= c->pens; i++)
 			{
@@ -298,7 +298,7 @@ change_resolution(VIRTUAL *v)
 	ptrn->interior = FIS_HOLLOW;
 	ptrn->color[0] = ptrn->color[1] = c->color_vdi2hw[0];
 	ptrn->bgcol[0] = ptrn->bgcol[1] = c->color_vdi2hw[1];
-	if (r->res.planes > 8)
+	if (r->resfmt.planes > 8)
 	{
 		ptrn->color[2] = ptrn->color[3] = 0x0;
 		ptrn->bgcol[2] = ptrn->bgcol[3] = 0xff;
@@ -323,7 +323,7 @@ change_resolution(VIRTUAL *v)
 	ptrn->interior = FIS_SOLID;
 	ptrn->color[0] = ptrn->color[1] = c->color_vdi2hw[1];
 	ptrn->bgcol[0] = ptrn->bgcol[1] = c->color_vdi2hw[0];
-	if (r->res.planes > 8)
+	if (r->resfmt.planes > 8)
 	{
 		ptrn->color[2] = ptrn->color[3] = 0x00;
 		ptrn->bgcol[2] = ptrn->bgcol[3] = 0xff;
@@ -515,7 +515,7 @@ v_opnvwk(VDIPB *pb, VIRTUAL *v)
 					bm->fd_addr = NULL;
 					bm->fd_stand = 0;
 					resfmt.format = 0;
-					resfmt.planes = r->res.planes;
+					resfmt.planes = r->resfmt.planes;
 				}
 				else
 				{
@@ -537,7 +537,7 @@ v_opnvwk(VDIPB *pb, VIRTUAL *v)
 						bm->fd_stand = 0;
 					
 						if (!wkin->dev.eddi.planes)
-							resfmt.planes = r->res.planes;
+							resfmt.planes = r->resfmt.planes;
 						else
 						{
 							resfmt.planes = wkin->dev.eddi.planes;
@@ -568,7 +568,7 @@ v_opnvwk(VDIPB *pb, VIRTUAL *v)
 						if (bm->fd_nplanes)
 							resfmt.planes = bm->fd_nplanes;
 						else
-							resfmt.planes = r->res.planes;
+							resfmt.planes = r->resfmt.planes;
 					}
 				}
 						
@@ -581,7 +581,7 @@ v_opnvwk(VDIPB *pb, VIRTUAL *v)
 				else
 				{
 					log("raster");
-					resfmt.planes = r->res.planes;
+					resfmt.planes = r->resfmt.planes;
 				}
 			#endif
 			
@@ -589,11 +589,11 @@ v_opnvwk(VDIPB *pb, VIRTUAL *v)
 				drawers = hw->odrawers[resfmt.planes];
 
 				if (!resfmt.format)
-					resfmt.format = drawers->res->format;
+					resfmt.format = drawers->resfmt->format;
 
-				resfmt.clut = drawers->res->clut;
-				resfmt.pixlen = drawers->res->pixlen;
-				resfmt.pixelformat = drawers->res->pixelformat;
+				resfmt.clut = drawers->resfmt->clut;
+				resfmt.pixlen = drawers->resfmt->pixlen;
+				resfmt.pixelformat = drawers->resfmt->pixelformat;
 
 				log(" get new raster\n");
 				
@@ -607,10 +607,10 @@ v_opnvwk(VDIPB *pb, VIRTUAL *v)
 				init_raster(root->hw, nr);
 				log(" init_raster_rgb..\n");
 				init_raster_rgb(nr);
-				nr->drawers = hw->odrawers[r->res.planes];
+				nr->drawers = hw->odrawers[r->resfmt.planes];
 				{
 					COLINF *c;
-					c = new_colinf(nr->res.pixelformat);
+					c = new_colinf(nr->resfmt.pixelformat);
 					if (!c)
 					{
 						log("could not get new_colinf\n");
@@ -626,7 +626,7 @@ v_opnvwk(VDIPB *pb, VIRTUAL *v)
 				bm->fd_w	= nr->w;
 				bm->fd_h	= nr->h;
 				bm->fd_wdwidth	= (nr->w + 15) >> 4;
-				bm->fd_nplanes	= nr->res.planes;
+				bm->fd_nplanes	= nr->resfmt.planes;
 				bm->fd_r1 	= 0;
 				bm->fd_r2	= 0;
 				bm->fd_r3	= 0;
@@ -657,11 +657,11 @@ v_opnvwk(VDIPB *pb, VIRTUAL *v)
 				 * things work indipendantly. I dont know how other VDI's do this,
 				 * but I WANT it to stay this way :)
 				*/
-				if (root->raster->res.clut)
+				if (root->raster->resfmt.clut)
 					new->colinf	= root->colinf;
 				else
 				{
-					new->colinf = new_colinf(root->raster->res.pixelformat);
+					new->colinf = new_colinf(root->raster->resfmt.pixelformat);
 					if (new->colinf)
 						clone_colinf(new->colinf, root->colinf);
 					else
@@ -872,8 +872,8 @@ prepare_scrninfreturn( VDIPB *pb, VIRTUAL *v)
 
 	r = v->raster;
 
-	pfmt = r->res.format; //v->driver->format;
-	planes = r->res.planes; //v->driver->planes;
+	pfmt = r->resfmt.format; //v->driver->format;
+	planes = r->resfmt.planes; //v->driver->planes;
 
 	if (pfmt & PF_ATARI)
 		pb->intout[0] = 0;
@@ -884,7 +884,7 @@ prepare_scrninfreturn( VDIPB *pb, VIRTUAL *v)
 
 	if (planes == 1)
 		pb->intout[1] = 0;
-	else if (r->res.clut)
+	else if (r->resfmt.clut)
 		pb->intout[1] = 1;
 	else
 		pb->intout[1] = 2;
@@ -957,7 +957,7 @@ prepare_scrninfreturn( VDIPB *pb, VIRTUAL *v)
 			}
 		}
 
-		pf = r->res.pixelformat;
+		pf = r->resfmt.pixelformat;
 		misc = (short *)&pb->intout[16];
 		while (pf[0])
 		{

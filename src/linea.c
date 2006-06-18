@@ -135,7 +135,7 @@ linea_reschange(LINEA_VARTAB *la, RASTER *r, COLINF *c)
 	la->v_rez_hz	= r->w;
 	la->v_rez_vt	= r->h;
 	la->bytes_lin	= r->bypl;
-	la->planes	= r->res.planes;
+	la->planes	= r->resfmt.planes;
 	la->width	= r->bypl;
 	
 }
@@ -190,7 +190,7 @@ linea_get_pixel(void)
 	VIRTUAL *v = la->cur_work;
 	RASTER *r = v->raster;
 	unsigned long pixel;
-	int planes = v->raster->res.planes;
+	int planes = v->raster->resfmt.planes;
 
 	pixel = (*r->drawers->get_pixel)(r->base, r->bypl,
 					 la->ptsin[0], la->ptsin[1]);

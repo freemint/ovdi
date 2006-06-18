@@ -205,19 +205,19 @@ init(OVDI_LIB *lib, struct module_desc *ret, char *path, char *file)
 
 	(*l->bzero)(&drw_1b, sizeof(OVDI_DRAWERS));
 	drv->drawers_1b = &drw_1b;
-	drv->drawers_1b->res = &resfmt_1b;
+	drv->drawers_1b->resfmt = &resfmt_1b;
 
 	(*l->bzero)(&drw_2b, sizeof(OVDI_DRAWERS));
 	drv->drawers_2b = &drw_2b;
-	drv->drawers_2b->res = &resfmt_2b;
+	drv->drawers_2b->resfmt = &resfmt_2b;
 
 	(*l->bzero)(&drw_4b, sizeof(OVDI_DRAWERS));
 	drv->drawers_4b = &drw_4b;
-	drv->drawers_4b->res = &resfmt_4b;
+	drv->drawers_4b->resfmt = &resfmt_4b;
 
 	(*l->bzero)(&drw_8b, sizeof(OVDI_DRAWERS));
 	drv->drawers_8b = &drw_8b;
-	drv->drawers_8b->res = &resfmt_8b;
+	drv->drawers_8b->resfmt = &resfmt_8b;
 
 	(*l->bzero)(&drw_15b, sizeof(OVDI_DRAWERS));
 	drv->drawers_15b = &drw_15b;
@@ -332,7 +332,7 @@ dev_get_res_info(OVDI_DRIVER *drv)
 			drv->vram_size	= (long)drv->r.h * drv->r.bypl;
 			drv->scr_size	= drv->vram_size;
 
-			drv->r.res	= *drv->drawers_1b->res;
+			drv->r.resfmt	= *drv->drawers_1b->resfmt;
 			break;
 		}
 		case VMODE_MED:		/* 640x200 2bpp */
@@ -351,7 +351,7 @@ dev_get_res_info(OVDI_DRIVER *drv)
 			drv->vram_size	= (long)drv->r.h * drv->r.bypl;
 			drv->scr_size	= drv->vram_size;
 
-			drv->r.res	= *drv->drawers_2b->res;
+			drv->r.resfmt	= *drv->drawers_2b->resfmt;
 			break;
 		}
 		case VMODE_HI: 		/* 640x400 mono */
@@ -370,7 +370,7 @@ dev_get_res_info(OVDI_DRIVER *drv)
 			drv->vram_size	= (long)drv->r.h * drv->r.bypl;
 			drv->scr_size	= drv->vram_size;
 
-			drv->r.res	= *drv->drawers_1b->res;
+			drv->r.resfmt	= *drv->drawers_1b->resfmt;
 			break;
 		}
 		case VMODE_TT_LOW:	/* 320x480 8bpp */
@@ -389,7 +389,7 @@ dev_get_res_info(OVDI_DRIVER *drv)
 			drv->vram_size	= (long)drv->r.h * drv->r.bypl;
 			drv->scr_size	= drv->vram_size;
 
-			drv->r.res	= *drv->drawers_8b->res;
+			drv->r.resfmt	= *drv->drawers_8b->resfmt;
 			break;
 		}
 		case VMODE_TT_MED:	/* 640x480 4bpp */
@@ -408,7 +408,7 @@ dev_get_res_info(OVDI_DRIVER *drv)
 			drv->vram_size	= (long)drv->r.h * drv->r.bypl;
 			drv->scr_size	= drv->vram_size;
 
-			drv->r.res	= *drv->drawers_4b->res;
+			drv->r.resfmt	= *drv->drawers_4b->resfmt;
 			
 			break;
 		}
@@ -428,7 +428,7 @@ dev_get_res_info(OVDI_DRIVER *drv)
 			drv->vram_size	= drv->r.bypl * drv->r.h;
 			drv->scr_size	= drv->vram_size;
 
-			drv->r.res	= *drv->drawers_1b->res;
+			drv->r.resfmt	= *drv->drawers_1b->resfmt;
 			break;
 		}
 	}

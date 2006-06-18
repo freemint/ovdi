@@ -57,14 +57,14 @@ vr_trnfm( VDIPB *pb, VIRTUAL *v)
 	d = *(MFDB **)&(pb->contrl[9]);
 	//trnfm( v, s, d);
 	if (!MiNT && !(v->flags & V_OSBM))
-		patch_gem(v->raster->res.planes, v->raster->w - 1);
+		patch_gem(v->raster->resfmt.planes, v->raster->w - 1);
 	trnfm(v->raster, s, d);
 }
 
 void
 v_get_pixel( VDIPB *pb, VIRTUAL *v)
 {
-	int planes = v->driver->r.res.planes;
+	int planes = v->driver->r.resfmt.planes;
 	RASTER *r = v->raster;
 	unsigned long pixel;
 
@@ -74,9 +74,9 @@ v_get_pixel( VDIPB *pb, VIRTUAL *v)
 	{
 		short red, green, blue;
 
-		red = get_color_bits(r->res.pixelformat, pixel, 0);
-		green = get_color_bits(r->res.pixelformat, pixel, 1);
-		blue = get_color_bits(r->res.pixelformat, pixel, 2);
+		red = get_color_bits(r->resfmt.pixelformat, pixel, 0);
+		green = get_color_bits(r->resfmt.pixelformat, pixel, 1);
+		blue = get_color_bits(r->resfmt.pixelformat, pixel, 2);
 
 		if (planes > 16)
 		{

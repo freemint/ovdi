@@ -317,7 +317,7 @@ abline (RASTER *r, COLINF *c, struct vdirect *pnts, PatAttr *ptrn)
 	planes <<= 1;
 	dlp_fg = r->drawers->dlp[planes];
 	dlp_bg = 0; //r->drawers->dlp[planes + 1];
-	planes = r->res.planes;
+	planes = r->resfmt.planes;
 
 	SYNC_RASTER(r);
 
@@ -406,7 +406,7 @@ abline (RASTER *r, COLINF *c, struct vdirect *pnts, PatAttr *ptrn)
 	{
 		register long fcol, bcol;
 
-		if (r->res.clut)
+		if (r->resfmt.clut)
 		{
 			fcol = (long)fgcol;
 			bcol = (long)bgcol;
@@ -523,7 +523,7 @@ habline (RASTER *r, COLINF *c, short x1, short x2, short y, PatAttr *ptrn)
 	planes <<= 1;
 	dpf_fg	= r->drawers->dlp[planes];
 	dpf_bg	= 0; //r->drawers->dlp[planes + 1];
-	planes	= r->res.planes;
+	planes	= r->resfmt.planes;
 	bypl	= r->bypl;
 
 	SYNC_RASTER(r);
@@ -565,7 +565,7 @@ habline (RASTER *r, COLINF *c, short x1, short x2, short y, PatAttr *ptrn)
 	{
 		register long fcol, bcol;
 
-		if (r->res.clut)
+		if (r->resfmt.clut)
 		{
 			fcol = (long)fgcol;
 			bcol = (long)bgcol;
@@ -640,7 +640,7 @@ vabline (RASTER *r, COLINF *c, short y1, short y2, short x, PatAttr *ptrn)
 	planes <<= 1;
 	dpf_fg	= r->drawers->dlp[planes];
 	dpf_bg	= 0; //r->drawers->dlp[planes + 1];
-	planes	= r->res.planes;
+	planes	= r->resfmt.planes;
 	bypl	= r->bypl;
 
 	SYNC_RASTER(r);
@@ -675,7 +675,7 @@ vabline (RASTER *r, COLINF *c, short y1, short y2, short x, PatAttr *ptrn)
 
 		xinc = Planes2xinc[planes - 8];
 
-		if (r->res.clut)
+		if (r->resfmt.clut)
 		{
 			fcol = (long)fgcol;
 			bcol = (long)bgcol;
@@ -1175,7 +1175,7 @@ draw_spans(RASTER *r, COLINF *c, short x1, short x2, short y, PatAttr *ptrn)
 	wrmode <<= 1;
 	dpf_fg	= r->drawers->dlp[wrmode];
 	dpf_bg	= r->drawers->dlp[wrmode + 1];
-	planes	= r->res.planes;
+	planes	= r->resfmt.planes;
 	bypl	= r->bypl;
 
 	SYNC_RASTER(r);
@@ -1350,7 +1350,7 @@ draw_spans(RASTER *r, COLINF *c, short x1, short x2, short y, PatAttr *ptrn)
 			int left, right, groups;
 			register long fcol, bcol;
 
-			if (r->res.clut)
+			if (r->resfmt.clut)
 			{
 				fcol = (long)fgcol;
 				bcol = (long)bgcol;
@@ -1474,7 +1474,7 @@ draw_mspans(RASTER *r, COLINF *c, short x1, short x2, short y1, short y2, PatAtt
 	wrmode <<= 1;
 	dpf_fg	= r->drawers->dlp[wrmode];
 	dpf_bg	= r->drawers->dlp[wrmode + 1];
-	planes	= r->res.planes;
+	planes	= r->resfmt.planes;
 	bypl	= r->bypl;
 
 	SYNC_RASTER(r);
@@ -1656,7 +1656,7 @@ draw_mspans(RASTER *r, COLINF *c, short x1, short x2, short y1, short y2, PatAtt
 			int left, right, groups;
 			register long fcol, bcol;
 
-			if (r->res.clut)
+			if (r->resfmt.clut)
 			{
 				fcol = (long)fgcol;
 				bcol = (long)bgcol;

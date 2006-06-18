@@ -262,7 +262,7 @@ oSetpalette(OVDI_HWAPI *hw, short *p)
 
 		hwpen	= calc_vdicolor(r, c, c->color_hw2vdi[i], &relative);
 
-		if (hwpen >= 0 && r->res.clut)
+		if (hwpen >= 0 && r->resfmt.clut)
 			(*dev->setcol)(hw->driver, hwpen, &c->actual_rgb[hwpen]);
 
 		pal++;
@@ -311,7 +311,7 @@ oSetcolor(OVDI_HWAPI *hw, short *p)
 
 		idx	= calc_vdicolor(r, c, c->color_hw2vdi[idx], &relative);
 
-		if (idx >= 0 && r->res.clut)
+		if (idx >= 0 && r->resfmt.clut)
 			(*hw->driver->dev->setcol)(hw->driver, idx, &c->actual_rgb[idx]);
 	}
 
@@ -359,7 +359,7 @@ oEsetcolor(OVDI_HWAPI *hw, short *p)
 
 		idx = calc_vdicolor(r, c, c->color_hw2vdi[idx], &relative);
 
-		if (idx >= 0 && r->res.clut)
+		if (idx >= 0 && r->resfmt.clut)
 			(*hw->driver->dev->setcol)(hw->driver, idx, &c->actual_rgb[idx]);
 	}
 
@@ -405,7 +405,7 @@ oEsetpalette(OVDI_HWAPI *hw, short *p)
 
 		hwpen = calc_vdicolor(r, c, c->color_hw2vdi[idx], &relative);
 
-		if (hwpen >= 0 && r->res.clut)
+		if (hwpen >= 0 && r->resfmt.clut)
 			(*dev->setcol)(hw->driver, hwpen, &c->actual_rgb[hwpen]);
 		idx++;
 	}

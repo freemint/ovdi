@@ -45,7 +45,7 @@ spans_16x_4b(RASTER *r, COLINF *c, short *spans, short n, PatAttr *ptrn)
 			ptrn->expanded = 0;
 		}
 		else
-			ptrn->expanded = r->res.planes;
+			ptrn->expanded = r->resfmt.planes;
 #if 1
 		col[1] = ptrn->color[wrmode] & 0xff;
 		col[0] = ptrn->bgcol[wrmode] & 0xff;

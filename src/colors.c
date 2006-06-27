@@ -94,13 +94,7 @@ reqrgb_2_actrgb(char *pixfmt, RGB_LIST *levels, RGB_LIST *reqrgb, RGB_LIST *rgbv
 	tmp += 500;
 	tmp /= 1000;
 	rgbvals->ovl = tmp;
-#if 0
-	rgbvals->red	= (unsigned short)(((long)reqrgb->red 	* levels->red + 500) / 1000);
-	rgbvals->green	= (unsigned short)(((long)reqrgb->green * levels->green + 500) / 1000);
-	rgbvals->blue	= (unsigned short)(((long)reqrgb->blue 	* levels->blue + 500) / 1000);
-	rgbvals->alpha	= (unsigned short)(((long)reqrgb->alpha * levels->alpha + 500) / 1000);
-	rgbvals->ovl	= (unsigned short)(((long)reqrgb->ovl 	* levels->ovl + 500) / 1000);
-#endif
+
 	if (pixelret)
 		*pixelret = calc_pixelvalue( pixfmt, rgbvals);
 }
@@ -142,14 +136,6 @@ get_rgb_relatives( RGB_LIST *values, RGB_LIST *levels, RGB_LIST *result)
 	tmp += (levels->ovl >> 1);
 	tmp /= levels->ovl;
 	result->ovl = tmp;
-#if 0
-	result->red	= ((long)values->red 	* 1000) / levels->red;
-	result->green	= ((long)values->green	* 1000) / levels->green;
-	result->blue	= ((long)values->blue	* 1000) / levels->blue;
-
-	result->alpha	= levels->alpha ? ((long)values->alpha	* 1000) / levels->alpha : 0;
-	result->ovl	= levels->ovl ? ((long)values->ovl	* 1000) / levels->ovl : 0;
-#endif
 }
 
 /* Return specified channel of a pixel-value. which selects what channel to get

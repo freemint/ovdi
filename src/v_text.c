@@ -16,8 +16,7 @@ lvst_exit(VIRTUAL *v)
 {
 	XGDF_HEAD *xf = v->font.current;
 
-	if (xf)
-	{
+	if (xf) {
 		xf->links--;
 	}
 }
@@ -27,21 +26,18 @@ vst_load_fonts( VDIPB *pb, VIRTUAL *v)
 {
 	if (v->font.loaded)
 		pb->intout[0] = v->font.lcount;
-	else if (v->root)
-	{
+	else if (v->root) {
 		v->font.loaded = v->root->font.loaded;
 		v->font.lcount = v->root->font.lcount;
 		pb->intout[0] = v->font.lcount;
 	}
-
 	pb->contrl[N_INTOUT] = 1;
 }
 
 short
 lvst_load_fonts( VIRTUAL *v)
 {
-	if (!v->font.loaded)
-	{
+	if (!v->font.loaded) {
 		v->font.loaded = v->root->font.loaded;
 		v->font.lcount = v->root->font.lcount;
 	}

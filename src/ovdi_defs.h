@@ -538,8 +538,8 @@ struct ovdi_drawers
 	struct v2d2v	*dev2vdi;
 
 	/* Mouse cursor rendering */
-	DRAW_MC		*draw_mcurs; // draw_mc		draw_mcurs;
-	UNDRAW_MC	*undraw_mcurs; //undraw_mc	undraw_mcurs;
+	DRAW_MC		*draw_mcurs;
+	UNDRAW_MC	*undraw_mcurs;
 };
 typedef struct ovdi_drawers OVDI_DRAWERS;
 
@@ -636,7 +636,6 @@ struct ovdi_driver
 	struct ovdi_drawers	*drawers_16b;
 	struct ovdi_drawers	*drawers_24b;
 	struct ovdi_drawers	*drawers_32b;
-
 };
 
 /*

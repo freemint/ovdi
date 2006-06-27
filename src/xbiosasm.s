@@ -25,12 +25,13 @@ _new_xbioswr:	move.w	sr,d1
 
 		move.w	d1,sr
 
-		btst	#13,d0
+		btst	#13,d1
 		bne.s	.already_super
 		move.l	usp,sp
 
 .already_super:	move.l	sp,a0
 
+		move.l d0,-(sp)
 		movem.l	d1-d1/a0-a1,-(sp)
 		move.l	a0,-(sp)
 		jsr	_new_xbios
@@ -38,7 +39,8 @@ _new_xbioswr:	move.w	sr,d1
 		movem.l	(sp)+,d1-d1/a0-a1
 		cmp.l	#0xfacedace,d0
 		beq.s	old_xbios
-
+		
+		addq.l	#4,sp
 		move.w	sr,d1
 		or.w	#0x700,sr
 
@@ -55,7 +57,7 @@ _new_xbioswr:	move.w	sr,d1
 		move.w	d1,sr
 		rte
 
-old_xbios:	moveq	#0,d0
+old_xbios:	move.l	(sp)+, d0	|moveq	#0,d0
 		move.w	sr,d1
 		or.w	#0x700,sr
 

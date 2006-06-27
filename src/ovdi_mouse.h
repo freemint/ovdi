@@ -29,7 +29,7 @@ struct xmform
 	short	mx;			/* Max X of mouse area */
 	short	my;			/* Max Y of mouse area */
 	short	bypl;			/* bytes per line of mouse area */
-	unsigned char	*scr_base;		/* start address of mouse area */
+	unsigned char	*scr_base;	/* start address of mouse area */
 	
 	short	xhot;			/* X hotspot */
 	short	yhot;			/* Y hotspot */
@@ -39,8 +39,8 @@ struct xmform
 	short	height;			/* Height of mouse data in pixels */
 	short	fg_col;			/* Foreground VDI color */
 	short	bg_col;			/* Background VDI color */
-	unsigned long	fg_pix;			/* Foreground HW color pixel value */
-	unsigned long	bg_pix;			/* Background HW color pixel value */
+	unsigned long	fg_pix;		/* Foreground HW color pixel value */
+	unsigned long	bg_pix;		/* Background HW color pixel value */
 
 	XMSAVE	*save;			/* Pointer to XMSAVE used to save background */
 	unsigned short	*mask;
@@ -48,8 +48,6 @@ struct xmform
 };
 typedef	struct xmform XMFORM;
 
-// typedef void (*draw_mc)		(struct xmform *xmf, short x, short y);
-// typedef void (*undraw_mc)	(struct xmsave *xms);
 typedef void DRAW_MC	(struct xmform *xmf, short x, short y);
 typedef void UNDRAW_MC	(struct xmsave *xms);
 
@@ -60,7 +58,9 @@ typedef void UNDRAW_MC	(struct xmsave *xms);
 		while ( !(*n->msema)() );	\
 	}					\
 }
-
+/*
+ * This is used by Layer 1 of the mouse/pointnig device driver sceme
+ */
 struct mousedrv
 {
 	struct pdvapi	*pdapi;
@@ -72,9 +72,9 @@ struct mousedrv
 	LINEA_VARTAB	*la;
 	XMFORM		*current_xmf;
 	XMSAVE		*current_xms;
-	DRAW_MC		*draw_mcurs; /*draw_mc		draw_mcurs;*/
-	UNDRAW_MC	*undraw_mcurs; /*undraw_mc	undraw_mcurs;*/
-	void		(*vreschk)(short, short);
+	DRAW_MC		*draw_mcurs;
+	UNDRAW_MC	*undraw_mcurs;
+	void _cdecl	(*vreschk)(short, short);
 	long _cdecl	(*msema)(void);
 	volatile unsigned long	flags;
 	volatile unsigned short	interrupt;

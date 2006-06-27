@@ -19,7 +19,7 @@ v_opnprn(VDIPB *pb, VIRTUAL *root)
 		VIRTUAL *new;
 		PRN_SETTINGS *pset;
 
-		(long)new = (long)omalloc(sizeof(VIRTUAL) + sizeof(PRN_SETTINGS), MX_PREFTTRAM | MX_SUPER);
+		new = (VIRTUAL *)omalloc(sizeof(VIRTUAL) + sizeof(PRN_SETTINGS), MX_PREFTTRAM | MX_SUPER);
 
 		if (new)
 		{
@@ -36,7 +36,7 @@ v_opnprn(VDIPB *pb, VIRTUAL *root)
 			{
 				wkin = (struct opnwk_input *)&pb->intin[0];
 
-				(long)pset = (long)new + sizeof(VIRTUAL);
+				pset = (PRN_SETTINGS *)((long)new + sizeof(VIRTUAL));
 
 				bzero(new, sizeof(VIRTUAL));
 				memcpy(pset, wkin_pset, sizeof(PRN_SETTINGS));

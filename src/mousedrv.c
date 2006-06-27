@@ -45,9 +45,9 @@ extern void m_int(void);
 static void enable_mouse(void);
 static void disable_mouse(void);
 
-void mouse_relative_move( short x, short y) __attribute__ (());
-void mouse_absolute_move(short x, short y);
-void mouse_buttons_change(unsigned short bs);
+void _cdecl mouse_relative_move( short x, short y) __attribute__ (());
+void _cdecl mouse_absolute_move(short x, short y);
+void _cdecl mouse_buttons_change(unsigned short bs);
 
 static void scale_mouse(MOUSEDRV *, short, short);
 static void check_coords(MOUSEDRV *);
@@ -164,8 +164,8 @@ init_mouse(OVDI_HWAPI *hw, LINEA_VARTAB *la)
  * the pointing device driver (layer 2), and the 'mouse rendering' driver (layer 3).
 */
 	m->la = la;
-	m->raster = 0;
-	m->colinf = 0;
+	m->raster = NULL;
+	m->colinf = NULL;
 	m->draw_mcurs = (DRAW_MC *)mdonothing; //(draw_mc)mdonothing;
 	m->undraw_mcurs = (UNDRAW_MC *)mdonothing; //(undraw_mc)mdonothing;
 
@@ -369,7 +369,7 @@ set_xmf_color(XMFORM *xmf)
 
 /* These are the functions called by mouse device drivers	*/
 /* (layer 2) to let the high-level know about mouse activity	*/
-void
+void _cdecl
 mouse_relative_move(short x, short y)
 {
 	register MOUSEDRV *m = &md;
@@ -414,7 +414,7 @@ mouse_relative_move(short x, short y)
 	m->flags |= MC_MOVED;
 }
 
-void
+void _cdecl
 mouse_absolute_move(short x, short y)
 {
 	register MOUSEDRV *m = &md;
@@ -457,7 +457,7 @@ mouse_absolute_move(short x, short y)
 	m->flags |= MC_MOVED;
 }
 
-void
+void _cdecl
 mouse_buttons_change(unsigned short bs)
 {
 	register MOUSEDRV *m = &md;
@@ -537,7 +537,7 @@ scale_mouse(MOUSEDRV *m, short x, short y)
 }
 
 void
-mouse_interrupt()
+mouse_interrupt(void)
 {
 	register MOUSEDRV *m = &md;
 
@@ -567,21 +567,20 @@ mouse_interrupt()
 }
 
 static void
-reset_mouse_curs()
+reset_mouse_curs(void)
 {
 	enable_mouse_curs();
 	show_mouse_curs(0);
 }
 
 static void
-enable_mouse_curs()
+enable_mouse_curs(void)
 {
 	register MOUSEDRV *m = &md;
 
 	m->hide_ct = 1;
 	m->flags |= MC_ENABLED;
 	m->interrupt = 0;
-	//show_mouse_curs(1);
 }
 
 static void
@@ -698,5 +697,4 @@ set_mouse_vector(short vecnum, unsigned long vector)
 static void
 mdonothing()
 {
-	return;
 }

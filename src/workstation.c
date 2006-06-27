@@ -50,13 +50,13 @@ static void unload_vdi_fonts(VIRTUAL *v);
 extern short using_trap;
 
 void
-v_opnwk(VDIPB *pb, VIRTUAL *wk, VIRTUAL *lawk, OVDI_HWAPI *hwapi) //struct ovdi_device *dev)
+v_opnwk(VDIPB *pb, VIRTUAL *wk, VIRTUAL *lawk, OVDI_HWAPI *hwapi)
 {
 	int i, vdidev_id;
 	OVDI_DRIVER *drv;
 	OVDI_DEVICE *dev;
 	RASTER *r;
-	register struct opnwk_input *wkin;
+	struct opnwk_input *wkin;
 
 	if (using_trap)
 	{
@@ -351,7 +351,6 @@ update_devtab(DEV_TAB *dt, VIRTUAL *v)
 static void
 update_siztab(SIZ_TAB *st, VIRTUAL *v)
 {
-	return;
 }
 static void
 update_inqtab(INQ_TAB *it, VIRTUAL *v)
@@ -778,8 +777,6 @@ v_clswk( VDIPB *pb, VIRTUAL *root)
 
 	v_vtab[1].v = 0;
 	v_vtab[1].pid = -1;
-	
-	return;
 }
 
 void
@@ -825,14 +822,12 @@ v_clsvwk( VDIPB *pb, VIRTUAL *v)
 		entry[handle].v = 0;
 		entry[handle].pid = -1;
 	}
-	return;
 }
 
 /* unimplemented */
 void
 v_updwk( VDIPB *pb, VIRTUAL *v)
 {
-	return;
 }
 
 void
@@ -859,7 +854,6 @@ vq_extnd( VDIPB *pb, VIRTUAL *v)
 			break;
 		}
 	}
-	return;
 }
 
 static void
@@ -872,8 +866,8 @@ prepare_scrninfreturn( VDIPB *pb, VIRTUAL *v)
 
 	r = v->raster;
 
-	pfmt = r->resfmt.format; //v->driver->format;
-	planes = r->resfmt.planes; //v->driver->planes;
+	pfmt = r->resfmt.format;
+	planes = r->resfmt.planes;
 
 	if (pfmt & PF_ATARI)
 		pb->intout[0] = 0;
@@ -976,7 +970,6 @@ prepare_scrninfreturn( VDIPB *pb, VIRTUAL *v)
 		misc = (short *)&pb->intout[128];
 		for (i = 128; i < 271; i++)
 			*misc++ = 0;
-		
 	}
 	else
 	{
@@ -1000,15 +993,11 @@ prepare_scrninfreturn( VDIPB *pb, VIRTUAL *v)
 	pb->intout[15] = 0;
 
 	pb->contrl[N_INTOUT] = 272;
-
-	return;
 }	
 
 static void
 prepare_extreturn( VDIPB *pb, VIRTUAL *v)
 {
-	//short i;
-	//short *src, *dst;
 	INQ_TAB *it = (INQ_TAB *)&pb->intout[0];
 	RASTER *r = v->raster;
 
@@ -1018,30 +1007,15 @@ prepare_extreturn( VDIPB *pb, VIRTUAL *v)
 
 	pb->intout[19] = v->clip.flag;
 
-	//bzero(&pb->intout[20], (45-20) << 1);
-	//pb->intout[20] = 0;
-
 	pb->ptsout[0] = v->clip.x1;
 	pb->ptsout[1] = v->clip.y1;
 	pb->ptsout[2] = v->clip.x2;
 	pb->ptsout[3] = v->clip.y2;
 
 	bzero(&pb->ptsout[4], sizeof(SIZ_TAB) - 8);
-#if 0
-	pb->ptsout[4] = 0;
-	pb->ptsout[5] = 0;
-	pb->ptsout[6] = 0;
-	pb->ptsout[7] = 0;
-	pb->ptsout[8] = 0;
-	pb->ptsout[9] = 0;
-	pb->ptsout[10] = 0;
-	pb->ptsout[11] = 0;
-#endif
-
 
 	pb->contrl[N_INTOUT] = 45;
 	pb->contrl[N_PTSOUT] = 6;
-	return;
 }
 
 static void
@@ -1055,7 +1029,6 @@ prepare_stdreturn( VDIPB *pb, VIRTUAL *v)
 	memcpy((void *)&pb->ptsout[0], (void *)&SIZ_TAB_rom, sizeof(SIZ_TAB));
 	pb->contrl[N_INTOUT] = 45;
 	pb->contrl[N_PTSOUT] = 6;
-	return;
 }
 	
 /* Just clear the raster */
@@ -1071,7 +1044,6 @@ lv_clrwk(VIRTUAL *virtual)
 
 	lvs_clip(v, 0, 0);
 	rectfill( r, v->colinf, (VDIRECT *)&r->x1, (VDIRECT *)&r->x1, &WhiteRect);
-
 }
 /*
  * Set up things common to all workstation structures.
@@ -1084,7 +1056,7 @@ setup_virtual(VDIPB *pb, VIRTUAL *v, VIRTUAL *root)
 
 	wkin	= (struct opnwk_input *)&pb->intin[0];
 
-	v->scratchp	= 0;
+	v->scratchp	= NULL;
 	v->scratchs	= SCRATCH_BUFFER_SIZE;
 
 	v->ptsbuffsiz	= PTSBUFF_SIZ;
@@ -1113,15 +1085,6 @@ setup_virtual(VDIPB *pb, VIRTUAL *v, VIRTUAL *root)
 	lvsm_height( v, 1);
 	v->pmarker.t.p.scale = 0;
 
-/* **** Fill stuff ... */
-#if 0
-	v->fill.exp_data	= (unsigned short *)&v->filldata.edata;
-	v->fill.mask		= (unsigned short *)&v->filldata.mask;
-
-	v->udfill.data		= (unsigned short *)&v->udfilldata.data;
-	v->udfill.mask		= (unsigned short *)&v->udfilldata.mask;
-	v->udfill.exp_data	= (unsigned short *)&v->udfilldata.edata;
-#endif
 /* **** Perimeter-line attribs ... */
 	lvsprm_initial( v );
 	lvsprm_wrmode( v, MD_REPLACE );
@@ -1132,6 +1095,7 @@ setup_virtual(VDIPB *pb, VIRTUAL *v, VIRTUAL *root)
 	lvsprm_ends( v, 0, 0);
 	lvsprm_udsty( v, 0xffff);
 
+/* **** Fill stuff ... */
 	lvsf_initial( v );
 	lvsf_wrmode( v, MD_REPLACE );
 	lvsudf_wrmode( v, MD_REPLACE );
@@ -1196,7 +1160,7 @@ load_vdi_fonts(VIRTUAL *v, SIZ_TAB *st, DEV_TAB *dt)
 {
 	if (!fonts_are_loaded)
 	{
-		char *fnptrs, *fnptrd, *fdnptr;
+		char *pathname, *filename, *fontnames; //*fnptrs, *fnptrd, *fdnptr;
 		char fname[40];
 		XGDF_HEAD *xf;
 		struct gdf_membuff *m = &loaded_vdi_gdfs;
@@ -1221,7 +1185,7 @@ load_vdi_fonts(VIRTUAL *v, SIZ_TAB *st, DEV_TAB *dt)
 		v->font.lcount = 0;
 		v->font.loaded = 0;
 
-		if ((fnptrs = vdi_fontlist))
+		if ((fontnames = vdi_fontlist)) //((fnptrs = vdi_fontlist))
 		{
 			long fs, size;
 			char *tmp;
@@ -1230,9 +1194,18 @@ load_vdi_fonts(VIRTUAL *v, SIZ_TAB *st, DEV_TAB *dt)
 			size = 0;
 
 			/* First, figure out how large a buffer we need to load all fonts */
-			tmp = fnptrs;
-			while (*tmp)
-			{
+			tmp = fontnames; //tmp = fnptrs;
+			while (*tmp) {
+				pathname = gdf_path;
+				filename = fname;
+				
+				while (*pathname) *filename++ = *pathname++;
+				while (*tmp) *filename++ = *tmp++;
+				*filename++ = *tmp++;
+				fs = get_file_size(fname);
+				if (fs > 0)
+					size += (fs + sizeof(XGDF_HEAD) + 3) & ~3;
+#if 0
 				fdnptr = gdf_path;
 				fnptrd = (char *)&fname[0];
 
@@ -1246,10 +1219,10 @@ load_vdi_fonts(VIRTUAL *v, SIZ_TAB *st, DEV_TAB *dt)
 				{
 					size += (fs + sizeof(XGDF_HEAD ) + 3) & ~3;
 				}
+#endif
 			}
 			/* .. then we attempt to allocate ram for this buffer .. */
-			if (size)
-			{
+			if (size) {
 				long mem;
 
 				mem = (long)omalloc(size, MX_PREFTTRAM | MX_SUPER); //READABLE);
@@ -1260,8 +1233,29 @@ load_vdi_fonts(VIRTUAL *v, SIZ_TAB *st, DEV_TAB *dt)
 				m->size	= size;
 			}
 			/* Then we start loading the fonts off the disk .... */
-			for (;;)
-			{
+			for (;;) {
+				pathname = gdf_path;
+				filename = fname;
+				while (*pathname) *filename++ = *pathname++;
+				while (*fontnames) *filename++ = *fontnames++;
+				*filename++ = *fontnames++;
+				if ( !load_font(fname, m, &size, &xf) ) {
+					fixup_font(xf->font_head);
+					if (v->font.loaded) {
+						if ((add_font(v->font.loaded, xf)) == 1)
+							v->font.lcount++;
+					} else {
+						v->font.loaded = xf;
+						v->font.lcount++;
+					}
+					//log("Loaded font id %d, name: '%s'\n", xf->font_head->id, xf->font_head->name);
+				} else
+					//log("Cound not load font '%s' !!\n", &fname[0]);
+
+				if (!*fontnames)
+					break;
+				
+#if 0			
 				fdnptr = gdf_path;
 				fnptrd = (char *)&fname[0];
 
@@ -1292,21 +1286,21 @@ load_vdi_fonts(VIRTUAL *v, SIZ_TAB *st, DEV_TAB *dt)
 
 				if (!(*fnptrs))
 					break;
+#endif
 			}
 
 			/* If no fonts were loaded, no use keeping the buffer */
-			if (m->base == m->free)
-			{
+			if (m->base == m->free) {
 				fonts_are_loaded = 0;
-				if (m->base)
-				{
+				if (m->base) {
 					free_mem(m->base);
-					(long)m->base = m->size = (long)m->free = 0;
+					m->base = NULL;
+					m->size = 0;
+					m->free = NULL;
 				}
 			}
 			else
 				fonts_are_loaded = 1;
-			
 		}
 	}
 }

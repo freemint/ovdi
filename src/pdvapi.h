@@ -6,6 +6,9 @@ typedef void _cdecl CMOVE(short x, short y);
 typedef void _cdecl MBCHG(unsigned short bs);
 typedef void _cdecl MWHEEL(short id, short pos, unsigned short bs);
 
+/*
+ * A Pointer to
+ */
 struct mdrv_cb
 {
 	CMOVE	*relcmove;
@@ -33,9 +36,9 @@ struct pdvapi
 	char		*filename;
 	char		*pathname;
 	short _cdecl	(*install)(MDRV_CB *cb, PDVINFO *pdi);
-	void _cdecl	(*exit)(void);
-	void _cdecl	(*start)(void);
-	void _cdecl	(*stop)(void);
+	void  _cdecl	(*exit)(void);
+	void  _cdecl	(*start)(void);
+	void  _cdecl	(*stop)(void);
 };
 typedef struct pdvapi PDVAPI;	
 

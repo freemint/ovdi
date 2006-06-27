@@ -4,6 +4,10 @@
 #include "mouse.h"
 #include "ovdi_defs.h"
 
+/*
+ * This is the structure the VDI engine uses to communicate
+ * with the mousedriver, Layer 1
+ */
 struct mouseapi
 {
 	short		type;

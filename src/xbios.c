@@ -22,7 +22,7 @@ extern short logit;
 extern void	new_xbioswr(void);
 extern unsigned long old_trap14;
 
-long new_xbios		(short *p);
+long _cdecl new_xbios		(short *p);
 
 static long oPhysbase		(OVDI_HWAPI *hw, short *p);
 static long oLogbase		(OVDI_HWAPI *hw, short *p);
@@ -73,13 +73,11 @@ void
 enable_xbios(OVDI_HWAPI *hw)
 {
 	HW = hw;
-	return;
 }
 void
 disable_xbios(void)
 {
-	HW = 0;
-	return;
+	HW = NULL;
 }
 
 void
@@ -91,10 +89,9 @@ uninstall_xbios(void)
 		old_trap14 = 0;
 		HW = 0;
 	}
-	return;
 }
 
-long
+long _cdecl
 new_xbios(short *p)
 {
 	long ret;
@@ -203,37 +200,36 @@ oGetrez(OVDI_HWAPI *hw, short *p)
 static long
 oSetscreen(OVDI_HWAPI *hw, short *p)
 {
+	union { short s[2]; unsigned long l; } logic, phys;
 	int mode;
-	unsigned long logic, phys;
-	OVDI_DEVICE *d;
+	OVDI_DEVICE *dev;
 
-	logic	= (unsigned long)((long *)p)[0];
-	phys	= (unsigned long)((long *)p)[1];
-	//logic	= (unsigned long)(((unsigned long)p[0] << 16) | (unsigned short)p[1]);
-	//phys	= (unsigned long)(((unsigned long)p[2] << 16) | (unsigned short)p[3]);
+	logic.s[0] = *p++;
+	logic.s[1] = *p++;
+	phys.s[0] = *p++;
+	phys.s[1] = *p++;
+	
+	mode	= *p;
+	dev	= hw->driver->dev;
 
-	mode	= p[4];
-	d	= hw->driver->dev;
+	if (logic.l != 0xffffffffUL)
+		hw->driver->log_base = (*dev->setlscr)(hw->driver, (unsigned char *)logic.l);
 
-	if (logic != 0xffffffffUL)
-		hw->driver->log_base = (*d->setlscr)(hw->driver, (unsigned char *)logic);
-
-	if (phys != 0xffffffffUL)
+	if (phys.l != 0xffffffffUL)
 	{
-		if (	(phys < (unsigned long)hw->driver->vram_start) ||
-			(phys > (unsigned long)((unsigned long)hw->driver->vram_start + hw->driver->vram_size)) )
+		if (	(phys.l < (unsigned long)hw->driver->vram_start) ||
+			(phys.l > (unsigned long)((unsigned long)hw->driver->vram_start + hw->driver->vram_size)) )
 			return 0;
 
-		hw->driver->r.base = (*d->setpscr)(hw->driver, (unsigned char *)phys);
+		hw->driver->r.base = (*dev->setpscr)(hw->driver, (unsigned char *)phys.l);
 	}
-	
 	return 0;
 }
 
 static long
 oSetpalette(OVDI_HWAPI *hw, short *p)
 {
-	unsigned short *pal;
+	union { short s[2]; unsigned short *p; } pal;
 	unsigned short red, green, blue;
 	int i, hwpen;
 	COLINF *c;
@@ -247,14 +243,16 @@ oSetpalette(OVDI_HWAPI *hw, short *p)
 
 	relative.alpha = relative.ovl = 0;
 
-	pal	= (short *)((long *)p)[0];
-	//pal	= (short *)(((unsigned long)p[0] << 16) | (unsigned short)p[1]);
+	pal.s[0] = *p++;
+	pal.s[1] = *p;
+	
+// 	pal	= (short *)((long *)p)[0];
 
 	for (i = 0; i < 16; i++)
 	{
-		red	= ((*pal >> 7) & 0xe) | ((*pal >> 11) & 1);
-		green	= ((*pal >> 3) & 0xe) | ((*pal >> 7) & 1);
-		blue	= ((*pal << 1) & 0xe) | ((*pal >> 3) & 1);
+		red	= ((*pal.p >> 7) & 0xe) | ((*pal.p >> 11) & 1);
+		green	= ((*pal.p >> 3) & 0xe) | ((*pal.p >> 7) & 1);
+		blue	= ((*pal.p << 1) & 0xe) | ((*pal.p >> 3) & 1);
 
 		relative.red	= rel_16col_tab[red];
 		relative.green	= rel_16col_tab[green];
@@ -265,7 +263,7 @@ oSetpalette(OVDI_HWAPI *hw, short *p)
 		if (hwpen >= 0 && r->resfmt.clut)
 			(*dev->setcol)(hw->driver, hwpen, &c->actual_rgb[hwpen]);
 
-		pal++;
+		pal.p++;
 	}
 	return 0L;
 }
@@ -273,7 +271,8 @@ oSetpalette(OVDI_HWAPI *hw, short *p)
 long
 oSetcolor(OVDI_HWAPI *hw, short *p)
 {
-	int red, green, blue, col, idx, old;
+	int idx;
+	unsigned short red, green, blue, col, old;
 	COLINF *c;
 	RASTER *r;
 	RGB_LIST relative;
@@ -291,9 +290,9 @@ oSetcolor(OVDI_HWAPI *hw, short *p)
 	col	= *p;
 
 	/* Calculate the old color value */
-	red	=  ((long)c->request_rgb[idx].red * 16) / 1000;
-	green	=  ((long)c->request_rgb[idx].green * 16) / 1000;
-	blue	=  ((long)c->request_rgb[idx].blue * 16) / 1000;
+	red	=  (((long)c->request_rgb[idx].red   * 16) + 500) / 1000;
+	green	=  (((long)c->request_rgb[idx].green * 16) + 500) / 1000;
+	blue	=  (((long)c->request_rgb[idx].blue  * 16) + 500) / 1000;
 	old	=  ((red & 0xe) << 7) | ((red & 1) << 11);
 	old	|= ((green & 0xe) << 3) | ((green & 1) << 7);
 	old	|= ((blue & 0xe) >> 1) | ((blue & 1) << 3);
@@ -314,14 +313,15 @@ oSetcolor(OVDI_HWAPI *hw, short *p)
 		if (idx >= 0 && r->resfmt.clut)
 			(*hw->driver->dev->setcol)(hw->driver, idx, &c->actual_rgb[idx]);
 	}
-
 	return (long)old;
 }
 
 static long
 oEsetcolor(OVDI_HWAPI *hw, short *p)
 {
-	int red, green, blue, col, idx, old;
+	int idx;
+	unsigned short red, green, blue, old;
+	short col;
 	COLINF *c;
 	RASTER *r;
 	RGB_LIST relative;
@@ -339,9 +339,9 @@ oEsetcolor(OVDI_HWAPI *hw, short *p)
 		return -1;
 
 	/* Calculate the old color value */
-	red	=  ((long)c->request_rgb[idx].red * 16) / 1000;
-	green	=  ((long)c->request_rgb[idx].green * 16) / 1000;
-	blue	=  ((long)c->request_rgb[idx].blue * 16) / 1000;
+	red	=  (((long)c->request_rgb[idx].red   * 16) + 500) / 1000;
+	green	=  (((long)c->request_rgb[idx].green * 16) + 500) / 1000;
+	blue	=  (((long)c->request_rgb[idx].blue  * 16) + 500) / 1000;
 	old	=  (red & 0xf) << 8;
 	old	|= (green & 0xf) << 4;
 	old	|= blue & 0xf;
@@ -369,18 +369,19 @@ oEsetcolor(OVDI_HWAPI *hw, short *p)
 static long
 oEsetpalette(OVDI_HWAPI *hw, short *p)
 {
-	unsigned short *pal;
+	union { short s[2]; unsigned short *p; } pal;
 	COLINF *c;
 	RASTER *r;
 	OVDI_DEVICE *dev;
-	int red, green, blue, i, cnt, idx, col, hwpen;
+	int i, cnt, idx, hwpen;
+	unsigned short red, green, blue;
+	short col;
 	RGB_LIST relative;
 
 	idx = *p++;			/* start index */
 	cnt = *p++;			/* count */
 
-	if ((idx + cnt) > 255)
-	{
+	if ((idx + cnt) > 255){
 		cnt = 255 - idx;
 		if (idx < 0)
 			return 0L;
@@ -391,10 +392,11 @@ oEsetpalette(OVDI_HWAPI *hw, short *p)
 	dev	= hw->driver->dev;
 
 	relative.alpha = relative.ovl = 0;
-	pal = (unsigned short *)((unsigned long *)p)[0];
+	pal.s[0] = *p++;
+	pal.s[1] = *p;
 	for (i = 0; i < cnt; i++)
 	{
-		col	= *pal++;
+		col	= *pal.p++;
 		red	= (col >> 8) & 0xf;
 		green	= (col >> 4) & 0xf;
 		blue	= col & 0xf;
@@ -415,9 +417,10 @@ oEsetpalette(OVDI_HWAPI *hw, short *p)
 static long
 oEgetpalette(OVDI_HWAPI *hw, short *p)
 {
+	union { short s[2]; unsigned short *p; } pal;
 	COLINF *c;
-	int red, green, blue, i, idx, cnt, old;
-	short *pal;
+	int i, idx, cnt;
+	unsigned short red, green, blue, old;
 
 	idx = *p++;
 	cnt = *p++;
@@ -431,19 +434,20 @@ oEgetpalette(OVDI_HWAPI *hw, short *p)
 
 	c = hw->colinf;
 
-	pal = (unsigned short *)((unsigned long *)p)[0];
+	pal.s[0] = *p++;
+	pal.s[1] = *p;
 
 	for (i = 0; i < cnt; i++)
 	{
 		/* Calculate the old color value */
-		red	=  ((long)c->request_rgb[idx].red * 16) / 1000;
-		green	=  ((long)c->request_rgb[idx].green * 16) / 1000;
-		blue	=  ((long)c->request_rgb[idx].blue * 16) / 1000;
+		red	=  (((long)c->request_rgb[idx].red   * 16) + 500) / 1000;
+		green	=  (((long)c->request_rgb[idx].green * 16) + 500) / 1000;
+		blue	=  (((long)c->request_rgb[idx].blue  * 16) + 500) / 1000;
 		old	=  (red & 0xf) << 8;
 		old	|= (green & 0xf) << 4;
 		old	|= blue & 0xf;
 
-		*pal++ = old;
+		*pal.p++ = old;
 		idx++;
 	}
 	return 0L;

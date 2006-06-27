@@ -32,23 +32,23 @@ static char fn[64] = { "0" };
 
 static OVDI_DEVICE device =
 {
-	0,
-	0x00000001,
-	sname,
-	lname,
-	pn,
-	fn,
+	NULL,			/* nxtapi */
+	0x00000001,		/* version */
+	sname,			/* Short name */
+	lname,			/* Long name */
+	pn,			/* pathname buffer */
+	fn,			/* filename buffer */
 
-	dev_open,
-	dev_close,
-	dev_set_vdi_res,
-	dev_get_res_info,
-	dev_setpscreen,
-	dev_setlscreen,
-	dev_setcolor,
-	dev_vsync,
-	dev_vreschk,
-	0		/* sync */
+	dev_open,		/* open */
+	dev_close,		/* close */
+	dev_set_vdi_res,	/* set_vdires */
+	dev_get_res_info,	/* get_res_info */
+	dev_setpscreen,		/* setlscr */
+	dev_setlscreen,		/* setpscr */
+	dev_setcolor,		/* setcol */
+	dev_vsync,		/* vsync */
+	dev_vreschk,		/* vreschk */
+	NULL			/* msema */
 };
 
 static RESFMT resfmt_1b =
@@ -193,11 +193,11 @@ init(OVDI_LIB *lib, struct module_desc *ret, char *path, char *file)
 		t = dev->pathname;
 		while (*path)
 			*t++ = *path++;
-		*t = 0;
+		*t = '\0';
 		t = dev->filename;
 		while (*file)
 			*t++ = *file++;
-		*t = 0;
+		*t = '\0';
 	}
 
 /* Since things not implemented or provided are NULL, we clear all our structures */
@@ -232,7 +232,7 @@ init(OVDI_LIB *lib, struct module_desc *ret, char *path, char *file)
 	drv->drawers_32b = &drw_32b;
 
 	ret->types	= D_VHW;
-	ret->vhw	= dev; //(void *)&ovdidev;
+	ret->vhw	= dev;
 };
 
 static OVDI_DRIVER * _cdecl

@@ -17,12 +17,10 @@ static char fpath[128] = { "0" };
 static char fname[64] = { "0" };
 
 static short _cdecl install(MDRV_CB *, PDVINFO *);
-
-static void _cdecl exit(void);
-
-static void _cdecl start_reporting(void);
-static void _cdecl end_reporting(void);
-void IKBD_Mouse(char *pkt);
+static void  _cdecl exit(void);
+static void  _cdecl start_reporting(void);
+static void  _cdecl end_reporting(void);
+void _cdecl IKBD_Mouse(char *pkt);
 extern void ikbd_mouse(void);
 
 static struct mdrv_cb *CB = 0;
@@ -113,7 +111,7 @@ IKBD_Mouse(char *pkt)
 {
 	register unsigned short buts;
 	register short x, y;
-	char head;
+	register char head;
 
 	if (flags & ON)
 	{

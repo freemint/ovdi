@@ -377,11 +377,9 @@ et6k_filled_rect_16( RASTER *r, COLINF *c, VDIRECT *corners, VDIRECT *clip, PatA
 static short
 Load_Resolution(char *fname, short res_index, RESOLUTION *res)
 {
-	//char fname[] = "c:\\auto\\sta_vdi.bib\0";
 	short fd;
 	long r;
 
-	//fname[0] = boot_drive;
 	fd = Fopen(fname, O_RDONLY);
 	if (fd < 0)
 		return 0;
@@ -404,7 +402,6 @@ Load_Resolution(char *fname, short res_index, RESOLUTION *res)
 
 extern void rb_S_ONLY_1b(ROP_PB *);
 
-//OVDI_DEVICE *
 void _cdecl
 init(OVDI_LIB *l, struct module_desc *ret, char *path, char *file)
 {
@@ -420,7 +417,6 @@ init(OVDI_LIB *l, struct module_desc *ret, char *path, char *file)
 	boot_drive = Dgetdrv() + 'a';
 
 	lib	= l;
-
 	{
 		char *t;
 
@@ -590,12 +586,6 @@ dev_get_res_info(OVDI_DRIVER *drv)
 		case 1:
 		{
 			drv->r.resfmt		= *drv->drawers_1b->resfmt;
-#if 0
-			drv->r.format		= PF_ATARI;
-			drv->r.pixelformat	= pf_nova;
-			drv->r.clut		= 1;
-			drv->r.pixlen		= -1;
-#endif
 			break;
 		}
 #if 0
@@ -612,34 +602,16 @@ dev_get_res_info(OVDI_DRIVER *drv)
 		case 8:
 		{
 			drv->r.resfmt		= *drv->drawers_8b->resfmt;
-#if 0
-			drv->r.format		= PF_PACKED;
-			drv->r.pixelformat	= pf_nova;
-			drv->r.clut		= 1;
-			drv->r.pixlen		= 1;
-#endif
 			break;
 		}
 		case 15:
 		{
 			drv->r.resfmt		= *drv->drawers_15b->resfmt;
-#if 0
-			drv->r.format		= PF_PACKED;
-			drv->r.pixelformat	= pf_15bI;
-			drv->r.clut		= 0;
-			drv->r.pixlen		= 2;
-#endif
 			break;
 		}
 		case 16:
 		{
 			drv->r.resfmt		= *drv->drawers_16b->resfmt;
-#if 0
-			drv->r.format		= PF_PACKED;
-			drv->r.pixelformat	= pf_16bI;
-			drv->r.clut		= 0;
-			drv->r.pixlen		= 2;
-#endif
 			break;
 		}
 #if 0
@@ -723,14 +695,12 @@ dev_setcolor(OVDI_DRIVER *drv, short pen, RGB_LIST *colors)
 	bcols[3] = 0;
 
 	do_p_setcol((long)xcb->p_setcol, pen, (unsigned char *)&bcols[0]);
-	return;
 }
 
 static void _cdecl
 dev_vsync(OVDI_DRIVER *drv)
 {
 	do_p_vsync((long)xcb->p_vsync);
-	return;
 }
 
 /* 
@@ -741,5 +711,4 @@ static void _cdecl
 dev_vreschk(short x, short y)
 {
 	do_p_chng_vrt((long)xcb->p_chng_vrt, x, y);
-	return;
 }

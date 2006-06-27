@@ -32,39 +32,22 @@ get_pixel_1b(unsigned char *_sb, short bpl, short x, short y)
 
 	sb = (unsigned short *)((long)_sb + (long)((x >> 4) << 1) + (y * bpl));
 	return (*sb & (x & 0xf));
-#if 0
-	return ((*(unsigned short *)(sb + (long)(((x >> 4) <<1) + ((long)y * bpl)))) & (x & 0xf));
-#endif
 }
 
 void _cdecl
 put_pixel_1b(unsigned char *sb, short bpl, short x, short y, unsigned long _pixel)
 {
-	union { void *sb; unsigned short *ptr; long adr;} s;
+	union { void *sb; unsigned short *ptr; unsigned long adr;} s;
 	unsigned short mask, shift, pixel = (unsigned short)_pixel;
 
 	s.sb = sb;
 
-	s.adr	+= (long)((x >> 4) << 1) + (long)y * bpl;
+	s.adr	+= (long)((x >> 4) << 1) + ((long)y * bpl);
 	shift	 = x & 0xf;
 	mask	 = 0x8000 >> shift;
 	pixel	 = (pixel >> (shift + 1)) | (pixel << (15 - shift));
 	*s.ptr	&= mask;
 	*s.ptr	|= pixel;
-#if 0	 
-	sb	+= (x >> 4) << 1;
-	sb	+= (long)y * bpl;
-
-	shift	= x & 0xf;
-	mask	= 0x8000 >> shift;
-
-	pixel = (pixel >> (shift + 1) | (pixel << (15-(shift))) );
-
-	*sb &= mask;
-	*sb |= pixel;
-
-	return;
-#endif
 }
 
 pixel_blit dpf_1b[] = 
@@ -121,15 +104,6 @@ ALL_WHITE(unsigned char *addr, long data)
 	
 	d.s[1] = (d.s[1] >> (shift + 1)) | (d.s[1] << (15 - shift));
 	*a.s &= mask;
-#if 0
-	short shift = data >> 16;
-	unsigned short mask = ~(0x8000 >> shift);
-
-	(unsigned short)data = (unsigned short)data >> (shift + 1) | (unsigned short)data << (15-(shift));
-
-	*(unsigned short *)addr &= mask;
-	return;
-#endif
 }
 static void _cdecl
 S_AND_D(unsigned char *addr, long data)
@@ -151,23 +125,6 @@ S_AND_D(unsigned char *addr, long data)
 	p &= ~mask;
 	p |= pixel;
 	*a.s = p;
-#if 0	
-	short shift = data >> 16;
-	unsigned short pixel, p;
-	unsigned short mask = 0x8000 >> shift;
-	
-
-	(unsigned short)data &= 1;
-	(unsigned short)data = (unsigned short)data >> (shift + 1) | (unsigned short)data << (15-(shift));
-
-	p	 = *(unsigned short *)addr;
-	pixel	 = (p & data) & mask;
-	p	&= ~mask;
-	p	|= pixel;
-	*(unsigned short *)addr = p;
-
-	return;
-#endif
 }
 static void _cdecl
 S_AND_NOTD(unsigned char *addr, long data)
